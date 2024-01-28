@@ -1,0 +1,33 @@
+#cloud-config
+users:
+  - name: dev
+    groups: users, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
+    shell: /bin/bash
+    ssh_authorized_keys:
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAACAQCm9nRDqhmTBPeuihOfnYEndLL7zm8O/zAVO0uXgHAtgQ2pJ1e7JlHuaXqKbAcR4IfgLEjyANcwQ8Q0ClBrMEAKOy4YKSpZ6Ye8s6r7R/laEQ5n3R9PpAx2+1izhAW1A/KGIKN2HN0XegjWy8KLyPal3DdSSYdZHXGaaS3UHN4X+YMz0gHenGXvJebaNJ42MUjPAR8uwTjH0SFqYkW2TToRdj+QoOidP412O3wo9bAPFSRC161WJOgkojMP3HKxK15TaQ3XTuye2QlovZ87E4SG8V4aLA0tjVmAtuRRNoMwdFgi9/VpLBCj3+kkw1uiwvDz2NQMC35YtwRFbSgs5vgvAlgBV5O/cMV92RnANJMlsoO6t3bduV4/hIurz4cgcMq1iMW829gWdGoicOun6CqfXlkhr4osgp9+QNcegVd30fL2/tpyMmbzeZiz0y21KJdcP2YX789waj3viWaEeNDFE6Ujlv3U0zVlx/HJ3krG2d2uT6mlBurvatM8aDPELhEK5WG2QBidlqlUjeNAQw0uICd3om1od0KbHy92Gq3yTgyxtFN8GY+y+Ys8YZDigt/Qie0K9swZGi+kaoPk8psfrxPz1j8BQrdSF8HoNEt6mjlD5R4wnsExFDem7/DRvlnzeXNUqs81CN2PduL4ClZw2+8sljsKDqDKt45eJSlMNQ==
+      - ssh-rsa AAAAB3NzaC1yc2EAAAADAQABAAABAQDO4HaLMfYe8QOs5lUXgI9Eb0SeuBx1O9hb5BTIfFKG0cb9swMIdD7y5EwD4sdsK0Yv/DGZnsBngkGt5mRZaislwQ3FdQ5JrWl3+Zv7zN88mG61+ea8Spf6ePiNkyi4ynS5SD+5eEtC3/+SD2mpjXl7KkR/sP2BNzSoYr8pQi8o+CxNnmk3QVjSnYGvm+KYnqd9P9BAYNM9YprWRXPBhZa/REZgPeavoDAvZouZgOkHACq6ccGj8yP7YoRGo75dE6MG2pmb3AKFNqQQ46RFVvD6Njvk7OCQ6IHLZOnao2HusQF3fbQQUOHi3PdcvVCuCipFD4MZGa+ungMmAzPLwcGD
+  - name: web
+    groups: users
+    shell: /bin/bash
+packages:
+  - fail2ban
+  - ufw
+package_update: true
+package_upgrade: true
+runcmd:
+  - printf "[sshd]\nenabled = true\nbanaction = iptables-multiport" > /etc/fail2ban/jail.local
+  - systemctl enable fail2ban
+  - ufw allow OpenSSH
+  - ufw enable
+  - sed -i -e '/^\(#\|\)PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)PasswordAuthentication/s/^.*$/PasswordAuthentication no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)KbdInteractiveAuthentication/s/^.*$/KbdInteractiveAuthentication no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)ChallengeResponseAuthentication/s/^.*$/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)MaxAuthTries/s/^.*$/MaxAuthTries 2/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)AllowTcpForwarding/s/^.*$/AllowTcpForwarding no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)X11Forwarding/s/^.*$/X11Forwarding no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)AllowAgentForwarding/s/^.*$/AllowAgentForwarding no/' /etc/ssh/sshd_config
+  - sed -i -e '/^\(#\|\)AuthorizedKeysFile/s/^.*$/AuthorizedKeysFile .ssh\/authorized_keys/' /etc/ssh/sshd_config
+  - sed -i '$a AllowUsers dev' /etc/ssh/sshd_config
+  - reboot

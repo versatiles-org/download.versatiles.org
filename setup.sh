@@ -1,12 +1,18 @@
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo -e "${RED}SETUP SYSTEM${NC}"
 apt-get -qq -y update
 apt-get -qq -y upgrade
-apt-get -qq -y install ca-certificates curl git supervisor webhook
-install -m 0755 -d /etc/apt/keyrings
-curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
-chmod a+r /etc/apt/keyrings/docker.asc
-echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
-apt-get -qq -y update
-apt-get -qq -y install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+apt-get -qq -y install certbot curl git nginx python3-certbot-nginx supervisor ufw webhook
+ufw allow OpenSSH
+ufw allow 'Nginx HTTP'
+ufw enable
+
+echo -e "${RED}CONFIG CERTBOT${NC}"
+certbot certonly --webroot -w /var/www/example -d example.com -d www.example.com
+
+echo -e "${RED}ADD USER${NC}"
 useradd -m -g docker -s /bin/bash web
 su web
 cd ~
@@ -16,4 +22,4 @@ cd download.versatiles.org
 exit
 cp /home/web/download.versatiles.org/webhooks.conf /etc/supervisor/conf.d/
 
-reboot
+# reboot

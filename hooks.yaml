@@ -1,0 +1,3 @@
+- id: pull
+  execute-command: "pull.sh"
+  command-working-directory: "."

@@ -8,6 +8,7 @@ curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - # for node js
 apt-get -qq -y update
 apt-get -qq -y upgrade
 apt-get -qq -y install curl git nginx nodejs supervisor ufw webhook
+ufw allow OpenSSH
 ufw allow 'Nginx HTTP'
 ufw --force enable
 

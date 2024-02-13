@@ -11,7 +11,7 @@ apt-get -qq -y update
 apt-get -qq -y upgrade
 apt-get -qq -y install curl git libnginx-mod-http-brotli-filter libnginx-mod-http-brotli-static nginx nodejs supervisor ufw webhook
 ufw allow OpenSSH
-ufw allow 'Nginx HTTP'
+ufw allow 8080/tcp
 ufw --force enable
 
 echo -e "${RED}ADD USER${NC}"

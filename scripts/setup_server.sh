@@ -1,4 +1,4 @@
-DOMAIN="test.versatiles.org"
+NAME="test.versatiles.org"
 VOLUME="HC_Volume_29360110"
 
 RED='\033[0;31m'
@@ -30,14 +30,16 @@ systemctl daemon-reload
 mkdir "/mnt/${VOLUME}/"
 mount "/mnt/${VOLUME}/"
 
-echo -e "${RED}CONFIG WEBHOOK${NC}"
-ln -s /home/web/download.versatiles.org/webhook/webhooks.conf /etc/supervisor/conf.d/webhooks.conf
-
 echo -e "${RED}CONFIG NGINX${NC}"
-cp /home/web/download.versatiles.org/nginx/nginx.conf /etc/nginx/
 mkdir /etc/nginx/sites/
-cp /home/web/download.versatiles.org/nginx/download.versatiles.org.conf /etc/nginx/sites/
+rm /etc/nginx/nginx.conf
+ln -s /home/web/download.versatiles.org/config/nginx/nginx.conf /etc/nginx/nginx.conf
+ln -s /home/web/download.versatiles.org/config/nginx/download.versatiles.org.conf /etc/nginx/sites/download.versatiles.org.conf
 mkdir -p /var/www/download.versatiles.org/docs
 ln -s /mnt/HC_Volume_29360110/download /var/www/download.versatiles.org/docs
+nginx -s reload
+
+echo -e "${RED}CONFIG WEBHOOK${NC}"
+ln -s /home/web/download.versatiles.org/config/hooks/webhooks.conf /etc/supervisor/conf.d/webhooks.conf
 
 # reboot

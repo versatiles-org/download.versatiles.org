@@ -1,4 +1,5 @@
 DOMAIN="test.versatiles.org"
+VOLUME="HC_Volume_29360110"
 
 RED='\033[0;31m'
 NC='\033[0m'
@@ -23,6 +24,12 @@ npm install
 npm run start
 exit
 
+echo -e "${RED}MOUNT VOLUME${NC}"
+echo "/dev/disk/by-id/scsi-0${VOLUME} /mnt/${VOLUME}/ ext4 ro,nosuid,dev,noexec,auto,nouser,async 0 0" >> /etc/fstab
+systemctl daemon-reload
+mkdir "/mnt/${VOLUME}/"
+mount "/mnt/${VOLUME}/"
+
 echo -e "${RED}CONFIG WEBHOOK${NC}"
 ln -s /home/web/download.versatiles.org/webhook/webhooks.conf /etc/supervisor/conf.d/webhooks.conf
 
@@ -30,6 +37,7 @@ echo -e "${RED}CONFIG NGINX${NC}"
 cp /home/web/download.versatiles.org/nginx/nginx.conf /etc/nginx/
 mkdir /etc/nginx/sites/
 cp /home/web/download.versatiles.org/nginx/download.versatiles.org.conf /etc/nginx/sites/
+mkdir -p /var/www/download.versatiles.org/docs
 ln -s /mnt/HC_Volume_29360110/download /var/www/download.versatiles.org/docs
 
 # reboot

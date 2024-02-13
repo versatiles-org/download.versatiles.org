@@ -14,8 +14,8 @@ ufw allow 'Nginx HTTP'
 ufw --force enable
 
 echo -e "${RED}ADD USER${NC}"
-useradd -m -s /bin/bash web
-su web
+useradd -m -s /bin/bash www-data
+su www-data
 cd ~
 mkdir logs
 git clone https://github.com/versatiles-org/download.versatiles.org.git
@@ -38,12 +38,12 @@ mkdir /var/www/download.versatiles.org/logs
 rm -r /etc/nginx/sites-available/
 rm -r /etc/nginx/sites-enabled
 rm /etc/nginx/nginx.conf
-ln -s /home/web/download.versatiles.org/config/nginx/nginx.conf /etc/nginx/nginx.conf
-ln -s /home/web/download.versatiles.org/config/nginx/download.versatiles.org.conf /etc/nginx/sites/download.versatiles.org.conf
+ln -s /home/www-data/download.versatiles.org/config/nginx/nginx.conf /etc/nginx/nginx.conf
+ln -s /home/www-data/download.versatiles.org/config/nginx/download.versatiles.org.conf /etc/nginx/sites/download.versatiles.org.conf
 ln -s /mnt/HC_Volume_29360110/download /var/www/download.versatiles.org/docs
 nginx -s reload
 
 echo -e "${RED}CONFIG WEBHOOK${NC}"
-ln -s /home/web/download.versatiles.org/config/hooks/webhooks.conf /etc/supervisor/conf.d/webhooks.conf
+ln -s /home/www-data/download.versatiles.org/config/hooks/webhooks.conf /etc/supervisor/conf.d/webhooks.conf
 
 # reboot

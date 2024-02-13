@@ -18,3 +18,11 @@ hcloud server ssh $NAME "curl 'https://raw.githubusercontent.com/versatiles-org/
 ```bash
 
 ```
+
+# delete server
+```bash
+NAME="download.versatiles.org1"
+hcloud volume detach download.versatiles.org
+hcloud server delete $NAME
+```
+

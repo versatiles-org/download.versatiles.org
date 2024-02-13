@@ -8,7 +8,7 @@ echo -e "${RED}SETUP SYSTEM${NC}"
 curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - # for node js
 apt-get -qq -y update
 apt-get -qq -y upgrade
-apt-get -qq -y install curl git nginx nodejs supervisor ufw webhook
+apt-get -qq -y install curl git libnginx-mod-http-brotli-filter libnginx-mod-http-brotli-static nginx nodejs supervisor ufw webhook
 ufw allow OpenSSH
 ufw allow 'Nginx HTTP'
 ufw --force enable
@@ -31,11 +31,15 @@ mkdir "/mnt/${VOLUME}/"
 mount "/mnt/${VOLUME}/"
 
 echo -e "${RED}CONFIG NGINX${NC}"
-mkdir /etc/nginx/sites/
+mkdir /etc/nginx/sites
+mkdir /var/www/download.versatiles.org
+mkdir /var/www/download.versatiles.org/docs
+mkdir /var/www/download.versatiles.org/logs
+rm -r /etc/nginx/sites-available/
+rm -r /etc/nginx/sites-enabled
 rm /etc/nginx/nginx.conf
 ln -s /home/web/download.versatiles.org/config/nginx/nginx.conf /etc/nginx/nginx.conf
 ln -s /home/web/download.versatiles.org/config/nginx/download.versatiles.org.conf /etc/nginx/sites/download.versatiles.org.conf
-mkdir -p /var/www/download.versatiles.org/docs
 ln -s /mnt/HC_Volume_29360110/download /var/www/download.versatiles.org/docs
 nginx -s reload
 

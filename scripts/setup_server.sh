@@ -1,8 +1,9 @@
-NAME="test.versatiles.org"
 VOLUME="HC_Volume_29360110"
 
 RED='\033[0;31m'
 NC='\033[0m'
+
+set -e
 
 echo -e "${RED}SETUP SYSTEM${NC}"
 curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - # for node js
@@ -14,10 +15,10 @@ ufw allow 'Nginx HTTP'
 ufw --force enable
 
 echo -e "${RED}ADD USER${NC}"
-useradd -m -s /bin/bash www-data
-su www-data
+mkdir /var/www/download.versatiles.org
+chown www-data /var/www/download.versatiles.org
+su - www-data -s /bin/bash
 cd ~
-mkdir logs
 git clone https://github.com/versatiles-org/download.versatiles.org.git
 cd download.versatiles.org
 npm install
@@ -32,18 +33,17 @@ mount "/mnt/${VOLUME}/"
 
 echo -e "${RED}CONFIG NGINX${NC}"
 mkdir /etc/nginx/sites
-mkdir /var/www/download.versatiles.org
-mkdir /var/www/download.versatiles.org/docs
-mkdir /var/www/download.versatiles.org/logs
+mkdir /var/www/docs
+mkdir /var/www/logs
 rm -r /etc/nginx/sites-available/
 rm -r /etc/nginx/sites-enabled
 rm /etc/nginx/nginx.conf
-ln -s /home/www-data/download.versatiles.org/config/nginx/nginx.conf /etc/nginx/nginx.conf
-ln -s /home/www-data/download.versatiles.org/config/nginx/download.versatiles.org.conf /etc/nginx/sites/download.versatiles.org.conf
+ln -s /var/www/download.versatiles.org/config/nginx/nginx.conf /etc/nginx/nginx.conf
+ln -s /var/www/download.versatiles.org/config/nginx/download.versatiles.org.conf /etc/nginx/sites/download.versatiles.org.conf
 ln -s /mnt/HC_Volume_29360110/download /var/www/download.versatiles.org/docs
 nginx -s reload
 
 echo -e "${RED}CONFIG WEBHOOK${NC}"
-ln -s /home/www-data/download.versatiles.org/config/hooks/webhooks.conf /etc/supervisor/conf.d/webhooks.conf
+ln -s /var/www/download.versatiles.org/config/hooks/webhooks.conf /etc/supervisor/conf.d/webhooks.conf
 
 # reboot

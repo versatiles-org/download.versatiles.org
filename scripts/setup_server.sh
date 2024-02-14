@@ -47,7 +47,7 @@ nginx -s reload
 
 echo -e "${RED}CONFIG WEBHOOK${NC}"
 ln -s /var/www/download.versatiles.org/config/webhook/webhooks.conf /etc/supervisor/conf.d/webhooks.conf
-cat /var/www/download.versatiles.org/config/webhook/webhook.yaml | sed "s/%SECRET%/$SECRET/p" > /var/www/webhook.yaml 
+cat /var/www/download.versatiles.org/config/webhook/webhook.yaml | sed "s/%SECRET%/$SECRET/g" > /var/www/webhook.yaml
 supervisorctl reload
 
 # reboot

@@ -1,3 +1,4 @@
+#SECRET="???"
 VOLUME="HC_Volume_29360110"
 
 RED='\033[0;31m'
@@ -46,5 +47,7 @@ nginx -s reload
 
 echo -e "${RED}CONFIG WEBHOOK${NC}"
 ln -s /var/www/download.versatiles.org/config/hooks/webhooks.conf /etc/supervisor/conf.d/webhooks.conf
+cat /var/www/download.versatiles.org/config/hooks/webhooks.yaml | sed "s/%SECRET%/$SECRET/p" > /var/www/webhook.yaml 
+supervisorctl reload
 
 # reboot

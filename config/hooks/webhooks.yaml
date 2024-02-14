@@ -1,3 +1,0 @@
-- id: pull
-  execute-command: "/var/www/download.versatiles.org/webhook/pull.sh"
-  command-working-directory: "/var/www/download.versatiles.org/"

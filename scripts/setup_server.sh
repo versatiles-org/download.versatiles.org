@@ -22,6 +22,7 @@ chown www-data /var/www/download.versatiles.org
 su - www-data -s /bin/bash
 cd ~
 git clone https://github.com/versatiles-org/download.versatiles.org.git
+git config --global --add safe.directory '*'
 cd download.versatiles.org
 npm install
 npm run start /var/www/docs

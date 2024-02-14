@@ -6,5 +6,9 @@
   },
   "private": true,
   "author": "Michael Kreil <github@michael-kreil.de> (https://github.com/MichaelKreil)",
-  "license": "MIT"
+  "license": "MIT",
+  "type": "module",
+  "dependencies": {
+    "handlebars": "^4.7.8"
+  }
 }

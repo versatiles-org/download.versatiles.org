@@ -23,7 +23,7 @@ cd ~
 git clone https://github.com/versatiles-org/download.versatiles.org.git
 cd download.versatiles.org
 npm install
-npm run start
+npm run start /var/www/docs
 exit
 
 echo -e "${RED}MOUNT VOLUME${NC}"

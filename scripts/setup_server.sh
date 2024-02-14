@@ -5,6 +5,7 @@ RED='\033[0;31m'
 NC='\033[0m'
 
 set -e
+set -x
 
 echo -e "${RED}SETUP SYSTEM${NC}"
 curl -fsSL https://deb.nodesource.com/setup_lts.x | bash - # for node js
@@ -18,14 +19,13 @@ ufw --force enable
 git config --global --add safe.directory '*'
 
 echo -e "${RED}MOUNT VOLUME${NC}"
-echo "/dev/disk/by-id/scsi-0${VOLUME} /mnt/${VOLUME}/ ext4 ro,nosuid,dev,noexec,auto,nouser,async 0 0" >> /etc/fstab
+echo "/dev/disk/by-id/scsi-0${VOLUME} /mnt/${VOLUME}/ ext4 rw,nosuid,dev,noexec,auto,nouser,async 0 0" >> /etc/fstab
 systemctl daemon-reload
 mkdir "/mnt/${VOLUME}/"
 mount "/mnt/${VOLUME}/"
 ln -s /mnt/HC_Volume_29360110/download/ /var/www/docs
 
 echo -e "${RED}ADD USER${NC}"
-mkdir /var/www/download.versatiles.org
 chown www-data /var/www/
 su - www-data -s /bin/bash
 cd /var/www/

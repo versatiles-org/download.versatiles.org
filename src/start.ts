@@ -3,7 +3,6 @@ import { getFileList, upload } from './lib/bunny_storage.js';
 import { buildUrlList, getLatestFileRedirects } from './lib/files.js';
 import { buildPage } from './lib/page.js';
 
-
 console.log('get file list');
 const files = await getFileList();
 console.log('get latest file redirects');

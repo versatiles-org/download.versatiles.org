@@ -1,4 +1,5 @@
 import { BunnyFile } from './bunny_storage.js';
+import env from './env.js';
 
 export interface Redirect {
 	link: string;
@@ -31,14 +32,10 @@ export async function buildUrlList(redirects: Redirect[]): Promise<Buffer> {
 	for (const redirect of redirects) {
 		const md5 = await redirect.file.getMd5();
 		result.push([
-			'https://download.versatiles.org/' + redirect.link,
+			`https://${env.domain}/${redirect.link}`,
 			redirect.file.size,
 			Buffer.from(md5, 'hex').toString('base64'),
 		].join('\t') + '\n');
 	}
 	return Buffer.from(result.join(''));
-
-	//TsvHttpData-1.0
-	//https://download.versatiles.org/planet-latest.versatiles	57615485619	58C2MYeMwqk4N0pbuefCOg==
-
 }

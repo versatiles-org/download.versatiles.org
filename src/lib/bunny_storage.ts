@@ -1,3 +1,4 @@
+import env from './env.js';
 
 export class BunnyFile {
 	readonly name: string;
@@ -11,10 +12,10 @@ export class BunnyFile {
 	}
 	async getMd5() {
 		const request = await fetch(
-			`https://storage.bunnycdn.com/${process.env.BUNNY_STORAGE_NAME}/${this.name}.md5`, {
+			`https://storage.bunnycdn.com/${env.storage_name}/${this.name}.md5`, {
 			method: 'GET',
 			headers: {
-				'AccessKey': String(process.env.BUNNY_STORAGE_KEY),
+				'AccessKey': env.storage_key,
 				'Accept': '*/*',
 			}
 		})
@@ -25,10 +26,10 @@ export class BunnyFile {
 
 export async function getFileList(): Promise<BunnyFile[]> {
 	const request = await fetch(
-		`https://storage.bunnycdn.com/${process.env.BUNNY_STORAGE_NAME}/`, {
+		`https://storage.bunnycdn.com/${env.storage_name}/`, {
 		method: 'GET',
 		headers: {
-			'AccessKey': String(process.env.BUNNY_STORAGE_KEY),
+			'AccessKey': env.storage_key,
 			'Accept': 'application/json',
 		}
 	})
@@ -47,10 +48,10 @@ export async function getFileList(): Promise<BunnyFile[]> {
 
 export async function upload(content: Buffer, filename: string, mime: string) {
 	const request = await fetch(
-		`https://storage.bunnycdn.com/${process.env.BUNNY_STORAGE_NAME}/${filename}`, {
+		`https://storage.bunnycdn.com/${env.storage_name}/${filename}`, {
 		method: 'PUT',
 		headers: {
-			'AccessKey': String(process.env.BUNNY_STORAGE_KEY),
+			'AccessKey': env.storage_key,
 			'Content-Type': mime,
 		},
 		body: content

@@ -1,12 +1,13 @@
 import { Redirect } from './files.js';
+import env from './env.js';
 
 export async function updateEdgeRules(redirects: Redirect[]) {
 
 	const request = await fetch(
-		`https://api.bunny.net/pullzone/${process.env.BUNNY_PULLZONE_ID}`, {
+		`https://api.bunny.net/pullzone/${env.pullzone_id}`, {
 		method: 'GET',
 		headers: {
-			'AccessKey': String(process.env.BUNNY_API_KEY),
+			'AccessKey': String(env.api_key),
 			'Accept': 'application/json',
 		}
 	})
@@ -20,7 +21,7 @@ export async function updateEdgeRules(redirects: Redirect[]) {
 		const message = {
 			Guid: undefined as (undefined | string),
 			ActionType: 2,
-			ActionParameter1: 'https://download.versatiles.org/' + redirect.file.name,
+			ActionParameter1: `https://${env.domain}/` + redirect.file.name,
 			TriggerMatchingType: 0,
 			Triggers: [{
 				Type: 0,
@@ -33,10 +34,10 @@ export async function updateEdgeRules(redirects: Redirect[]) {
 		if (desc2guid.has(desc)) message.Guid = desc2guid.get(desc);
 
 		const request = await fetch(
-			`https://api.bunny.net/pullzone/${process.env.BUNNY_PULLZONE_ID}/edgerules/addOrUpdate`, {
+			`https://api.bunny.net/pullzone/${env.pullzone_id}/edgerules/addOrUpdate`, {
 			method: 'POST',
 			headers: {
-				'AccessKey': String(process.env.BUNNY_API_KEY),
+				'AccessKey': env.api_key,
 				'Accept': 'application/json',
 				'Content-Type': 'application/json',
 			},

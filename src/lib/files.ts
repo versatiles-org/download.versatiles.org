@@ -5,38 +5,38 @@ export interface Redirect {
 	file: BunnyFile;
 }
 
-export function getLatestFiles(files: BunnyFile[]): Redirect[] {
-	files.sort((a, b) => a.filename.localeCompare(b.filename));
+
+export function getLatestFileRedirects(files: BunnyFile[]): Redirect[] {
+	files.sort((a, b) => a.name.localeCompare(b.name));
 	const filenames = new Set<string>();
 	const latest = new Map<string, BunnyFile>();
 	files.forEach(file => {
-		const { filename } = file;
-		if (!filename.endsWith('.versatiles')) return;
-		filenames.add(filename);
-		if (!/\.\d{8}\.versatiles$/.test(filename)) return;
-		latest.set(filename.slice(0, -20) + '.versatiles', file);
+		const { name } = file;
+		if (!name.endsWith('.versatiles')) return;
+		filenames.add(name);
+		if (!/\.\d{8}\.versatiles$/.test(name)) return;
+		latest.set(name.slice(0, -20) + '.versatiles', file);
 	})
 
 	const redirects = Array.from(latest.entries()).map(([filename, file]) => {
-		files.push({ ...file, filename })
+		files.push(file.getClone(filename));
 		return { link: filename, file }
 	})
 
 	return redirects;
 }
 
-export function buildUrlList(redirects: Redirect[]): Buffer {
+export async function buildUrlList(redirects: Redirect[]): Promise<Buffer> {
 	const result = ['TsvHttpData-1.0\n'];
-	redirects.forEach(redirect => {
+	for (const redirect of redirects) {
+		const md5 = await redirect.file.getMd5();
 		result.push([
 			'https://download.versatiles.org/' + redirect.link,
 			redirect.file.size,
-			Buffer.from(redirect.file.checksum, 'hex').toString('base64'),
+			Buffer.from(md5, 'hex').toString('base64'),
 		].join('\t') + '\n');
-	})
-	console.log(result);
-	throw Error('check if checksum === md5')
-	return Buffer.from(result.join());
+	}
+	return Buffer.from(result.join(''));
 
 	//TsvHttpData-1.0
 	//https://download.versatiles.org/planet-latest.versatiles	57615485619	58C2MYeMwqk4N0pbuefCOg==

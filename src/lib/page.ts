@@ -1,20 +1,20 @@
 
 import Handlebars from 'handlebars';
-import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
-import { normalize, resolve } from 'node:path';
+import { readFileSync } from 'node:fs';
 import { BunnyFile } from './bunny_storage.js';
+
 
 
 const filenameTemplate = new URL('../../html/index.html', import.meta.url).pathname;
 const template = Handlebars.compile(readFileSync(filenameTemplate, 'utf8'));
 
-export function buildPage(files: BunnyFile[]): Buffer {
+export function buildPage(fileList: BunnyFile[]): Buffer {
 	const KB = 1024;
 	const MB = 1024 * 1024;
 	const GB = 1024 * 1024 * 1024;
 
-	const filesHTML = files.flatMap(file => {
-		if (!file.filename.endsWith('.versatiles')) return [];
+	const files = fileList.flatMap(file => {
+		if (!file.name.endsWith('.versatiles')) return [];
 		let size;
 		if (file.size < KB) {
 			size = file.size + ' B';
@@ -26,10 +26,10 @@ export function buildPage(files: BunnyFile[]): Buffer {
 			size = (file.size / GB).toFixed(1) + ' GB';
 		}
 		return {
-			name: file.filename,
+			name: file.name,
 			size,
 		}
 	}).sort((a, b) => a.name.localeCompare(b.name));
 
-	return Buffer.from(template({ filesHTML }));
+	return Buffer.from(template({ files }));
 }

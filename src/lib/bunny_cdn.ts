@@ -10,6 +10,7 @@ export async function updateEdgeRules(redirects: Redirect[]) {
 			'Accept': 'application/json',
 		}
 	})
+	if (request.status !== 200) throw Error(request.status + ': ' + request.statusText);
 	const response = await request.json();
 	const desc2guid = new Map<string, string>(response.EdgeRules.map((e: any) => [e.Description, e.Guid]));
 
@@ -19,11 +20,11 @@ export async function updateEdgeRules(redirects: Redirect[]) {
 		const message = {
 			Guid: undefined as (undefined | string),
 			ActionType: 2,
-			ActionParameter1: 'https://download.versatiles.org/' + redirect.file.filename,
+			ActionParameter1: 'https://download.versatiles.org/' + redirect.file.name,
 			TriggerMatchingType: 0,
 			Triggers: [{
 				Type: 0,
-				PatternMatches: ['https://download.versatiles.org/' + redirect.link],
+				PatternMatches: ['*/' + redirect.link],
 				PatternMatchingType: 0,
 			}],
 			Description: desc,
@@ -41,7 +42,9 @@ export async function updateEdgeRules(redirects: Redirect[]) {
 			},
 			body: JSON.stringify(message)
 		})
+
+		if (request.status >= 300) throw Error(request.status + ': ' + request.statusText);
+
 		const response = await request.json();
-		console.log(response);
 	}
 }

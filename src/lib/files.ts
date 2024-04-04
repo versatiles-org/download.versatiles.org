@@ -25,9 +25,18 @@ export function getLatestFiles(files: BunnyFile[]): Redirect[] {
 	return redirects;
 }
 
-export function buildUrlList(files: Redirect[]): Buffer {
-	console.log(files);
-	throw Error();
+export function buildUrlList(redirects: Redirect[]): Buffer {
+	const result = ['TsvHttpData-1.0\n'];
+	redirects.forEach(redirect => {
+		result.push([
+			'https://download.versatiles.org/' + redirect.link,
+			redirect.file.size,
+			Buffer.from(redirect.file.checksum, 'hex').toString('base64'),
+		].join('\t') + '\n');
+	})
+	console.log(result);
+	throw Error('check if checksum === md5')
+	return Buffer.from(result.join());
 
 	//TsvHttpData-1.0
 	//https://download.versatiles.org/planet-latest.versatiles	57615485619	58C2MYeMwqk4N0pbuefCOg==

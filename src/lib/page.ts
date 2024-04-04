@@ -4,38 +4,32 @@ import { readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { normalize, resolve } from 'node:path';
 import { BunnyFile } from './bunny_storage.js';
 
+
+const filenameTemplate = new URL('../../html/index.html', import.meta.url).pathname;
+const template = Handlebars.compile(readFileSync(filenameTemplate, 'utf8'));
+
 export function buildPage(files: BunnyFile[]): Buffer {
-	console.log(files);
-	throw Error();
-	process.exit();
-	const dirname = new URL('.', import.meta.url).pathname;
-	const path = normalize(process.argv[2] ?? dirname);
 	const KB = 1024;
 	const MB = 1024 * 1024;
 	const GB = 1024 * 1024 * 1024;
 
-	const fildddes = readdirSync(path).flatMap(name => {
-		if (!name.endsWith('.versatiles')) return [];
-		const fullname = resolve(path, name);
-		const stat = statSync(fullname);
+	const filesHTML = files.flatMap(file => {
+		if (!file.filename.endsWith('.versatiles')) return [];
 		let size;
-		if (stat.size < KB) {
-			size = stat.size + ' B';
-		} else if (stat.size < MB) {
-			size = (stat.size / KB).toFixed(1) + ' KB';
-		} else if (stat.size < GB) {
-			size = (stat.size / MB).toFixed(1) + ' MB';
+		if (file.size < KB) {
+			size = file.size + ' B';
+		} else if (file.size < MB) {
+			size = (file.size / KB).toFixed(1) + ' KB';
+		} else if (file.size < GB) {
+			size = (file.size / MB).toFixed(1) + ' MB';
 		} else {
-			size = (stat.size / GB).toFixed(1) + ' GB';
+			size = (file.size / GB).toFixed(1) + ' GB';
 		}
 		return {
-			name,
+			name: file.filename,
 			size,
 		}
 	}).sort((a, b) => a.name.localeCompare(b.name));
 
-	const template = Handlebars.compile(readFileSync(resolve(dirname, 'template.html'), 'utf8'));
-	const index = template({ files });
-	writeFileSync(resolve(dirname, 'docs/index.html'), index);
-
+	return Buffer.from(template({ filesHTML }));
 }

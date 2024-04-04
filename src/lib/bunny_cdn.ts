@@ -49,3 +49,22 @@ export async function updateEdgeRules(redirects: Redirect[]) {
 		const response = await request.json();
 	}
 }
+
+export async function purgeCache(list: string[]) {
+	const base = `https://${env.domain}/`;
+	for (const entry of list) {
+		const url = new URL(entry, base);
+
+		const request = await fetch(
+			`https://api.bunny.net/purge?url=${encodeURIComponent(url.href)}&async=true`, {
+			method: 'GET',
+			headers: {
+				'AccessKey': String(env.api_key),
+				'Accept': 'application/json',
+			}
+		})
+		if (request.status !== 200) throw Error(request.status + ': ' + request.statusText);
+		const response = await request.text();
+		console.log(response);
+	}
+}

@@ -1,4 +1,4 @@
-import { updateEdgeRules } from './lib/bunny_cdn.js';
+import { purgeCache, updateEdgeRules } from './lib/bunny_cdn.js';
 import { getFileList, upload } from './lib/bunny_storage.js';
 import { buildUrlList, getLatestFileRedirects } from './lib/files.js';
 import { buildPage } from './lib/page.js';
@@ -20,3 +20,6 @@ console.log('build url list');
 const list = await buildUrlList(latest);
 console.log('upload url list');
 await upload(list, 'urllist.tsv', 'text/plain');
+
+console.log('purge cache');
+await purgeCache(['', 'index.html', 'urllist.tsv']);

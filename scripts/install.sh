@@ -90,8 +90,7 @@ tee /etc/webhook.conf >/dev/null <<EOL
 [
    {
       "id": "update",
-      "execute-command": "/usr/bin/npm",
-      "command-working-directory": "$PROJECT_PATH",
+      "execute-command": "su web $PROJECT_PATH/scripts/update.sh",
       "pass-arguments-to-command": [
          {
             "source": "string",

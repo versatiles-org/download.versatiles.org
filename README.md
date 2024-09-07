@@ -1,5 +1,13 @@
 # Project Outline
 
+## Install
+
+```shell
+curl "https://raw.githubusercontent.com/versatiles-org/download.versatiles.org/main/scripts/install.sh" | sudo -E bash -
+```
+
+---
+
 ## **Overview**
 
 This project aims to develop a web-based file download system hosted on a Debian-based virtual machine (VM). The system will list available files from cloud storage, accessed via SSH. To optimize download speeds, the latest file—approximately 50GB and updated every three months—will be downloaded to the VM. Older files will be served directly from the cloud storage. All traffic, including file downloads, HTML content, and webhook triggers, will be routed through NGINX. A Node.js script will handle file synchronization, HTML generation, and NGINX configuration. A secret webhook will trigger updates, and an `.env` file will store configuration settings.
@@ -109,17 +117,9 @@ This project aims to develop a web-based file download system hosted on a Debian
 **Steps**:
 
 1. **Pull Latest Repository Changes**:
-   - Update the local repository to ensure the script is up-to-date:
-     ```bash
-     git pull origin main
-     ```
-
+   - Update the local repository to ensure the script is up-to-date
 2. **Update Node Dependencies**:
-   - Keep Node.js modules current:
-     ```bash
-     npm update
-     ```
-
+   - Keep Node.js modules current
 3. **Manage Files**:
    - **Hash Generation**:
      - Generate missing hashes (e.g., MD5, SHA256) for files in the remote storage.

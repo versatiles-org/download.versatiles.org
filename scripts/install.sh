@@ -27,28 +27,30 @@ else
    adduser --disabled-password --gecos "" web
 fi
 
+# 3. Prepare SSH Key for SSHFS access (run as root)
+echo "Setting up SSH key for SSHFS"
+mkdir -p /root/.ssh
+nano /root/.ssh/storage
+chmod 600 /root/.ssh/storage
+
 #############################################################
 
-# Switch to the 'web' user for subsequent operations
-echo "Switching to the 'web' user..."
+# Switch to the 'web' user for project operations
+echo "Switching to 'web' user to configure project..."
 su web
 
-cd $HOME
-
-# 3. Clone Project Repository
+# 4. Clone Project Repository
 echo "Cloning project repository..."
 git clone https://github.com/versatiles-org/download.versatiles.org.git
 cd download.versatiles.org
 
-# 4. Install Node.js dependencies
+# 5. Install Node.js dependencies
 echo "Installing Node.js dependencies..."
 npm install
 
-# 4. Configure Environment (.env File)
+# 6. Configure Environment (.env File)
 echo "Configuring environment variables..."
-
-# Create default .env file with dummy values
-cat >.env  <<EOT
+cat >.env <<EOT
 STORAGE_URL="u417480-sub1@u417480-sub1.your-storagebox.de"
 WEBHOOK_SECRET=$(openssl rand -hex 16)
 DOMAIN=download.versatiles.org
@@ -59,17 +61,15 @@ nano .env
 
 exit
 
-####################################################
+#############################################################
 
+# Back to root for SSHFS setup and other root-level tasks
 cd /home/web/download.versatiles.org
 source .env
 PROJECT_PATH=$(pwd)
 
-# 5. SSHFS Configuration
+# 7. SSHFS Configuration
 echo "Configuring SSHFS..."
-
-nano /root/.ssh/storage
-chmod 600 /root/.ssh/storage
 
 # Ensure the mount point exists
 mkdir -p $PROJECT_PATH/volumes/remote_files
@@ -81,34 +81,20 @@ echo "sshfs#$STORAGE_URL:/home/ $PROJECT_PATH/volumes/remote_files fuse defaults
 systemctl daemon-reload
 mount -a
 
-# 6. Webhook Configuration
+# 8. Webhook Configuration
 echo "Configuring webhook..."
 
-# Set up webhook to trigger npm run start when a request is received
-mkdir /etc/webhook
+# Set up webhook configuration
 tee /etc/webhook.conf >/dev/null <<EOL
 [
    {
       "id": "update",
-      "execute-command": "su web $PROJECT_PATH/scripts/update.sh",
-      "pass-arguments-to-command": [
-         {
-            "source": "string",
-            "name": "run"
-         },
-         {
-            "source": "string",
-            "name": "start"
-         }
-      ],
+      "execute-command": "su - web -c '$PROJECT_PATH/scripts/update.sh'",
       "trigger-rule": {
          "match": {
             "type": "value",
             "value": "$WEBHOOK_SECRET",
-            "parameter": {
-               "source": "url",
-               "name": "secret"
-            }
+            "parameter": { "source": "url", "name": "secret" }
          }
       }
    }

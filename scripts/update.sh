@@ -7,3 +7,5 @@ cd $(dirname $0);
 git pull
 
 npm ci
+
+npm run start

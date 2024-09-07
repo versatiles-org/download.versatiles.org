@@ -14,7 +14,6 @@ apt-get install -y \
    docker.io \
    git \
    nodejs \
-   npm \
    sshfs \
    tmux \
    webhook
@@ -37,7 +36,7 @@ chmod 600 /root/.ssh/storage
 
 # Switch to the 'web' user for project operations
 echo "Switching to 'web' user to configure project..."
-su web
+su - web <<'EOSU'
 
 # 4. Clone Project Repository
 echo "Cloning project repository..."
@@ -51,20 +50,22 @@ npm install
 # 6. Configure Environment (.env File)
 echo "Configuring environment variables..."
 cat >.env <<EOT
-STORAGE_URL="u417480-sub1@u417480-sub1.your-storagebox.de"
+STORAGE_USERNAME="u??????-????"
+STORAGE_URL="${STORAGE_USERNAME}@${STORAGE_USERNAME}.your-storagebox.de"
 WEBHOOK_SECRET=$(openssl rand -hex 16)
 DOMAIN=download.versatiles.org
 EOT
 
-# Open .env file in nano for user to review and edit
-nano .env
-
-exit
+EOSU
 
 #############################################################
 
 # Back to root for SSHFS setup and other root-level tasks
 cd /home/web/download.versatiles.org
+
+# Open .env file in nano for user to review and edit
+nano .env
+
 source .env
 PROJECT_PATH=$(pwd)
 

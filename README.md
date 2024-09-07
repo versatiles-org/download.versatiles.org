@@ -45,11 +45,11 @@ This project aims to develop a web-based file download system hosted on a Debian
 3. **Clone Project Repository**:
    - Clone the repository:
      ```bash
-     git clone [repository_url]
+     git clone git@github.com:versatiles-org/download.versatiles.org.git
      ```
    - Navigate to the project directory and install Node.js dependencies:
      ```bash
-     cd [project_directory]
+     cd download.versatiles.org
      npm install
      ```
 

@@ -1,3 +1,4 @@
 
-node_modules
 .env
+.ssh
+node_modules

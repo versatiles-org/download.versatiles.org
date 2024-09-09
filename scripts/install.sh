@@ -13,7 +13,6 @@ apt-get install -y \
    docker-compose \
    docker.io \
    git \
-   nodejs \
    sshfs \
    tmux \
    webhook
@@ -43,18 +42,8 @@ echo "Cloning project repository..."
 git clone https://github.com/versatiles-org/download.versatiles.org.git
 cd download.versatiles.org
 
-# 5. Install Node.js dependencies
-echo "Installing Node.js dependencies..."
-npm install
-
-# 6. Configure Environment (.env File)
-echo "Configuring environment variables..."
-cat >.env <<EOT
-STORAGE_USERNAME="u??????-????"
-STORAGE_URL="${STORAGE_USERNAME}@${STORAGE_USERNAME}.your-storagebox.de"
-WEBHOOK_SECRET=$(openssl rand -hex 16)
-DOMAIN=download.versatiles.org
-EOT
+# Ensure the volumes exists
+mkdir -p volumes/remote_files
 
 EOSU
 
@@ -72,9 +61,6 @@ PROJECT_PATH=$(pwd)
 # 7. SSHFS Configuration
 echo "Configuring SSHFS..."
 
-# Ensure the mount point exists
-mkdir -p $PROJECT_PATH/volumes/remote_files
-
 # Add the mount to /etc/fstab
 echo "sshfs#$STORAGE_URL:/home/ $PROJECT_PATH/volumes/remote_files fuse defaults,ro,allow_other,port=23,IdentityFile=/root/.ssh/storage 0 0" >>/etc/fstab
 
@@ -86,23 +72,25 @@ mount -a
 echo "Configuring webhook..."
 
 # Set up webhook configuration
-tee /etc/webhook.conf >/dev/null <<EOL
-[
-   {
-      "id": "update",
-      "execute-command": "su - web -c '$PROJECT_PATH/scripts/update.sh'",
-      "trigger-rule": {
-         "match": {
-            "type": "value",
-            "value": "$WEBHOOK_SECRET",
-            "parameter": { "source": "url", "name": "secret" }
-         }
-      }
-   }
-]
-EOL
+#tee /etc/webhook.conf >/dev/null <<EOL
+#[
+#   {
+#      "id": "update",
+#      "execute-command": "su - web -c '$PROJECT_PATH/scripts/update.sh'",
+#      "trigger-rule": {
+#         "match": {
+#            "type": "value",
+#            "value": "$WEBHOOK_SECRET",
+#            "parameter": { "source": "url", "name": "secret" }
+#         }
+#      }
+#   }
+#]
+#EOL
 
 # Restart webhook service to apply changes
-systemctl restart webhook
+#systemctl restart webhook
+
+docker compose up
 
 echo "Installation complete!"

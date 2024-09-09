@@ -8,7 +8,8 @@
   },
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
-    "start": "tsx src/start.ts",
+    "start": "tsx --env-file=.env src/start.ts",
+    "update": "tsx --env-file=.env src/update.ts",
     "lint": "tslint -c tslint.json src/**/*.ts"
   },
   "type": "module",
@@ -19,6 +20,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "express": "^4.19.2",
     "handlebars": "^4.7.8",
     "tslint": "^6.1.3",
     "tsx": "^4.19.0",
@@ -27,6 +29,7 @@
   "private": true,
   "devDependencies": {
     "@eslint/js": "^9.9.1",
+    "@types/express": "^4.17.21",
     "@types/node": "^22.5.4",
     "eslint": "^9.9.1",
     "globals": "^15.9.0",

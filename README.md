@@ -1,9 +1,12 @@
 # Project Outline
 
+---
+
 ## Install
 
 ```shell
-curl "https://raw.githubusercontent.com/versatiles-org/download.versatiles.org/main/scripts/install.sh" | sudo -E bash -
+wget "https://raw.githubusercontent.com/versatiles-org/download.versatiles.org/main/scripts/install.sh"
+sudo bash install.sh
 ```
 
 ---

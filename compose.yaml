@@ -1,0 +1,17 @@
+name: download_versatiles_org
+services:
+  nginx:
+    build: ./nginx
+    volumes:
+      - nginx_conf:/etc/nginx/
+      - remote_files:/usr/share/nginx/remote_files
+      - local_files:/usr/share/nginx/local_files
+networks:
+  internal:
+    driver: bridge
+volumes:
+  remote_files: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/remote_files' } }
+  local_files: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/local_files' } }
+  nginx_conf: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/nginx_conf' } }
+  cert: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/cert' } }
+  logs: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/logs' } }

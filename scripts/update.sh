@@ -8,4 +8,6 @@ git pull
 
 npm ci
 
-npm run start
+npm run update
+
+docker compose run nginx "service nginx reload"

@@ -1,7 +1,9 @@
 name: download_versatiles_org
 services:
+  server:
+    build: ./docker/server
   nginx:
-    build: ./nginx
+    build: ./docker/nginx
     volumes:
       - nginx_conf:/etc/nginx/
       - remote_files:/usr/share/nginx/remote_files

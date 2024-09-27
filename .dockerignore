@@ -1,0 +1,10 @@
+
+.git
+.ssh
+archive
+docker
+node_modules
+scripts
+
+**.DS_Store
+.env

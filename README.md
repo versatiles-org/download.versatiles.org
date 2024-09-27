@@ -1,5 +1,18 @@
 # Project Outline
 
+
+---
+
+## Overview
+
+| volume       | `nodejs`           | `nginx` | `let's encrypt` |
+|--------------|--------------------|---------|-----------------|
+| remote_files | rw:`/app/volumes/` | r       | -               |
+| local_files  | rw:`/app/volumes/` | r       | -               |
+| nginx_conf   | rw:`/app/volumes/` | r       | -               |
+| cert         | -                  | r       | rw              |
+| logs         | rw:`/app/volumes/` | rw      | rw              |
+
 ---
 
 ## Install

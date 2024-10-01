@@ -16,4 +16,4 @@ else
 	sshfs -o allow_other,default_permissions -o IdentityFile=$(pwd)/.ssh/storage -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p 23 $STORAGE_URL:/home/ volumes/remote_files
 fi
 
-npm run start
+npm run once

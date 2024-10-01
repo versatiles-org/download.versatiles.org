@@ -1,4 +1,4 @@
-import { readdir, stat } from 'node:fs/promises';
+import { readdirSync, statSync } from 'node:fs';
 import { resolve } from 'node:path';
 
 export interface FileGroup {
@@ -16,11 +16,16 @@ export interface File {
 	ctime: Date;
 }
 
-export async function updateFiles(remotePath: string, localPath: string): Promise<FileGroup[]> {
-	const files = await scanRemoteFiles(remotePath);
-	const groups = generateFileGroups(files);
-
-	return groups;
+export function getAllFiles(folder: string, regex: RegExp): File[] {
+	const files: File[] = [];
+	readdirSync(folder).forEach(filename => {
+		const fullname = resolve(folder, filename);
+		if (!regex.test(fullname)) return;
+		const { size, ctime } = statSync(fullname);
+		files.push({ fullname, filename, ctime, size });
+	})
+	files.sort((a, b) => a.fullname < b.fullname ? -1 : 1);
+	return files;
 }
 
 function generateFileGroups(files: File[]): FileGroup[] {
@@ -52,14 +57,6 @@ function generateFileGroups(files: File[]): FileGroup[] {
 	})
 
 	return groupList;
-}
-
-async function scanRemoteFiles(remotePath: string): Promise<File[]> {
-	return Promise.all((await readdir(remotePath)).map(async filename => {
-		const fullname = resolve(remotePath, filename);
-		const { size, ctime } = await stat(fullname);
-		return { fullname, filename, ctime, size }
-	}))
 }
 
 

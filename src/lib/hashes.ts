@@ -5,8 +5,10 @@
 
 */
 
-import { existsSync, statSync } from 'fs';
+import { createReadStream, existsSync, statSync, writeFileSync } from 'fs';
 import type { File } from './files.js';
+import { ProgressBar } from 'work-faster';
+import { createHash } from 'crypto';
 
 export async function generateHashes(files: File[]) {
 	files = files.filter(f => {
@@ -23,13 +25,20 @@ export async function generateHashes(files: File[]) {
 	})
 
 	const sum = files.reduce((s, f) => s + f.size, 0);
-	
+	const progress = new ProgressBar(sum);
 
-	cat osm.20240325.versatiles | tee > (md5sum > osm.20240325.versatiles.md5) | sha256sum > osm.20240325.versatiles.sha256
-
+	for (const file of files) {
+		const md5 = createHash('md5');
+		const sha = createHash('sha256');
+		const { fullname } = file;
+		await new Promise(r => createReadStream(fullname, { highWaterMark: 1024 + 1024 })
+			.on('data', chunk => {
+				progress.increment(chunk.length);
+				md5.update(chunk);
+				sha.update(chunk);
+			}).on('close', r)
+		)
+		writeFileSync(fullname + '.md5', md5.digest('hex'));
+		writeFileSync(fullname + '.sha256', sha.digest('hex'));
+	}
 }
-
-curl - O http://example.com/file && (md5sum file > file.md5 & sha256sum file > file.sha256 & wait)
-
-
-pv osm.20240325.versatiles | tee > (md5sum > osm.20240325.versatiles.md5) | sha256sum > osm.20240325.versatiles.sha256

@@ -13,74 +13,102 @@
 	<link rel="icon" type="image/png" href="https://versatiles.org/assets/logo/versatiles.96.png" sizes="96x96">
 
 	<style type="text/css">
-		body,
-		html {
-			background: #eee;
-			color: #333;
-			font-family: sans-serif;
-		}
-
 		body {
-			padding: 1em 5em;
-		}
-
-		tr:nth-child(even) {
-			background: #f4f4f4;
-		}
-
-		th,
-		td {
-			padding: 0.5em 0.2em;
-		}
-
-		th {
-			text-align: left;
-			font-weight: bold;
-		}
-
-		#list {
-			width: 100%;
-			margin: 3em auto;
+			background: #080808;
+			color: #ccc;
+			margin: 0;
+			padding: 0;
+			font-family: "Source Sans Pro", sans-serif;
+			font-weight: 500;
+			font-size: min(1.2rem, 5vmin);
+			line-height: 1.3;
+			color-scheme: dark;
 		}
 
 		a {
+			color: #eee !important;
 			text-decoration: none;
-			color: #999;
+		}
+
+		a:hover {
+			text-decoration: underline;
+		}
+
+		main {
+			padding: 1rem 0 5rem;
+			overflow-x: hidden;
+		}
+
+		summary,
+		.small {
+			opacity: 0.4;
+			margin: 1em 0;
+			font-size: 0.8em;
+		}
+
+		summary {
+			text-align: center;
+		}
+
+		dd,
+		header,
+		h1,
+		h2 {
+			text-align: center;
+			font-weight: normal;
+		}
+
+		h2 {
+			margin: 3em 0 1em;
+		}
+
+		.row {
+			margin: 0 auto;
+			padding: 0.1em calc(50% - 200px);
+			display: flex;
+			justify-content: space-between;
+		}
+
+		.row:hover {
+			background-color: #333;
 		}
 	</style>
 </head>
 
 <body>
-	<h1><a href="https://versatiles.org/">VersaTiles</a> Downloads</h1>
-	<p>Here you can download full <a href="https://www.openstreetmap.org/">OpenStreetMap</a> planet vector tilesets with zoom levels 0-14 in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a> in a <a href="https://github.com/versatiles-org/versatiles-spec/blob/main/v02/readme.md">VersaTiles v02 container</a>.</p>
-	<p>Map Data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a> available under <a href="https://opendatacommons.org/licenses/odbl/">ODbL</a></p>
-	<p>Please use this service only to download these files.</p>
+	<main>
+		<div style="width: min(50rem,90%);margin: auto;">
+			<h1><a href="https://versatiles.org/">VersaTiles</a> Downloads</h1>
+			<header class="small">
+				<p>All files are <a href="https://github.com/versatiles-org/versatiles-spec/blob/main/v02/readme.md">VersaTiles v02 containers</a>. Please use this download service only to download these files.</p>
+			</header>
 
-	{{#each fileGroups}}
-	<h2>{{title}}</h2>
-	<table id="list">
-		<thead>
-			<tr>
-				<th>File Name</th>
-				<th>File Size</th>
-			</tr>
-		</thead>
-		<tbody>
+			{{#each fileGroups}}
+			<h2>{{title}}</h2>
+			<dd class="small">{{{desc}}}</dd>
+
 			{{#with latestFile}}
-			<tr>
-				<td class="link"><a href="/{{url}}" title="{{url}}">{{url}}</a></td>
-				<td class="size">{{sizeString}}</td>
-			</tr>
+			<div class="row">
+				<span><a href="/{{url}}" title="{{url}}">{{url}}</a></span>
+				<span>{{sizeString}}</span>
+			</div>
 			{{/with}}
-			{{#each olderFiles}}
-			<tr>
-				<td class="link"><a href="/{{url}}" title="{{url}}">{{url}}</a></td>
-				<td class="size">{{sizeString}}</td>
-			</tr>
+
+			{{#if olderFiles}}
+			<details>
+				<summary>Show older versions</summary>
+				{{#each olderFiles}}
+				<div class="row">
+					<span><a href="/{{url}}" title="{{url}}">{{url}}</a></span>
+					<span>{{sizeString}}</span>
+				</div>
+				{{/each}}
+			</details>
+			{{/if}}
+
 			{{/each}}
-		</tbody>
-	</table>
-	{{/each}}
+		</div>
+	</main>
 </body>
 
 </html>

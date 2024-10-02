@@ -3,6 +3,7 @@ import { basename, resolve } from 'node:path';
 
 export interface FileGroup {
 	title: string;
+	desc: string;
 	order: number;
 	local: boolean;
 	latestFile?: File;
@@ -41,24 +42,30 @@ export function groupFiles(files: File[]): FileGroup[] {
 		let group = groupMap.get(groupName);
 
 		if (!group) {
-			let title = '?';
-			let order = 10000;
-			let local = false;
+			let title = '???', desc: string[] = [], order = 10000, local = false;
 			switch (groupName) {
 				case 'osm':
 					title = 'OpenStreetMap as vector tiles';
+					desc = [
+						'The full <a href="https://www.openstreetmap.org/">OpenStreetMap</a> planet as vector tilesets with zoom levels 0-14 in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a>.',
+						'Map Data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a> available under <a href="https://opendatacommons.org/licenses/odbl/">ODbL</a>'
+					];
 					order = 0;
 					local = true;
 					break;
 				case 'hillshade-vectors':
 					title = 'Hillshading as vector tiles';
+					desc = [
+						'Hillshade vector tiles based on <a href="https://github.com/tilezen/joerd">Mapzen Jörð Terrain Tiles</a>.',
+						'Map Data © <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Mapzen Terrain Tiles, DEM Sources</a>'
+					]
 					order = 10;
 					break;
 				default:
 					console.error(`Unknown group "${groupName}"`);
 			}
 
-			group = { title, order, local, olderFiles: [] };
+			group = { title, desc: desc.join('<br>'), order, local, olderFiles: [] };
 			groupMap.set(groupName, group);
 		}
 

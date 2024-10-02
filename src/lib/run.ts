@@ -1,13 +1,23 @@
 import { resolve } from 'path';
-import { getAllFiles } from './files.js';
+import { syncFiles, getAllFiles, groupFiles } from './files.js';
 import { generateHashes } from './hashes.js';
 
 const remoteFolder = resolve(import.meta.dirname, '../../volumes/remote_files');
+const localFolder = resolve(import.meta.dirname, '../../volumes/local_files');
 
 export async function run() {
-	const files = getAllFiles(remoteFolder, /\.versatiles$/);
+	const files = await getAllFiles(remoteFolder);
+
 	await generateHashes(files);
-	//const files = await updateFiles();
+
+	const fileGroups = groupFiles(files);
+
+	const localFiles = fileGroups.flatMap(group =>
+		(group.local && group.latestFile) ? [group.latestFile] : []
+	);
+	console.log(fileGroups);
+	syncFiles(localFiles, await getAllFiles(localFolder), localFolder)
+
 	//await generateHTML();
 	//await generateLists();
 	//await generateNGINX();

@@ -13,7 +13,8 @@ mkdir -p volumes/remote_files
 if mount | awk '{if ($3 == "volumes/remote_files") {exit 0}} ENDFILE{exit -1}'; then
 	echo "volumes/remote_files already mounted"
 else
-	sshfs -o allow_other,default_permissions -o IdentityFile=$(pwd)/.ssh/storage -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null -o BatchMode=yes -p 23 $STORAGE_URL:/home/ volumes/remote_files
+	sshfs -o "allow_other,default_permissions,IdentityFile=$(pwd)/.ssh/storage,StrictHostKeyChecking=no,UserKnownHostsFile=/dev/null,BatchMode=yes" -p 23 "$STORAGE_URL:/home/" "volumes/remote_files"
 fi
 
+npm i
 npm run once

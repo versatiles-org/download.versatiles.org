@@ -3,6 +3,16 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
+
+nano .env
+mkdir .ssh
+nano .ssh/storage
+chmod 500 .ssh/storage
+
+
+-----
+
+
 # 1. Install Necessary Tools
 echo "Installing necessary tools"
 

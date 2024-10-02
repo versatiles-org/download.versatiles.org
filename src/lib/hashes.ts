@@ -1,11 +1,9 @@
 /*
 - **Hash Generation**:
 - Generate missing hashes (e.g., MD5, SHA256) for files in the remote storage.
-- Store these hashes locally for quick access and inclusion in the HTML file list.
-
 */
 
-import { createReadStream, existsSync, statSync, writeFileSync } from 'fs';
+import { createReadStream, existsSync, writeFileSync } from 'fs';
 import type { File } from './files.js';
 import { ProgressBar } from 'work-faster';
 import { createHash } from 'crypto';
@@ -19,7 +17,6 @@ export async function generateHashes(files: File[]) {
 		function missing(type: string): boolean {
 			const fullname = f.fullname + '.' + type;
 			if (!existsSync(fullname)) return true;
-			if (statSync(fullname).mtime !== f.ctime) return true;
 			return false;
 		}
 	})

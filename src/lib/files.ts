@@ -12,7 +12,9 @@ export interface FileGroup {
 export interface File {
 	fullname: string;
 	filename: string;
+	url: string;
 	size: number;
+	sizeString: string;
 }
 
 export async function getAllFiles(folder: string): Promise<File[]> {
@@ -23,7 +25,8 @@ export async function getAllFiles(folder: string): Promise<File[]> {
 			if (!filename.endsWith('.versatiles')) continue;
 			const fullname = resolve(folder, filename);
 			const { size } = await stat(fullname);
-			files.push({ fullname, filename, size });
+			const sizeString = (size / (2 ** 30)).toFixed(1) + ' GB';
+			files.push({ fullname, filename, size, url: filename, sizeString });
 		}
 	} catch (error) {
 		console.error(`Failed to read files in folder "${folder}": ${error}`);
@@ -68,7 +71,13 @@ export function groupFiles(files: File[]): FileGroup[] {
 
 	groupList.forEach(group => {
 		group.olderFiles.sort((a, b) => a.filename < b.filename ? 1 : -1);
-		group.latestFile = group.olderFiles.shift();
+		group.latestFile = { ...group.olderFiles[0] };
+		const newUrl = group.latestFile.url.replace(/\.\d{8}\./, '.');
+		if (newUrl === group.latestFile.url) {
+			group.olderFiles.shift();
+		} else {
+			group.latestFile.url = newUrl;
+		}
 	});
 
 	return groupList;

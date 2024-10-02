@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+	<meta charset="utf-8">
+	<title>VersaTiles - Download</title>
+	<meta name="viewport" content="width=device-width">
+
+	<link rel="shortcut icon" sizes="16x16 24x24 32x32 48x48 64x64" href="https://versatiles.org/assets/logo/favicon.ico">
+	<link rel="icon" type="image/png" href="https://versatiles.org/assets/logo/versatiles.32.png" sizes="32x32">
+	<link rel="icon" type="image/png" href="https://versatiles.org/assets/logo/versatiles.48.png" sizes="48x48">
+	<link rel="icon" type="image/png" href="https://versatiles.org/assets/logo/versatiles.64.png" sizes="64x64">
+	<link rel="icon" type="image/png" href="https://versatiles.org/assets/logo/versatiles.96.png" sizes="96x96">
+
+	<style type="text/css">
+		body,
+		html {
+			background: #eee;
+			color: #333;
+			font-family: sans-serif;
+		}
+
+		body {
+			padding: 1em 5em;
+		}
+
+		tr:nth-child(even) {
+			background: #f4f4f4;
+		}
+
+		th,
+		td {
+			padding: 0.5em 0.2em;
+		}
+
+		th {
+			text-align: left;
+			font-weight: bold;
+		}
+
+		#list {
+			width: 100%;
+			margin: 3em auto;
+		}
+
+		a {
+			text-decoration: none;
+			color: #999;
+		}
+	</style>
+</head>
+
+<body>
+	<h1><a href="https://versatiles.org/">VersaTiles</a> Downloads</h1>
+	<p>Here you can download full <a href="https://www.openstreetmap.org/">OpenStreetMap</a> planet vector tilesets with zoom levels 0-14 in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a> in a <a href="https://github.com/versatiles-org/versatiles-spec/blob/main/v02/readme.md">VersaTiles v02 container</a>.</p>
+	<p>Map Data © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a> available under <a href="https://opendatacommons.org/licenses/odbl/">ODbL</a></p>
+	<p>Please use this service only to download these files.</p>
+
+	{{#each fileGroups}}
+	<h2>{{title}}</h2>
+	<table id="list">
+		<thead>
+			<tr>
+				<th>File Name</th>
+				<th>File Size</th>
+			</tr>
+		</thead>
+		<tbody>
+			{{#with latestFile}}
+			<tr>
+				<td class="link"><a href="/{{url}}" title="{{url}}">{{url}}</a></td>
+				<td class="size">{{sizeString}}</td>
+			</tr>
+			{{/with}}
+			{{#each olderFiles}}
+			<tr>
+				<td class="link"><a href="/{{url}}" title="{{url}}">{{url}}</a></td>
+				<td class="size">{{sizeString}}</td>
+			</tr>
+			{{/each}}
+		</tbody>
+	</table>
+	{{/each}}
+</body>
+
+</html>

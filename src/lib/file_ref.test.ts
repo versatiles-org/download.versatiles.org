@@ -48,14 +48,6 @@ describe('FileRef', () => {
 		expect(() => fileRef.md5).toThrow();
 		expect(() => fileRef.sha).toThrow();
 	});
-
-	it('should set and get hashes correctly', () => {
-		const fileRef = new FileRef('/path/file.versatiles', 200);
-		const hashes = { md5: 'test-md5', sha: 'test-sha' };
-		fileRef.setHashes(hashes);
-		expect(fileRef.md5).toBe('test-md5');
-		expect(fileRef.sha).toBe('test-sha');
-	});
 });
 
 describe('getAllFiles', () => {

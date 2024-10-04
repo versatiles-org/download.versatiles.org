@@ -20,10 +20,10 @@ export async function generateHashes(files: FileRef[]) {
 		if (!existsSync(fullnameMD5)) return true;
 		if (!existsSync(fullnameSHA)) return true;
 
-		f.setHashes({
+		f.hashes = {
 			md5: readFileSync(fullnameMD5, 'utf8'),
 			sha: readFileSync(fullnameSHA, 'utf8'),
-		})
+		};
 
 		return false;
 	})
@@ -48,10 +48,10 @@ export async function generateHashes(files: FileRef[]) {
 		const fullnameMD5 = fullname + '.md5';
 		const fullnameSHA = fullname + '.sha256';
 
-		file.setHashes({
+		file.hashes = {
 			md5: md5.digest('hex'),
 			sha: sha.digest('hex'),
-		})
+		};
 
 		writeFileSync(fullnameMD5, file.md5);
 		writeFileSync(fullnameSHA, file.sha);
@@ -61,7 +61,7 @@ export async function generateHashes(files: FileRef[]) {
 export function generateLists(fileGroups: FileGroup[], baseURL: string, localFolder: string): FileRef[] {
 	console.log('generate url lists');
 
-	const templateFilename = resolve(import.meta.dirname, '../../template/urllist.tsv');
+	const templateFilename = new URL('../../template/urllist.tsv', import.meta.url).pathname;
 	const template = Handlebars.compile(readFileSync(templateFilename, 'utf-8'));
 	const files: FileRef[] = [];
 
@@ -90,7 +90,7 @@ export function generateLists(fileGroups: FileGroup[], baseURL: string, localFol
 	return files;
 }
 
-function hex2base64(hex: string): string {
+export function hex2base64(hex: string): string {
 	const base64 = Buffer.from(hex, 'hex').toString('base64url');
-	return base64 + '='.repeat(4 - (base64.length % 4));
+	return base64 + '='.repeat((4 - (base64.length % 4)) % 4);
 }

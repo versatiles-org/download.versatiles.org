@@ -2,6 +2,7 @@ import { readdir, stat, cp, rm } from 'node:fs/promises';
 import { basename, resolve } from 'node:path';
 
 export interface FileGroup {
+	slug: string;
 	title: string;
 	desc: string;
 	order: number;
@@ -16,6 +17,8 @@ export interface File {
 	url: string;
 	size: number;
 	sizeString: string;
+	md5?: string;
+	sha?: string;
 }
 
 export async function getAllFiles(folder: string): Promise<File[]> {
@@ -38,12 +41,12 @@ export async function getAllFiles(folder: string): Promise<File[]> {
 export function groupFiles(files: File[]): FileGroup[] {
 	const groupMap = new Map<string, FileGroup>();
 	files.forEach(file => {
-		const groupName = basename(file.filename).replace(/\..*/, '');
-		let group = groupMap.get(groupName);
+		const slug = basename(file.filename).replace(/\..*/, '');
+		let group = groupMap.get(slug);
 
 		if (!group) {
 			let title = '???', desc: string[] = [], order = 10000, local = false;
-			switch (groupName) {
+			switch (slug) {
 				case 'osm':
 					title = 'OpenStreetMap as vector tiles';
 					desc = [
@@ -62,11 +65,11 @@ export function groupFiles(files: File[]): FileGroup[] {
 					order = 10;
 					break;
 				default:
-					console.error(`Unknown group "${groupName}"`);
+					console.error(`Unknown group "${slug}"`);
 			}
 
-			group = { title, desc: desc.join('<br>'), order, local, olderFiles: [] };
-			groupMap.set(groupName, group);
+			group = { slug, title, desc: desc.join('<br>'), order, local, olderFiles: [] };
+			groupMap.set(slug, group);
 		}
 
 		group.olderFiles.push(file);
@@ -91,6 +94,8 @@ export function groupFiles(files: File[]): FileGroup[] {
 }
 
 export async function syncFiles(remoteFiles: File[], localFiles: File[], localFolder: string): Promise<void> {
+	console.log('syncing files');
+
 	const deleteFiles = new Map(localFiles.map(f => [f.filename, f]));
 	const copyFiles = new Map(remoteFiles.map(f => [f.filename, f]));
 
@@ -118,4 +123,11 @@ export async function syncFiles(remoteFiles: File[], localFiles: File[], localFo
 	} catch (error) {
 		console.error(`Failed to sync files: ${error}`);
 	}
+}
+
+export async function downloadLocalFiles(fileGroups: FileGroup[], localFolder: string) {
+	const localFiles = fileGroups.flatMap(group =>
+		(group.local && group.latestFile) ? [group.latestFile] : []
+	);
+	await syncFiles(localFiles, await getAllFiles(localFolder), localFolder);
 }

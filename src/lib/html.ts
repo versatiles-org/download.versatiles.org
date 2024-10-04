@@ -9,12 +9,14 @@
 	 - Link older files to the versions served directly from the cloud storage.
 */
 
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import Handlebars from 'handlebars';
 import type { FileGroup } from './files.js';
-import { readFileSync, writeFileSync } from 'fs';
-import { resolve } from 'path';
 
 export function generateHTML(fileGroups: FileGroup[], filename: string) {
+	console.log('generate html');
+
 	const templateFilename = resolve(import.meta.dirname, '../../template/index.html');
 	const template = Handlebars.compile(readFileSync(templateFilename, 'utf-8'));
 	const html = template({ fileGroups });

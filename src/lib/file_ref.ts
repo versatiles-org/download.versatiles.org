@@ -6,7 +6,8 @@ export class FileRef {
 	public fullname: string;
 	public filename: string;
 	public url: string;
-	public size: number;
+	public readonly size: number;
+	public readonly sizeString: string;
 	public hashes?: { md5: string, sha: string };
 
 	constructor(fullname: string, url: string);
@@ -34,9 +35,7 @@ export class FileRef {
 		} else {
 			throw Error();
 		}
-	}
-	get sizeString(): string {
-		return (this.size / (2 ** 30)).toFixed(1) + ' GB';
+		this.sizeString = (this.size / (2 ** 30)).toFixed(1) + ' GB';
 	}
 	get md5(): string {
 		if (!this.hashes) throw Error();

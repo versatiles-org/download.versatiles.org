@@ -29,3 +29,19 @@
        ```
    - Apply the new configuration by updating the NGINX config files.
 */
+
+import { readFileSync, writeFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import Handlebars from 'handlebars';
+import { FileRef } from './file_ref.js';
+
+export function generateNGINX(files: FileRef[], filename: string): FileRef {
+  console.log('generate nginx conf');
+
+  const templateFilename = resolve(import.meta.dirname, '../../template/nginx.conf');
+  const template = Handlebars.compile(readFileSync(templateFilename, 'utf-8'));
+  const html = template({ files });
+  writeFileSync(filename, html);
+
+  return new FileRef(filename, '');
+}

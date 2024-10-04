@@ -12,7 +12,7 @@ import Handlebars from 'handlebars';
 import { ProgressBar } from 'work-faster';
 
 export async function generateHashes(files: FileRef[]) {
-	console.log('check hashes');
+	console.log('Check hashes...');
 	files = files.filter(f => {
 		const fullnameMD5 = f.fullname + '.md5';
 		const fullnameSHA = f.fullname + '.sha256';
@@ -29,7 +29,7 @@ export async function generateHashes(files: FileRef[]) {
 	})
 
 	if (files.length === 0) return;
-	console.log('calculate hashes');
+	console.log(' - Calculate hashes...');
 
 	const sum = files.reduce((s, f) => s + f.size, 0);
 	const progress = new ProgressBar(sum);

@@ -15,7 +15,7 @@ export function generateNGINX(files: FileRef[], filename: string): FileRef {
 
 	// Write the generated configuration to the specified filename
 	writeFileSync(filename, nginxConfig);
-	console.log(`NGINX configuration successfully written to: ${filename}`);
+	console.log(' - Configuration successfully written');
 
 	// Return a new FileRef for the generated config file
 	return new FileRef(filename, '');

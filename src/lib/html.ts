@@ -12,13 +12,16 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import Handlebars from 'handlebars';
-import type { FileGroup } from './files.js';
+import type { FileGroup } from './file_group.js';
+import { FileRef } from './file_ref.js';
 
-export function generateHTML(fileGroups: FileGroup[], filename: string) {
+export function generateHTML(fileGroups: FileGroup[], filename: string): FileRef {
 	console.log('generate html');
 
 	const templateFilename = resolve(import.meta.dirname, '../../template/index.html');
 	const template = Handlebars.compile(readFileSync(templateFilename, 'utf-8'));
 	const html = template({ fileGroups });
 	writeFileSync(filename, html);
+
+	return new FileRef(filename, '');
 }

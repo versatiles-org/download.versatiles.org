@@ -1,5 +1,4 @@
 import { Dirent, Stats } from 'node:fs';
-import type { File, FileGroup } from './files.js';
 import { jest } from '@jest/globals'
 
 // Mock dependencies from node:fs/promises
@@ -11,7 +10,7 @@ jest.unstable_mockModule('node:fs/promises', () => ({
 }));
 
 const { readdir, stat, cp, rm } = await import('node:fs/promises');
-const { getAllFiles, groupFiles, syncFiles } = await import('./files.js');
+const { FileRef, getAllFiles, syncFiles } = await import('./file_ref.js');
 
 describe('getAllFiles', () => {
 	const mockFiles = ['file1.versatiles', 'file2.versatiles', 'file3.txt'];
@@ -37,42 +36,17 @@ describe('getAllFiles', () => {
 	});
 });
 
-describe('groupFiles', () => {
-	const files: File[] = [
-		{ fullname: '/path/hillshade-vectors.versatiles', filename: 'hillshade-vectors.versatiles', size: 200 },
-		{ fullname: '/path/osm.2020.versatiles', filename: 'osm.2020.versatiles', size: 100 },
-		{ fullname: '/path/osm.2021.versatiles', filename: 'osm.2021.versatiles', size: 50 },
-	];
-
-	it('should group files by basename and assign correct titles and order', () => {
-		const result: FileGroup[] = groupFiles(files);
-		expect(result.length).toBe(2);
-
-		const osmGroup = result.find(group => group.title === 'OpenStreetMap as vector tiles');
-		expect(osmGroup).toBeDefined();
-		expect(osmGroup?.latestFile).toEqual(files[2]);
-		expect(osmGroup?.olderFiles).toEqual([files[1]]);
-		expect(osmGroup?.order).toBe(0);
-
-		const hillshadeGroup = result.find(group => group.title === 'Hillshading as vector tiles');
-		expect(hillshadeGroup).toBeDefined();
-		expect(hillshadeGroup?.latestFile).toEqual(files[0]);
-		expect(hillshadeGroup?.olderFiles).toEqual([]);
-		expect(hillshadeGroup?.order).toBe(10);
-	});
-});
-
 describe('syncFiles', () => {
-	const localFiles: File[] = [
-		{ fullname: '/local/osm.versatiles', filename: 'osm.versatiles', size: 100 },
-		{ fullname: '/local/hillshade-vectors.versatiles', filename: 'hillshade-vectors.versatiles', size: 200 },
-		{ fullname: '/local/old-file.versatiles', filename: 'old-file.versatiles', size: 300 },
+	const localFiles = [
+		new FileRef('/local/osm.versatiles', 100),
+		new FileRef('/local/hillshade-vectors.versatiles', 200),
+		new FileRef('/local/old-file.versatiles', 300),
 	];
 
-	const remoteFiles: File[] = [
-		{ fullname: '/remote/osm.versatiles', filename: 'osm.versatiles', size: 100 },
-		{ fullname: '/remote/hillshade-vectors.versatiles', filename: 'hillshade-vectors.versatiles', size: 200 },
-		{ fullname: '/remote/new-file.versatiles', filename: 'new-file.versatiles', size: 300 },
+	const remoteFiles = [
+		new FileRef('/remote/osm.versatiles', 100),
+		new FileRef('/remote/hillshade-vectors.versatiles', 200),
+		new FileRef('/remote/new-file.versatiles', 300),
 	];
 
 	it('should delete local files not in remote and copy new files from remote', async () => {

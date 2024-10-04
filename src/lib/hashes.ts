@@ -6,20 +6,24 @@
 import { createReadStream, existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve } from 'node:path';
-import type { File, FileGroup } from './files.js';
+import type { FileGroup } from './file_group.js';
+import { FileRef } from './file_ref.js';
 import Handlebars from 'handlebars';
 import { ProgressBar } from 'work-faster';
 
-export async function generateHashes(files: File[]) {
+export async function generateHashes(files: FileRef[]) {
 	console.log('check hashes');
 	files = files.filter(f => {
 		const fullnameMD5 = f.fullname + '.md5';
-		if (!existsSync(fullnameMD5)) return true;
-		f.md5 = readFileSync(fullnameMD5, 'utf8');
-
 		const fullnameSHA = f.fullname + '.sha256';
+
+		if (!existsSync(fullnameMD5)) return true;
 		if (!existsSync(fullnameSHA)) return true;
-		f.sha = readFileSync(fullnameSHA, 'utf8');
+
+		f.setHashes({
+			md5: readFileSync(fullnameMD5, 'utf8'),
+			sha: readFileSync(fullnameSHA, 'utf8'),
+		})
 
 		return false;
 	})
@@ -44,19 +48,22 @@ export async function generateHashes(files: File[]) {
 		const fullnameMD5 = fullname + '.md5';
 		const fullnameSHA = fullname + '.sha256';
 
-		file.md5 = md5.digest('hex');
-		file.sha = sha.digest('hex');
+		file.setHashes({
+			md5: md5.digest('hex'),
+			sha: sha.digest('hex'),
+		})
 
 		writeFileSync(fullnameMD5, file.md5);
 		writeFileSync(fullnameSHA, file.sha);
 	}
 }
 
-export async function generateLists(fileGroups: FileGroup[], baseURL: string, localFolder: string) {
+export function generateLists(fileGroups: FileGroup[], baseURL: string, localFolder: string): FileRef[] {
 	console.log('generate url lists');
 
 	const templateFilename = resolve(import.meta.dirname, '../../template/urllist.tsv');
 	const template = Handlebars.compile(readFileSync(templateFilename, 'utf-8'));
+	const files: FileRef[] = [];
 
 	for (const fileGroup of fileGroups) {
 		const { latestFile } = fileGroup;
@@ -72,8 +79,15 @@ export async function generateLists(fileGroups: FileGroup[], baseURL: string, lo
 		}]
 
 		const text = template({ files });
-		writeFileSync(resolve(localFolder, fileGroup.slug + '.tsv'), text);
+		const filename = fileGroup.slug + '.tsv';
+		const fullname = resolve(localFolder, filename);
+
+		writeFileSync(fullname, text);
+
+		files.push(new FileRef(fullname, filename));
 	}
+
+	return files;
 }
 
 function hex2base64(hex: string): string {

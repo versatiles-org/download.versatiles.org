@@ -1,7 +1,8 @@
 import { resolve } from 'node:path';
-import { downloadLocalFiles, getAllFiles, groupFiles } from './files.js';
 import { generateHashes, generateLists } from './hashes.js';
 import { generateHTML } from './html.js';
+import { getAllFiles } from './file_ref.js';
+import { collectFiles, downloadLocalFiles, groupFiles } from './file_group.js';
 
 const remoteFolder = resolve(import.meta.dirname, '../../volumes/remote_files');
 const localFolder = resolve(import.meta.dirname, '../../volumes/local_files');
@@ -18,8 +19,13 @@ export async function run() {
 
 	await downloadLocalFiles(fileGroups, localFolder);
 
-	generateHTML(fileGroups, resolve(localFolder, 'index.html'));
+	const filesPublic = collectFiles(
+		fileGroups,
+		generateHTML(fileGroups, resolve(localFolder, 'index.html')),
+		generateLists(fileGroups, baseURL, localFolder)
+	);
 
-	await generateLists(fileGroups, baseURL, localFolder);
-	//await generateNGINX();
+	console.log(filesPublic);
+
+	//generateNGINX(filesPublic);
 }

@@ -11,7 +11,7 @@ export interface FileGroup {
 	olderFiles: FileRef[];
 }
 
-function isFileGroup(entry: FileGroup | FileRef): entry is FileGroup {
+export function isFileGroup(entry: object): entry is FileGroup {
 	return (
 		('slug' in entry && typeof entry.slug == 'string') &&
 		('title' in entry && typeof entry.title == 'string') &&

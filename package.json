@@ -7,6 +7,7 @@
     "url": "https://github.com/versatiles-org/download.versatiles.org.git"
   },
   "scripts": {
+    "check": "npm run lint && npm run test",
     "lint": "eslint . --color",
     "once": "tsx --env-file=.env src/run_once.ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",

@@ -63,22 +63,21 @@ export function isFileRef(entry: unknown): entry is FileRef {
 
 export async function getAllFiles(folder: string): Promise<FileRef[]> {
 	const files: FileRef[] = [];
-	try {
-		const filenames = await readdir(folder);
-		for (const filename of filenames) {
-			if (!filename.endsWith('.versatiles')) continue;
-			const fullname = resolve(folder, filename);
-			files.push(new FileRef(fullname, filename));
-		}
-	} catch (error) {
-		console.error(`Failed to read files in folder "${folder}": ${error}`);
+
+	const filenames = await readdir(folder);
+
+	for (const filename of filenames) {
+		if (!filename.endsWith('.versatiles')) continue;
+		const fullname = resolve(folder, filename);
+		files.push(new FileRef(fullname, filename));
 	}
+
 	return files;
 }
 
 
 export async function syncFiles(remoteFiles: FileRef[], localFiles: FileRef[], localFolder: string): Promise<void> {
-	console.log('syncing files');
+	console.log('Syncing files...');
 
 	const deleteFiles = new Map(localFiles.map(f => [f.filename, f]));
 	const copyFiles = new Map(remoteFiles.map(f => [f.filename, f]));
@@ -92,19 +91,15 @@ export async function syncFiles(remoteFiles: FileRef[], localFiles: FileRef[], l
 		}
 	}
 
-	try {
-		for (const file of deleteFiles.values()) {
-			console.log(`Deleting "${file.filename}"`);
-			await rm(file.fullname);
-		}
+	for (const file of deleteFiles.values()) {
+		console.log(` - Deleting "${file.filename}"`);
+		await rm(file.fullname);
+	}
 
-		for (const file of copyFiles.values()) {
-			const fullname = resolve(localFolder, file.filename);
-			console.log(`Copying "${file.filename}"`);
-			await cp(file.fullname, fullname);
-			file.fullname = fullname; // Update the file's fullname to reflect its new location
-		}
-	} catch (error) {
-		console.error(`Failed to sync files: ${error}`);
+	for (const file of copyFiles.values()) {
+		const fullname = resolve(localFolder, file.filename);
+		console.log(` - Copying "${file.filename}"`);
+		await cp(file.fullname, fullname);
+		file.fullname = fullname; // Update the file's fullname to reflect its new location
 	}
 }

@@ -59,7 +59,7 @@ export async function generateHashes(files: FileRef[]) {
 }
 
 export function generateLists(fileGroups: FileGroup[], baseURL: string, localFolder: string): FileRef[] {
-	console.log('generate url lists');
+	console.log('Generating url lists...');
 
 	const templateFilename = new URL('../../template/urllist.tsv', import.meta.url).pathname;
 	const template = Handlebars.compile(readFileSync(templateFilename, 'utf-8'));

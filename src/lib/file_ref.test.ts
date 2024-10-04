@@ -14,8 +14,8 @@ jest.unstable_mockModule('node:fs', () => ({
 	statSync: jest.fn(),
 }));
 
-jest.spyOn(console, 'error').mockImplementation(() => {});
-jest.spyOn(console, 'log').mockImplementation(() => {});
+jest.spyOn(console, 'error').mockImplementation(() => { });
+jest.spyOn(console, 'log').mockImplementation(() => { });
 
 const { readdir, cp, rm } = await import('node:fs/promises');
 const { statSync } = await import('node:fs');
@@ -71,12 +71,6 @@ describe('getAllFiles', () => {
 		(readdir as jest.MockedFunction<typeof readdir>).mockResolvedValue([]);
 		const result = await getAllFiles('/empty/folder');
 		expect(result.length).toBe(0);
-	});
-
-	it('should handle errors from readdir gracefully', async () => {
-		(readdir as jest.MockedFunction<typeof readdir>).mockRejectedValue(new Error('Read error'));
-		const result = await getAllFiles('/error/folder');
-		expect(result).toEqual([]); // Should return an empty array on error
 	});
 
 	it('should skip files that do not end with .versatiles', async () => {
@@ -137,7 +131,7 @@ describe('syncFiles', () => {
 	it('should handle errors gracefully during file deletion', async () => {
 		(rm as jest.MockedFunction<typeof rm>).mockRejectedValue(new Error('Delete error'));
 
-		await expect(syncFiles(remoteFiles, localFiles, '/local')).resolves.not.toThrow();
+		await expect(syncFiles(remoteFiles, localFiles, '/local')).rejects.toThrow();
 		expect(rm).toHaveBeenCalledTimes(1); // It tries to delete the file
 		expect(cp).toHaveBeenCalledTimes(0); // It still tries to copy the new file
 	});
@@ -145,7 +139,7 @@ describe('syncFiles', () => {
 	it('should handle errors gracefully during file copying', async () => {
 		(cp as jest.MockedFunction<typeof cp>).mockRejectedValue(new Error('Copy error'));
 
-		await expect(syncFiles(remoteFiles, localFiles, '/local')).resolves.not.toThrow();
+		await expect(syncFiles(remoteFiles, localFiles, '/local')).rejects.toThrow();
 		expect(rm).toHaveBeenCalledTimes(1); // It still tries to delete the old file
 		expect(cp).toHaveBeenCalledTimes(1); // It tries to copy the file even if there is an error
 	});

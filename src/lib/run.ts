@@ -16,6 +16,8 @@ const baseURL = `https://${domain}/`;
 
 export async function run() {
 	const files = await getAllFiles(remoteFolder);
+	
+	if (files.length === 0) throw Error('no remote files found');
 
 	await generateHashes(files);
 

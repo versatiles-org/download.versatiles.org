@@ -22,6 +22,7 @@
   },
   "license": "MIT",
   "dependencies": {
+    "cookie": "^0.7.1",
     "express": "^4.21.0",
     "handlebars": "^4.7.8",
     "tsx": "^4.19.1",

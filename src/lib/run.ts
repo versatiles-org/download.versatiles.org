@@ -30,7 +30,7 @@ export async function run() {
 		generateHTML(fileGroups, resolve(localFolder, 'index.html')),
 		generateLists(fileGroups, baseURL, localFolder)
 	).map(f => f.clone());
-	filesPublic.forEach(f => f.move(volumeFolder, '/usr/share/nginx/'));
+	filesPublic.forEach(f => f.move(volumeFolder, ''));
 
 	generateNGINX(filesPublic, resolve(nginxFolder, 'nginx.conf'));
 }

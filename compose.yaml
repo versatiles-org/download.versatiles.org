@@ -10,24 +10,42 @@ services:
       - local_files:/app/volumes/local_files
       - logs:/app/volumes/logs
     networks:
-      - host
       - server
-  nginx:
-    build: ./docker/nginx
+
+  swag:
+    build: ./docker/swag
+    container_name: swag
+    cap_add:
+      - NET_ADMIN
+    environment:
+      #- PUID=1000
+      #- PGID=1000
+      - TZ=Europe/Berlin
+      - URL=download.versatiles.org
+      #- SUBDOMAINS=download
+      #- ONLY_SUBDOMAINS=true
+      - VALIDATION=http
+      #- CERTPROVIDER=
+      #- DNSPLUGIN=cloudflare
+      #- PROPAGATION=
+      #- EMAIL=
+      #- EXTRA_DOMAINS=
+      - STAGING=false
+    ports:
+      - 443:443
+      - 80:80
+    restart: unless-stopped
     volumes:
-      - nginx_conf:/etc/nginx/
-      - remote_files:/usr/share/nginx/remote_files
-      - local_files:/usr/share/nginx/local_files
+      - nginx_conf:/config/nginx/
+      - remote_files:/usr/share/www/remote_files
+      - local_files:/usr/share/www/local_files
     networks:
       - server
 networks:
-  host:
-    driver: host
   server:
     driver: bridge
 volumes:
   remote_files: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/remote_files' } }
   local_files: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/local_files' } }
   nginx_conf: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/nginx_conf' } }
-  cert: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/cert' } }
   logs: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/logs' } }

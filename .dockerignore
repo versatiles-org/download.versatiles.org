@@ -5,6 +5,7 @@ archive
 docker
 node_modules
 scripts
+volumes
 
 **.DS_Store
 .env

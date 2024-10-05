@@ -1,6 +1,6 @@
 import { statSync } from 'node:fs';
 import { cp, readdir, rm } from 'node:fs/promises';
-import { basename, relative, resolve } from 'node:path';
+import { basename, join, relative, resolve } from 'node:path';
 
 export class FileRef {
 	public fullname: string;
@@ -49,7 +49,7 @@ export class FileRef {
 		return new FileRef(this);
 	}
 	move(folderOld: string, folderNew: string) {
-		this.fullname = resolve(folderNew, relative(folderOld, this.fullname))
+		this.fullname = join(folderNew, relative(folderOld, this.fullname))
 	}
 }
 

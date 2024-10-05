@@ -5,7 +5,6 @@ cd $(dirname $(dirname $0))
 
 source .env
 
-mkdir -p volumes/cert
 mkdir -p volumes/local_files
 mkdir -p volumes/logs
 mkdir -p volumes/nginx_conf

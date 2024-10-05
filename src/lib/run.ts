@@ -16,7 +16,7 @@ const baseURL = `https://${domain}/`;
 
 export async function run() {
 	const files = await getAllFiles(remoteFolder);
-	
+
 	if (files.length === 0) throw Error('no remote files found');
 
 	await generateHashes(files);
@@ -29,7 +29,8 @@ export async function run() {
 		fileGroups,
 		generateHTML(fileGroups, resolve(localFolder, 'index.html')),
 		generateLists(fileGroups, baseURL, localFolder)
-	);
+	).map(f => f.clone());
+	filesPublic.forEach(f => f.move(volumeFolder, '/usr/share/nginx/'));
 
 	generateNGINX(filesPublic, resolve(nginxFolder, 'nginx.conf'));
 }

@@ -2,4 +2,5 @@
 set -e
 cd $(dirname $(dirname $0))
 
-npm run once
+##npm run once
+TARGET=dev docker compose --progress=plain up

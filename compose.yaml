@@ -1,15 +1,29 @@
 name: download_versatiles_org
 services:
   server:
-    build: ./docker/server
+    build:
+      dockerfile: ./Dockerfile
+      target: $TARGET
+    volumes:
+      - nginx_conf:/app/volumes/nginx_conf/
+      - remote_files:/app/volumes/remote_files
+      - local_files:/app/volumes/local_files
+      - logs:/app/volumes/logs
+    networks:
+      - host
+      - server
   nginx:
     build: ./docker/nginx
     volumes:
       - nginx_conf:/etc/nginx/
       - remote_files:/usr/share/nginx/remote_files
       - local_files:/usr/share/nginx/local_files
+    networks:
+      - server
 networks:
-  internal:
+  host:
+    driver: host
+  server:
     driver: bridge
 volumes:
   remote_files: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/remote_files' } }

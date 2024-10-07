@@ -7,63 +7,39 @@ set -e
 nano .env
 mkdir .ssh
 nano .ssh/storage
-chmod 500 .ssh/storage
-
-
------
-
+chmod 600 .ssh/storage
 
 # 1. Install Necessary Tools
 echo "Installing necessary tools"
 
 # Install all required packages in one go
 apt-get update
-curl -fsSL https://deb.nodesource.com/setup_20.x | sudo -E bash -
+apt-get install -y ca-certificates curl
+install -m 0755 -d /etc/apt/keyrings
+curl -fsSL https://deb.nodesource.com/setup_22.x | sudo -E bash -
+curl -fsSL https://download.docker.com/linux/debian/gpg -o /etc/apt/keyrings/docker.asc
+chmod a+r /etc/apt/keyrings/docker.asc
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.asc] https://download.docker.com/linux/debian $(. /etc/os-release && echo "$VERSION_CODENAME") stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+apt-get update
 apt-get install -y \
-   docker-compose \
-   docker.io \
+   docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin \
    git \
+   nodejs \
    sshfs \
    tmux \
    webhook
 
-# 2. User Setup
-echo "Creating a new user 'web'..."
-if id "web" &>/dev/null; then
-   echo "User 'web' already exists."
-else
-   adduser --disabled-password --gecos "" web
-fi
-
-# 3. Prepare SSH Key for SSHFS access (run as root)
-echo "Setting up SSH key for SSHFS"
-mkdir -p /root/.ssh
-nano /root/.ssh/storage
-chmod 600 /root/.ssh/storage
-
 #############################################################
-
-# Switch to the 'web' user for project operations
-echo "Switching to 'web' user to configure project..."
-su - web <<'EOSU'
 
 # 4. Clone Project Repository
 echo "Cloning project repository..."
 git clone https://github.com/versatiles-org/download.versatiles.org.git
 cd download.versatiles.org
 
-# Ensure the volumes exists
+mkdir -p volumes/local_files
+mkdir -p volumes/logs
+mkdir -p volumes/nginx_conf
 mkdir -p volumes/remote_files
-
-EOSU
-
-#############################################################
-
-# Back to root for SSHFS setup and other root-level tasks
-cd /home/web/download.versatiles.org
-
-# Open .env file in nano for user to review and edit
-nano .env
 
 source .env
 PROJECT_PATH=$(pwd)
@@ -72,7 +48,7 @@ PROJECT_PATH=$(pwd)
 echo "Configuring SSHFS..."
 
 # Add the mount to /etc/fstab
-echo "sshfs#$STORAGE_URL:/home/ $PROJECT_PATH/volumes/remote_files fuse defaults,ro,allow_other,port=23,IdentityFile=/root/.ssh/storage 0 0" >>/etc/fstab
+printf "\nsshfs#$STORAGE_URL:/home/ $PROJECT_PATH/volumes/remote_files fuse defaults,ro,allow_other,port=23,IdentityFile=$PROJECT_PATH/.ssh/storage 0 0" >>/etc/fstab
 
 # Mount the cloud storage
 systemctl daemon-reload
@@ -101,6 +77,6 @@ echo "Configuring webhook..."
 # Restart webhook service to apply changes
 #systemctl restart webhook
 
-docker compose up
+TARGET=prod docker compose up
 
 echo "Installation complete!"

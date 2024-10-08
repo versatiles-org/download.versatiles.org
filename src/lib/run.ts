@@ -1,14 +1,13 @@
 import { resolve } from 'node:path';
 import { generateHashes, generateLists } from './hashes.js';
 import { generateHTML } from './html.js';
-import { getAllFiles } from './file_ref.js';
+import { getAllFilesRecursive } from './file_ref.js';
 import { collectFiles, downloadLocalFiles, groupFiles } from './file_group.js';
 import { generateNGINX } from './nginx.js';
 
 
 export async function run() {
-	const volumeFolder = process.env['VOLUME_FOLDER'];
-	if (volumeFolder == null) throw Error('missing $VOLUME_FOLDER');
+	const volumeFolder = resolve(import.meta.dirname, '../../volumes/');
 	const remoteFolder = resolve(volumeFolder, 'remote_files');
 	const localFolder = resolve(volumeFolder, 'local_files');
 	const nginxFolder = resolve(volumeFolder, 'nginx_conf');
@@ -19,11 +18,11 @@ export async function run() {
 
 	// -----
 
-	const files = await getAllFiles(remoteFolder);
+	const files = getAllFilesRecursive(remoteFolder);
 
 	if (files.length === 0) throw Error('no remote files found');
 
-	await generateHashes(files);
+	await generateHashes(files, remoteFolder);
 
 	const fileGroups = groupFiles(files);
 

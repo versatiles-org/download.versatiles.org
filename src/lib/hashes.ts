@@ -3,16 +3,78 @@
 - Generate missing hashes (e.g., MD5, SHA256) for files in the remote storage.
 */
 
-import { createReadStream, existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { createHash } from 'node:crypto';
-import { resolve } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { relative, resolve } from 'node:path';
 import type { FileGroup } from './file_group.js';
 import { FileRef } from './file_ref.js';
 import Handlebars from 'handlebars';
 import { ProgressBar } from 'work-faster';
+import { spawnSync } from 'node:child_process';
 
-export async function generateHashes(files: FileRef[]) {
+export async function generateHashes(files: FileRef[], remoteFolder: string) {
+	const todos: { file: FileRef, hashName: string }[] = [];
+
 	console.log('Check hashes...');
+	files.forEach(file => {
+		const fullnameMD5 = file.fullname + '.md5';
+		if (!existsSync(fullnameMD5)) todos.push({ file, hashName: 'md5' });
+
+		const fullnameSHA = file.fullname + '.sha256';
+		if (!existsSync(fullnameSHA)) todos.push({ file, hashName: 'sha256' });
+	})
+
+	if (todos.length > 0) {
+		console.log(' - Calculate hashes...');
+
+		const sum = todos.reduce((s, t) => s + t.file.size, 0);
+		const progress = new ProgressBar(sum);
+
+		for (const todo of todos) {
+			const { file, hashName } = todo;
+			const path = resolve('/home/', relative(remoteFolder, todo.file.fullname));
+			const args = [
+				process.env['STORAGE_URL'] ?? 'STORAGE_URL is missing',
+				'-p', '23',
+				'-i', '.ssh/storage',
+				'-oBatchMode=yes',
+				hashName + 'sum',
+				path
+			]
+			const result = spawnSync('ssh', args);
+			if (result.stderr.length > 0) throw Error(result.stderr.toString());
+			const hashString = result.stdout.toString().replace(/\s.*\//, ' ');
+			writeFileSync(file.fullname + '.' + hashName, hashString);
+			progress.increment(file.size);
+		}
+	}
+	process.exit();
+	/*
+			for (const file of files) {
+				const md5 = createHash('md5');
+				const sha = createHash('sha256');
+				const { fullname } = file;
+				await new Promise(r => createReadStream(fullname, { highWaterMark: 1024 + 1024 })
+					.on('data', chunk => {
+						progress.increment(chunk.length);
+						md5.update(chunk);
+						sha.update(chunk);
+					}).on('close', r)
+				)
+				const fullnameMD5 = fullname + '.md5';
+				const fullnameSHA = fullname + '.sha256';
+	
+				file.hashes = {
+					md5: md5.digest('hex'),
+					sha: sha.digest('hex'),
+				};
+	
+				writeFileSync(fullnameMD5, file.md5);
+				writeFileSync(fullnameSHA, file.sha);
+			}
+		}
+			*/
+
+	console.log('Read hashes...');
 	files = files.filter(f => {
 		const fullnameMD5 = f.fullname + '.md5';
 		const fullnameSHA = f.fullname + '.sha256';
@@ -27,35 +89,6 @@ export async function generateHashes(files: FileRef[]) {
 
 		return false;
 	})
-
-	if (files.length === 0) return;
-	console.log(' - Calculate hashes...');
-
-	const sum = files.reduce((s, f) => s + f.size, 0);
-	const progress = new ProgressBar(sum);
-
-	for (const file of files) {
-		const md5 = createHash('md5');
-		const sha = createHash('sha256');
-		const { fullname } = file;
-		await new Promise(r => createReadStream(fullname, { highWaterMark: 1024 + 1024 })
-			.on('data', chunk => {
-				progress.increment(chunk.length);
-				md5.update(chunk);
-				sha.update(chunk);
-			}).on('close', r)
-		)
-		const fullnameMD5 = fullname + '.md5';
-		const fullnameSHA = fullname + '.sha256';
-
-		file.hashes = {
-			md5: md5.digest('hex'),
-			sha: sha.digest('hex'),
-		};
-
-		writeFileSync(fullnameMD5, file.md5);
-		writeFileSync(fullnameSHA, file.sha);
-	}
 }
 
 export function generateLists(fileGroups: FileGroup[], baseURL: string, localFolder: string): FileRef[] {

@@ -48,7 +48,7 @@ PROJECT_PATH=$(pwd)
 echo "Configuring SSHFS..."
 
 # Add the mount to /etc/fstab
-printf "\nsshfs#$STORAGE_URL:/home/ $PROJECT_PATH/volumes/remote_files fuse defaults,ro,allow_other,port=23,IdentityFile=$PROJECT_PATH/.ssh/storage 0 0" >>/etc/fstab
+printf "\nsshfs#$STORAGE_URL:/home/ $PROJECT_PATH/volumes/remote_files fuse defaults,allow_other,port=23,IdentityFile=$PROJECT_PATH/.ssh/storage 0 0" >>/etc/fstab
 
 # Mount the cloud storage
 systemctl daemon-reload

@@ -9,8 +9,8 @@
   "scripts": {
     "check": "npm run lint && npm run test",
     "lint": "eslint . --color",
-    "once": "tsx src/run_once.ts",
-    "server": "tsx src/server.ts",
+    "once": "tsx --env-file=.env src/run_once.ts",
+    "server": "tsx --env-file=.env src/server.ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "upgrade": "npm-check-updates -u && rm -f package-lock.json; rm -rf node_modules; npm i"
   },

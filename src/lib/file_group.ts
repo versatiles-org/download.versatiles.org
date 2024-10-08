@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import { FileRef, getAllFiles, isFileRef, syncFiles } from './file_ref.js';
+import { FileRef, getAllFilesRecursive, syncFiles } from './file_ref.js';
 
 export interface FileGroup {
 	slug: string;
@@ -79,7 +79,7 @@ export async function downloadLocalFiles(fileGroups: FileGroup[], localFolder: s
 	const localFiles = fileGroups.flatMap(group =>
 		(group.local && group.latestFile) ? [group.latestFile] : []
 	);
-	await syncFiles(localFiles, await getAllFiles(localFolder), localFolder);
+	await syncFiles(localFiles, await getAllFilesRecursive(localFolder), localFolder);
 }
 
 export function collectFiles(...entries: (FileGroup | FileGroup[] | FileRef | FileRef[])[]): FileRef[] {
@@ -93,7 +93,7 @@ export function collectFiles(...entries: (FileGroup | FileGroup[] | FileRef | Fi
 		} else if (isFileGroup(entry)) {
 			addEntry(entry.olderFiles);
 			if (entry.latestFile) addEntry(entry.latestFile);
-		} else if (isFileRef(entry)) {
+		} else if (entry instanceof FileRef) {
 			files.set(entry.url, entry);
 		} else {
 			throw Error();

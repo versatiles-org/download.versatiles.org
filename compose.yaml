@@ -1,22 +1,6 @@
 name: download.versatiles.org
 
 services:
-  nodejs:
-    build:
-      dockerfile: ./Dockerfile
-      target: $TARGET
-    container_name: nodejs
-    environment:
-      - VOLUME_FOLDER=/volumes/
-      - DOMAIN=$DOMAIN
-    volumes:
-      - nginx_conf:/volumes/nginx_conf/
-      - remote_files:/volumes/remote_files
-      - local_files:/volumes/local_files
-      - logs:/volumes/logs
-    networks:
-      - server
-
   swag:
     image: lscr.io/linuxserver/swag
     container_name: swag

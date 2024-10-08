@@ -1,5 +1,6 @@
 
 .env
 .ssh
+coverage
 node_modules
 volumes

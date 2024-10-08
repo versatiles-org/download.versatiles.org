@@ -34,7 +34,7 @@ describe('generateHashes', () => {
 		(readFileSync as jest.Mock).mockReset().mockImplementation(() => 'existing-hash');
 		(writeFileSync as jest.Mock).mockReset().mockImplementation(() => { });
 		(statSync as jest.Mock).mockReset().mockReturnValue({ size: 100 });
-		(spawnSync as jest.Mock<any>).mockReset().mockImplementation((_: string, args: string[]) => {
+		(spawnSync as unknown as jest.Mock<(_: string, args: string[]) => { stderr: Buffer, stdout: Buffer }>).mockReset().mockImplementation((_: string, args: string[]) => {
 			const filename = args.pop();
 			const hash = args.pop()?.replace('sum', '');
 			return {

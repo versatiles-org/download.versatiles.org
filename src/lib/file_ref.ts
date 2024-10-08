@@ -1,5 +1,5 @@
 import { readdirSync, statSync } from 'node:fs';
-import { basename, join, relative, resolve } from 'node:path';
+import { basename, resolve } from 'node:path';
 
 export class FileRef {
 	public fullname: string;
@@ -46,9 +46,6 @@ export class FileRef {
 	}
 	clone(): FileRef {
 		return new FileRef(this);
-	}
-	move(folderOld: string, folderNew: string) {
-		this.fullname = join(folderNew, relative(folderOld, this.fullname))
 	}
 }
 

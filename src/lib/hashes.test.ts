@@ -1,21 +1,25 @@
 import { jest } from '@jest/globals';
 import type { FileGroup } from './file_group.js';
 import type { FileRef as FileRefType } from './file_ref.js';
-import type { PathLike, ReadStream } from 'node:fs';
 
-// Mock the necessary dependencies
 jest.unstable_mockModule('node:fs', () => ({
 	createReadStream: jest.fn(),
 	existsSync: jest.fn(),
+	readdirSync: jest.fn(),
 	readFileSync: jest.fn(),
+	statSync: jest.fn(),
 	writeFileSync: jest.fn(),
-	statSync: jest.fn(() => ({ size: 123 })),
+}));
+
+jest.unstable_mockModule('node:child_process', () => ({
+	spawnSync: jest.fn(),
 }));
 
 jest.spyOn(console, 'error').mockImplementation(() => { });
 jest.spyOn(console, 'log').mockImplementation(() => { });
 
-const { createReadStream, existsSync, readFileSync, writeFileSync } = await import('node:fs');
+const { existsSync, readFileSync, writeFileSync, statSync } = await import('node:fs');
+const { spawnSync } = await import('node:child_process');
 const { FileRef } = await import('./file_ref.js');
 const { generateHashes, generateLists, hex2base64 } = await import('./hashes.js');
 
@@ -26,45 +30,42 @@ describe('generateHashes', () => {
 		file1 = new FileRef('/path/file1.versatiles', 1000);
 		file2 = new FileRef('/path/file2.versatiles', 2000);
 
-		type F = (event: string | symbol, listener: (...args: unknown[]) => void) => ReadStream;
-
-		(existsSync as jest.Mock).mockReset().mockReturnValue(false); // Simulate that hash files do not exist
+		(existsSync as jest.Mock).mockReset().mockReturnValue(false);
 		(readFileSync as jest.Mock).mockReset().mockImplementation(() => 'existing-hash');
 		(writeFileSync as jest.Mock).mockReset().mockImplementation(() => { });
-		(createReadStream as jest.Mock<typeof createReadStream>).mockReset().mockImplementation((path: PathLike) => {
-			const stream = {
-				on: jest.fn<F>().mockImplementation((event: string | symbol, listener: (buffer?: Buffer) => void): ReadStream => {
-					if (event === 'data') listener(Buffer.from('content of ' + path));
-					if (event === 'close') listener();
-					return stream;
-				})
-			} as unknown as ReadStream;
-			return stream;
+		(statSync as jest.Mock).mockReset().mockReturnValue({ size: 100 });
+		(spawnSync as jest.Mock<any>).mockReset().mockImplementation((_: string, args: string[]) => {
+			const filename = args.pop();
+			const hash = args.pop()?.replace('sum', '');
+			return {
+				stdout: Buffer.from(`${hash}_c0ffee ${filename}`),
+				stderr: Buffer.alloc(0)
+			}
 		});
 	});
 
 	it('should generate and write missing hashes for files', async () => {
-		await generateHashes([file1, file2]);
+		await generateHashes([file1, file2], '/path/');
 
-		expect(createReadStream).toHaveBeenCalledTimes(2);
+		expect(spawnSync).toHaveBeenCalledTimes(4);
 
-		expect(writeFileSync).toHaveBeenNthCalledWith(1, '/path/file1.versatiles.md5', '8c59e1fc3627fb366f0aab85617ff576');
-		expect(writeFileSync).toHaveBeenNthCalledWith(2, '/path/file1.versatiles.sha256', '19de64376b378d1ead1e7c4ffbebd2863c86bc11f1d42a6254b7fce348c6f1d9');
-		expect(writeFileSync).toHaveBeenNthCalledWith(3, '/path/file2.versatiles.md5', 'adb02d9d56ea9c9619f410b7fe20b93e');
-		expect(writeFileSync).toHaveBeenNthCalledWith(4, '/path/file2.versatiles.sha256', '8b1a9a806bbf5a258dcac598f118a9567289aa8acc08e28f866554289e1e43f5');
+		expect(writeFileSync).toHaveBeenNthCalledWith(1, '/path/file1.versatiles.md5', 'md5_c0ffee file1.versatiles');
+		expect(writeFileSync).toHaveBeenNthCalledWith(2, '/path/file1.versatiles.sha256', 'sha256_c0ffee file1.versatiles');
+		expect(writeFileSync).toHaveBeenNthCalledWith(3, '/path/file2.versatiles.md5', 'md5_c0ffee file2.versatiles');
+		expect(writeFileSync).toHaveBeenNthCalledWith(4, '/path/file2.versatiles.sha256', 'sha256_c0ffee file2.versatiles');
 	});
 
 	it('should skip files if hashes already exist', async () => {
 		// Simulate that the hash files already exist
 		(existsSync as jest.Mock).mockReturnValue(true);
 
-		await generateHashes([file1]);
+		await generateHashes([file1], '/path/');
 
 		expect(readFileSync).toHaveBeenCalledTimes(2);
 		expect(readFileSync).toHaveBeenNthCalledWith(1, '/path/file1.versatiles.md5', 'utf8');
 		expect(readFileSync).toHaveBeenNthCalledWith(2, '/path/file1.versatiles.sha256', 'utf8');
 
-		expect(createReadStream).toHaveBeenCalledTimes(0);
+		expect(spawnSync).toHaveBeenCalledTimes(0);
 
 		expect(writeFileSync).not.toHaveBeenCalled();
 	});

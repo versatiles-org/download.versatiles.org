@@ -1,7 +1,6 @@
-import { mkdirSync, readdirSync, readFileSync, rmdirSync, statSync, unlinkSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'node:fs';
 import Handlebars from 'handlebars';
 import { FileRef } from './file_ref.js';
-import { join } from 'node:path';
 
 // Function to generate NGINX configuration
 export function generateNGINX(files: FileRef[], domain: string, filename: string): FileRef {
@@ -20,19 +19,4 @@ export function generateNGINX(files: FileRef[], domain: string, filename: string
 
 	// Return a new FileRef for the generated config file
 	return new FileRef(filename, '');
-}
-
-export function cleanupFolder(folder: string) {
-	mkdirSync(folder, { recursive: true });
-
-	for (const fileOrDirPath of readdirSync(folder)) {
-		const fullPath = join(folder, fileOrDirPath);
-		const stat = statSync(fullPath);
-		if (stat.isDirectory()) {
-			if (readdirSync(fullPath).length) cleanupFolder(fullPath);
-			rmdirSync(fullPath);
-		} else {
-			unlinkSync(fullPath);
-		}
-	}
 }

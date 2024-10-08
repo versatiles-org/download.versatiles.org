@@ -1,5 +1,5 @@
 import { basename } from 'node:path';
-import { FileRef, getAllFilesRecursive, syncFiles } from './file_ref.js';
+import { FileRef } from './file_ref.js';
 
 export interface FileGroup {
 	slug: string;
@@ -38,19 +38,13 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					order = 0;
 					local = true;
 					break;
-				case 'landcover-vectors':
-					title = 'Landcover as vector tiles';
-					desc = [
-					]
-					order = 1;
-					break;
 				case 'hillshade-vectors':
 					title = 'Hillshading as vector tiles';
 					desc = [
 						'Hillshade vector tiles based on <a href="https://github.com/tilezen/joerd">Mapzen Jörð Terrain Tiles</a>.',
 						'Map Data © <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Mapzen Terrain Tiles, DEM Sources</a>'
 					]
-					order = 2;
+					order = 10;
 					break;
 				case 'landcover-vectors':
 					title = 'Landcover as vector tiles';
@@ -87,13 +81,6 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 	});
 
 	return groupList;
-}
-
-export async function downloadLocalFiles(fileGroups: FileGroup[], localFolder: string) {
-	const localFiles = fileGroups.flatMap(group =>
-		(group.local && group.latestFile) ? [group.latestFile] : []
-	);
-	await syncFiles(localFiles, await getAllFilesRecursive(localFolder), localFolder);
 }
 
 export function collectFiles(...entries: (FileGroup | FileGroup[] | FileRef | FileRef[])[]): FileRef[] {

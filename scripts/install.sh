@@ -3,16 +3,9 @@
 # Exit immediately if a command exits with a non-zero status.
 set -e
 
-
-nano .env
-mkdir .ssh
-nano .ssh/storage
-chmod 600 .ssh/storage
-
-# 1. Install Necessary Tools
 echo "Installing necessary tools"
 
-# Install all required packages in one go
+# Install all required packages
 apt-get update
 apt-get install -y ca-certificates curl
 install -m 0755 -d /etc/apt/keyrings
@@ -31,10 +24,15 @@ apt-get install -y \
 
 #############################################################
 
-# 4. Clone Project Repository
+# Clone Project Repository
 echo "Cloning project repository..."
 git clone https://github.com/versatiles-org/download.versatiles.org.git
 cd download.versatiles.org
+
+nano .env
+mkdir .ssh
+nano .ssh/storage
+chmod 600 .ssh/storage
 
 mkdir -p volumes/local_files
 mkdir -p volumes/logs
@@ -44,7 +42,7 @@ mkdir -p volumes/remote_files
 source .env
 PROJECT_PATH=$(pwd)
 
-# 7. SSHFS Configuration
+# SSHFS Configuration
 echo "Configuring SSHFS..."
 
 # Add the mount to /etc/fstab

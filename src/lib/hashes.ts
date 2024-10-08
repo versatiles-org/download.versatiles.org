@@ -47,47 +47,16 @@ export async function generateHashes(files: FileRef[], remoteFolder: string) {
 			progress.increment(file.size);
 		}
 	}
-	process.exit();
-	/*
-			for (const file of files) {
-				const md5 = createHash('md5');
-				const sha = createHash('sha256');
-				const { fullname } = file;
-				await new Promise(r => createReadStream(fullname, { highWaterMark: 1024 + 1024 })
-					.on('data', chunk => {
-						progress.increment(chunk.length);
-						md5.update(chunk);
-						sha.update(chunk);
-					}).on('close', r)
-				)
-				const fullnameMD5 = fullname + '.md5';
-				const fullnameSHA = fullname + '.sha256';
-	
-				file.hashes = {
-					md5: md5.digest('hex'),
-					sha: sha.digest('hex'),
-				};
-	
-				writeFileSync(fullnameMD5, file.md5);
-				writeFileSync(fullnameSHA, file.sha);
-			}
-		}
-			*/
 
 	console.log('Read hashes...');
-	files = files.filter(f => {
-		const fullnameMD5 = f.fullname + '.md5';
-		const fullnameSHA = f.fullname + '.sha256';
-
-		if (!existsSync(fullnameMD5)) return true;
-		if (!existsSync(fullnameSHA)) return true;
-
+	files.forEach(f => {
 		f.hashes = {
-			md5: readFileSync(fullnameMD5, 'utf8'),
-			sha: readFileSync(fullnameSHA, 'utf8'),
+			md5: read('md5'),
+			sha: read('sha256'),
 		};
-
-		return false;
+		function read(hash: string): string {
+			return readFileSync(f.fullname + '.' + hash, 'utf8').replace(/\s.*/, '')
+		}
 	})
 }
 

@@ -12,6 +12,7 @@
     "once": "tsx --env-file=.env src/run_once.ts",
     "server": "tsx --env-file=.env src/server.ts",
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "test-coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "upgrade": "npm-check-updates -u && rm -f package-lock.json; rm -rf node_modules; npm i"
   },
   "type": "module",

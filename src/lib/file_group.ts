@@ -38,13 +38,19 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					order = 0;
 					local = true;
 					break;
+				case 'landcover-vectors':
+					title = 'Landcover as vector tiles';
+					desc = [
+					]
+					order = 1;
+					break;
 				case 'hillshade-vectors':
 					title = 'Hillshading as vector tiles';
 					desc = [
 						'Hillshade vector tiles based on <a href="https://github.com/tilezen/joerd">Mapzen Jörð Terrain Tiles</a>.',
 						'Map Data © <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Mapzen Terrain Tiles, DEM Sources</a>'
 					]
-					order = 10;
+					order = 2;
 					break;
 				default:
 					console.error(`Unknown group "${slug}"`);

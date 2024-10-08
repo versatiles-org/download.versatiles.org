@@ -30,7 +30,7 @@ describe('generateNGINX', () => {
 	});
 
 	it('should generate NGINX configuration using the template and write it to the given file', () => {
-		const result = generateNGINX(mockFiles, 'download.versatiles.org', '/path/to/output/nginx.conf');
+		const result = generateNGINX(mockFiles, '/path/to/output/nginx.conf');
 
 		const templateFilename = new URL('../../template/nginx.conf', import.meta.url).pathname;
 		expect(readFileSync).toHaveBeenCalledWith(templateFilename, 'utf-8');

@@ -20,20 +20,13 @@ services:
       - EMAIL=$EMAIL
       #- EXTRA_DOMAINS=
       - STAGING=false
-    ports:
-      - 443:443
-      - 80:80
+    network_mode: host
     restart: unless-stopped
     volumes:
       - nginx_conf:/config/nginx/
       - remote_files:/volumes/remote_files:ro
       - local_files:/volumes/local_files:ro
       - logs:/var/log/
-    networks:
-      - server
-networks:
-  server:
-    driver: bridge
 volumes:
   remote_files: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/remote_files' } }
   local_files: { driver: local, driver_opts: { type: 'none', o: 'bind', device: './volumes/local_files' } }

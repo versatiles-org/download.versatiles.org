@@ -2,7 +2,7 @@ import { resolve } from 'node:path';
 import { generateHashes, generateLists } from './hashes.js';
 import { generateHTML } from './html.js';
 import { getAllFilesRecursive } from './file_ref.js';
-import { collectFiles,  groupFiles } from './file_group.js';
+import { collectFiles, groupFiles } from './file_group.js';
 import { generateNGINX } from './nginx.js';
 import { downloadLocalFiles } from './sync.js';
 
@@ -33,8 +33,8 @@ export async function run() {
 		fileGroups,
 		generateHTML(fileGroups, resolve(localFolder, 'index.html')),
 		generateLists(fileGroups, baseURL, localFolder)
-	);
+	).map(f => f.cloneMoved(volumeFolder, '/volumes/'));
 
 	const confFilename = resolve(nginxFolder, 'site-confs/default.conf');
-	generateNGINX(filesPublic, domain, confFilename);
+	generateNGINX(filesPublic, confFilename);
 }

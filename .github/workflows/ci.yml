@@ -45,10 +45,10 @@ jobs:
       - name: Tests
         run: npm run test
 
-#      - name: Generate test coverage
-#        run: npm run test-coverage
-#
-#      - name: Upload test coverage
-#        uses: codecov/codecov-action@v4
-#        env:
-#          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+      - name: Generate test coverage
+        run: npm run test-coverage
+
+      - name: Upload test coverage
+        uses: codecov/codecov-action@v4
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}

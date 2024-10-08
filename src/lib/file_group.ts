@@ -46,6 +46,14 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					]
 					order = 10;
 					break;
+				case 'landcover-vectors':
+					title = 'Landcover as vector tiles';
+					desc = [
+						'Landcover vector tiles based on <a href="https://esa-worldcover.org/en/data-access">ESA Worldcover 2021</a>.',
+						'Map Data © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, available under <a href="http://creativecommons.org/licenses/by/4.0/"> CC-BY 4.0 International</a>'
+					]
+					order = 20;
+					break;
 				default:
 					console.error(`Unknown group "${slug}"`);
 			}

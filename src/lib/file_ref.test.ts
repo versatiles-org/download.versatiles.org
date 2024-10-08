@@ -1,26 +1,19 @@
-import type { Dirent, Stats } from 'node:fs';
+import type { Stats } from 'node:fs';
 import { jest } from '@jest/globals';
-
-// Mock dependencies from node:fs/promises
-jest.unstable_mockModule('node:fs/promises', () => ({
-	readdir: jest.fn(),
-	stat: jest.fn(),
-	cp: jest.fn(),
-	rm: jest.fn(),
-}));
 
 // Mock dependencies from node:fs
 jest.unstable_mockModule('node:fs', () => ({
+	readdirSync: jest.fn(),
 	statSync: jest.fn(),
+	cpSync: jest.fn(),
+	rmSync: jest.fn(),
 }));
 
 jest.spyOn(console, 'error').mockImplementation(() => { });
 jest.spyOn(console, 'log').mockImplementation(() => { });
 
-const { readdir, cp, rm } = await import('node:fs/promises');
-const { statSync } = await import('node:fs');
-const { FileRef, getAllFiles, syncFiles } = await import('./file_ref.js');
-
+const { cpSync, rmSync, readdirSync, statSync } = await import('node:fs');
+const { FileRef, getAllFilesRecursive, syncFiles } = await import('./file_ref.js');
 
 describe('FileRef', () => {
 	it('should create a FileRef with correct properties from a path and size', () => {
@@ -50,34 +43,65 @@ describe('FileRef', () => {
 	});
 });
 
-describe('getAllFiles', () => {
+
+describe('getAllFilesRecursive', () => {
 	const mockFiles = ['file1.versatiles', 'file2.versatiles', 'file3.txt'];
 
 	beforeEach(() => {
-		(readdir as jest.MockedFunction<typeof readdir>).mockResolvedValue(mockFiles as unknown as Dirent[]);
-		(statSync as jest.MockedFunction<typeof statSync>).mockReturnValue({ size: 100 } as Stats);
+		jest.mocked(readdirSync as (path: string) => string[]).mockReset().mockReturnValue(mockFiles);
+		jest.mocked(statSync as (path: string) => Stats).mockReset().mockImplementation(_ => {
+			return { isDirectory: () => false, size: 100 } as Stats;
+		});
 	});
 
-	it('should return an array of files with the correct information', async () => {
+	it('should return an array of files with the correct information', () => {
 		const folder = '/test/folder';
-		const result = await getAllFiles(folder);
+		const result = getAllFilesRecursive(folder);
 		expect(result.length).toBe(2); // Only .versatiles files should be included
 		expect(result[0].filename).toBe('file1.versatiles');
-		expect(result[0].size).toBe(100);
-		expect(statSync).toHaveBeenCalledTimes(2); // stat should be called only for .versatiles files
+		expect(result[0].fullname).toBe('/test/folder/file1.versatiles');
+		expect(result[1].filename).toBe('file2.versatiles');
+		expect(result[1].fullname).toBe('/test/folder/file2.versatiles');
+		expect(statSync).toHaveBeenCalledTimes(5); // statSync called for all files, but only for .versatiles a second time
 	});
 
-	it('should handle an empty folder', async () => {
-		(readdir as jest.MockedFunction<typeof readdir>).mockResolvedValue([]);
-		const result = await getAllFiles('/empty/folder');
+	it('should handle an empty folder', () => {
+		jest.mocked(readdirSync).mockReturnValue([]);
+		const result = getAllFilesRecursive('/empty/folder');
 		expect(result.length).toBe(0);
 	});
 
-	it('should skip files that do not end with .versatiles', async () => {
-		(readdir as jest.MockedFunction<typeof readdir>).mockResolvedValue(['file.txt', 'file.versatiles'] as unknown as Dirent[]);
-		const result = await getAllFiles('/folder');
+	it('should skip files that do not end with .versatiles', () => {
+		jest.mocked(readdirSync as (path: string) => string[]).mockReturnValue(['file.txt', 'file.versatiles']);
+		const result = getAllFilesRecursive('/folder');
 		expect(result.length).toBe(1); // Only the .versatiles file should be included
 		expect(result[0].filename).toBe('file.versatiles');
+		expect(result[0].fullname).toBe('/folder/file.versatiles');
+	});
+
+	it('should recurse into subdirectories', () => {
+		jest.mocked(readdirSync as (path: string) => string[]).mockImplementation(folderPath => {
+			if (folderPath === '/test/folder') {
+				return ['subfolder', 'file.versatiles'];
+			} else if (folderPath === '/test/folder/subfolder') {
+				return ['nestedfile.versatiles'];
+			}
+			return [];
+		});
+
+		jest.mocked(statSync as (path: string) => Stats).mockImplementation(filePath => {
+			if (filePath === '/test/folder/subfolder') {
+				return { isDirectory: () => true } as Stats; // Mock subdirectory
+			}
+			return { isDirectory: () => false, size: 100 } as Stats;
+		});
+
+		const result = getAllFilesRecursive('/test/folder');
+		expect(result.length).toBe(2); // Files from both the root and the subfolder
+		expect(result[0].filename).toBe('file.versatiles');
+		expect(result[0].fullname).toBe('/test/folder/file.versatiles');
+		expect(result[1].filename).toBe('nestedfile.versatiles');
+		expect(result[1].fullname).toBe('/test/folder/subfolder/nestedfile.versatiles');
 	});
 });
 
@@ -95,20 +119,20 @@ describe('syncFiles', () => {
 	];
 
 	beforeEach(() => {
-		(rm as jest.MockedFunction<typeof rm>).mockReset().mockResolvedValue(undefined);
-		(cp as jest.MockedFunction<typeof cp>).mockReset().mockResolvedValue(undefined);
+		jest.mocked(rmSync).mockReset().mockReturnValue(undefined);
+		jest.mocked(cpSync).mockReset().mockReturnValue(undefined);
 	});
 
 	it('should delete local files not in remote and copy new files from remote', async () => {
-		await syncFiles(remoteFiles, localFiles, '/local');
+		syncFiles(remoteFiles, localFiles, '/local');
 
 		// It should remove files not in remote
-		expect(rm).toHaveBeenCalledTimes(1);
-		expect(rm).toHaveBeenCalledWith('/local/old-file.versatiles');
+		expect(rmSync).toHaveBeenCalledTimes(1);
+		expect(rmSync).toHaveBeenCalledWith('/local/old-file.versatiles');
 
 		// It should copy new remote files to local
-		expect(cp).toHaveBeenCalledTimes(1);
-		expect(cp).toHaveBeenCalledWith('/remote/new-file.versatiles', '/local/new-file.versatiles');
+		expect(cpSync).toHaveBeenCalledTimes(1);
+		expect(cpSync).toHaveBeenCalledWith('/remote/new-file.versatiles', '/local/new-file.versatiles');
 	});
 
 	it('should not copy or delete files if they are already in sync', async () => {
@@ -121,26 +145,26 @@ describe('syncFiles', () => {
 			new FileRef('/local/hillshade-vectors.versatiles', 200),
 		];
 
-		await syncFiles(syncedRemoteFiles, syncedLocalFiles, '/local');
+		syncFiles(syncedRemoteFiles, syncedLocalFiles, '/local');
 
 		// It should neither delete nor copy files
-		expect(rm).not.toHaveBeenCalled();
-		expect(cp).not.toHaveBeenCalled();
+		expect(rmSync).not.toHaveBeenCalled();
+		expect(cpSync).not.toHaveBeenCalled();
 	});
 
 	it('should handle errors gracefully during file deletion', async () => {
-		(rm as jest.MockedFunction<typeof rm>).mockRejectedValue(new Error('Delete error'));
+		jest.mocked(rmSync).mockImplementation(() => { throw new Error('Delete error') });
 
-		await expect(syncFiles(remoteFiles, localFiles, '/local')).rejects.toThrow();
-		expect(rm).toHaveBeenCalledTimes(1); // It tries to delete the file
-		expect(cp).toHaveBeenCalledTimes(0); // It still tries to copy the new file
+		expect(() => syncFiles(remoteFiles, localFiles, '/local')).toThrow();
+		expect(rmSync).toHaveBeenCalledTimes(1); // It tries to delete the file
+		expect(cpSync).toHaveBeenCalledTimes(0); // It still tries to copy the new file
 	});
 
 	it('should handle errors gracefully during file copying', async () => {
-		(cp as jest.MockedFunction<typeof cp>).mockRejectedValue(new Error('Copy error'));
+		jest.mocked(cpSync).mockImplementation(() => { throw new Error('Copy error') });
 
-		await expect(syncFiles(remoteFiles, localFiles, '/local')).rejects.toThrow();
-		expect(rm).toHaveBeenCalledTimes(1); // It still tries to delete the old file
-		expect(cp).toHaveBeenCalledTimes(1); // It tries to copy the file even if there is an error
+		expect(() => syncFiles(remoteFiles, localFiles, '/local')).toThrow();
+		expect(rmSync).toHaveBeenCalledTimes(1); // It still tries to delete the old file
+		expect(cpSync).toHaveBeenCalledTimes(1); // It tries to copy the file even if there is an error
 	});
 });

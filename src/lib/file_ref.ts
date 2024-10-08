@@ -1,5 +1,4 @@
-import { statSync } from 'node:fs';
-import { cp, readdir, rm } from 'node:fs/promises';
+import { cpSync, readdirSync, rmSync, statSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
 
 export class FileRef {
@@ -26,7 +25,7 @@ export class FileRef {
 			} else {
 				throw Error();
 			}
-		} else if (isFileRef(a)) {
+		} else if (a instanceof FileRef) {
 			this.fullname = a.fullname;
 			this.filename = a.filename;
 			this.url = a.url;
@@ -53,33 +52,25 @@ export class FileRef {
 	}
 }
 
-export function isFileRef(entry: unknown): entry is FileRef {
-	return (
-		(entry != null) &&
-		(typeof entry === 'object') &&
-		('fullname' in entry && typeof entry.fullname == 'string') &&
-		('filename' in entry && typeof entry.filename == 'string') &&
-		('url' in entry && typeof entry.url == 'string') &&
-		('size' in entry && typeof entry.size == 'number') &&
-		('sizeString' in entry && typeof entry.sizeString == 'string'));
-}
+export function getAllFilesRecursive(folderPath: string): FileRef[] {
+	return rec(folderPath).sort((a, b) => a.fullname.localeCompare(b.fullname));
 
-export async function getAllFiles(folder: string): Promise<FileRef[]> {
-	const files: FileRef[] = [];
-
-	const filenames = await readdir(folder);
-
-	for (const filename of filenames) {
-		if (!filename.endsWith('.versatiles')) continue;
-		const fullname = resolve(folder, filename);
-		files.push(new FileRef(fullname, filename));
+	function rec(folderPath: string): FileRef[] {
+		const files: FileRef[] = [];
+		const filenames = readdirSync(folderPath);
+		for (const filename of filenames) {
+			const fullPath = resolve(folderPath, filename);
+			if (statSync(fullPath).isDirectory()) {
+				files.push(...rec(fullPath)); // Recursive call for subdirectory
+			} else if (filename.endsWith('.versatiles')) {
+				files.push(new FileRef(fullPath, filename));
+			}
+		}
+		return files;
 	}
-
-	return files;
 }
 
-
-export async function syncFiles(remoteFiles: FileRef[], localFiles: FileRef[], localFolder: string): Promise<void> {
+export function syncFiles(remoteFiles: FileRef[], localFiles: FileRef[], localFolder: string) {
 	console.log('Syncing files...');
 
 	const deleteFiles = new Map(localFiles.map(f => [f.filename, f]));
@@ -96,13 +87,13 @@ export async function syncFiles(remoteFiles: FileRef[], localFiles: FileRef[], l
 
 	for (const file of deleteFiles.values()) {
 		console.log(` - Deleting "${file.filename}"`);
-		await rm(file.fullname);
+		rmSync(file.fullname);
 	}
 
 	for (const file of copyFiles.values()) {
 		const fullname = resolve(localFolder, file.filename);
 		console.log(` - Copying "${file.filename}"`);
-		await cp(file.fullname, fullname);
+		cpSync(file.fullname, fullname);
 		file.fullname = fullname; // Update the file's fullname to reflect its new location
 	}
 }

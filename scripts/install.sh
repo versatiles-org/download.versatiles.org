@@ -27,7 +27,7 @@ apt-get install -y \
    nodejs \
    sshfs \
    tmux \
-   webhook
+   ufw
 
 #############################################################
 
@@ -54,29 +54,13 @@ printf "\nsshfs#$STORAGE_URL:/home/ $PROJECT_PATH/volumes/remote_files fuse defa
 systemctl daemon-reload
 mount -a
 
-# 8. Webhook Configuration
-echo "Configuring webhook..."
+echo "Setting up Firewall"
 
-# Set up webhook configuration
-#tee /etc/webhook.conf >/dev/null <<EOL
-#[
-#   {
-#      "id": "update",
-#      "execute-command": "su - web -c '$PROJECT_PATH/scripts/update.sh'",
-#      "trigger-rule": {
-#         "match": {
-#            "type": "value",
-#            "value": "$WEBHOOK_SECRET",
-#            "parameter": { "source": "url", "name": "secret" }
-#         }
-#      }
-#   }
-#]
-#EOL
-
-# Restart webhook service to apply changes
-#systemctl restart webhook
-
-TARGET=prod docker compose up
+ufw default deny incoming
+ufw default allow outgoing
+ufw allow ssh
+ufw allow http
+ufw allow https
+ufw enable
 
 echo "Installation complete!"

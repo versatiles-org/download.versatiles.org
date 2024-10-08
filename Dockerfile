@@ -2,7 +2,7 @@
 FROM node:current-alpine AS base
 WORKDIR /app
 VOLUME ["/volumes/remote_files", "/volumes/local_files", "/volumes/nginx_conf", "/volumes/logs"]
-CMD ["sh", "-c", "npm run server"]
+CMD ["npx", "tsx", "src/server.ts"]
 
 # ================================
 # Build Locally for Development/Testing

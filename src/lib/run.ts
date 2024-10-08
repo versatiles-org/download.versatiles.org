@@ -5,16 +5,20 @@ import { getAllFiles } from './file_ref.js';
 import { collectFiles, downloadLocalFiles, groupFiles } from './file_group.js';
 import { generateNGINX } from './nginx.js';
 
-const volumeFolder = resolve(import.meta.dirname, '../../volumes');
-const remoteFolder = resolve(volumeFolder, 'remote_files');
-const localFolder = resolve(volumeFolder, 'local_files');
-const nginxFolder = resolve(volumeFolder, 'nginx_conf');
-
-const domain = process.env['DOMAIN'];
-if (!domain) throw Error('missing $DOMAIN');
-const baseURL = `https://${domain}/`;
 
 export async function run() {
+	const volumeFolder = process.env['VOLUME_FOLDER'];
+	if (volumeFolder == null) throw Error('missing $VOLUME_FOLDER');
+	const remoteFolder = resolve(volumeFolder, 'remote_files');
+	const localFolder = resolve(volumeFolder, 'local_files');
+	const nginxFolder = resolve(volumeFolder, 'nginx_conf');
+
+	const domain = process.env['DOMAIN'];
+	if (domain == null) throw Error('missing $DOMAIN');
+	const baseURL = `https://${domain}/`;
+
+	// -----
+
 	const files = await getAllFiles(remoteFolder);
 
 	if (files.length === 0) throw Error('no remote files found');
@@ -29,8 +33,8 @@ export async function run() {
 		fileGroups,
 		generateHTML(fileGroups, resolve(localFolder, 'index.html')),
 		generateLists(fileGroups, baseURL, localFolder)
-	).map(f => f.clone());
-	filesPublic.forEach(f => f.move(volumeFolder, ''));
+	);
 
-	generateNGINX(filesPublic, resolve(nginxFolder, 'nginx.conf'));
+	const confFilename = resolve(nginxFolder, 'site-confs/default.conf');
+	generateNGINX(filesPublic, domain, confFilename);
 }

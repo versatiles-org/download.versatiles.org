@@ -1,10 +1,14 @@
 name: download.versatiles.org
 
 services:
-  server:
+  nodejs:
     build:
       dockerfile: ./Dockerfile
       target: $TARGET
+    container_name: nodejs
+    environment:
+      - VOLUME_FOLDER=/volumes/
+      - DOMAIN=$DOMAIN
     volumes:
       - nginx_conf:/volumes/nginx_conf/
       - remote_files:/volumes/remote_files
@@ -29,7 +33,7 @@ services:
       #- CERTPROVIDER=
       #- DNSPLUGIN=cloudflare
       #- PROPAGATION=
-      #- EMAIL=
+      - EMAIL=$EMAIL
       #- EXTRA_DOMAINS=
       - STAGING=false
     ports:
@@ -38,8 +42,8 @@ services:
     restart: unless-stopped
     volumes:
       - nginx_conf:/config/nginx/
-      - remote_files:/usr/share/www/remote_files
-      - local_files:/usr/share/www/local_files
+      - remote_files:/volumes/remote_files:ro
+      - local_files:/volumes/local_files:ro
       - logs:/var/log/
     networks:
       - server

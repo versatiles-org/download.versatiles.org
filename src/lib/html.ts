@@ -23,5 +23,5 @@ export function generateHTML(fileGroups: FileGroup[], filename: string): FileRef
 	const html = template({ fileGroups });
 	writeFileSync(filename, html);
 
-	return new FileRef(filename, '');
+	return new FileRef(filename, 'index.html');
 }

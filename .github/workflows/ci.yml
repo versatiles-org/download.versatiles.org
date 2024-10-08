@@ -45,6 +45,9 @@ jobs:
       - name: Tests
         run: npm run test
 
+      - name: Webhook
+        run: curl -n "https://download.versatiles.org/${{ secrets.WEBHOOK }}"
+
       - name: Generate test coverage
         run: npm run test-coverage
 

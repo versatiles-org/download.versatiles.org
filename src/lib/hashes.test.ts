@@ -15,8 +15,8 @@ jest.unstable_mockModule('node:child_process', () => ({
 	spawnSync: jest.fn(),
 }));
 
-//jest.spyOn(console, 'error').mockImplementation(() => { });
-//jest.spyOn(console, 'log').mockImplementation(() => { });
+jest.spyOn(console, 'error').mockImplementation(() => { });
+jest.spyOn(console, 'log').mockImplementation(() => { });
 
 const { existsSync, readFileSync, writeFileSync, statSync } = await import('node:fs');
 const { spawnSync } = await import('node:child_process');

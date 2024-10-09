@@ -65,7 +65,7 @@ export function generateLists(fileGroups: FileGroup[], baseURL: string, localFol
 
 	const templateFilename = new URL('../../template/urllist.tsv', import.meta.url).pathname;
 	const template = Handlebars.compile(readFileSync(templateFilename, 'utf-8'));
-	const files: FileRef[] = [];
+	const listFiles: FileRef[] = [];
 
 	for (const fileGroup of fileGroups) {
 		const { latestFile } = fileGroup;
@@ -86,10 +86,10 @@ export function generateLists(fileGroups: FileGroup[], baseURL: string, localFol
 
 		writeFileSync(fullname, text);
 
-		files.push(new FileRef(fullname, filename));
+		listFiles.push(new FileRef(fullname, filename));
 	}
 
-	return files;
+	return listFiles;
 }
 
 export function hex2base64(hex: string): string {

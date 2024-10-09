@@ -37,6 +37,10 @@ describe('syncFiles', () => {
 	it('should delete local files not in remote and copy new files from remote', async () => {
 		syncFiles(remoteFiles, localFiles, '/local');
 
+		expect(remoteFiles[0].fullname).toBe('/local/osm.versatiles');
+		expect(remoteFiles[1].fullname).toBe('/local/hillshade-vectors.versatiles');
+		expect(remoteFiles[2].fullname).toBe('/local/new-file.versatiles');
+
 		// It should remove files not in remote
 		expect(rmSync).toHaveBeenCalledTimes(1);
 		expect(rmSync).toHaveBeenCalledWith('/local/old-file.versatiles');
@@ -58,12 +62,15 @@ describe('syncFiles', () => {
 
 		syncFiles(syncedRemoteFiles, syncedLocalFiles, '/local');
 
+		expect(remoteFiles[0].fullname).toBe('/local/osm.versatiles');
+		expect(remoteFiles[1].fullname).toBe('/local/hillshade-vectors.versatiles');
+
 		// It should neither delete nor copy files
 		expect(rmSync).not.toHaveBeenCalled();
 		expect(cpSync).not.toHaveBeenCalled();
 	});
 
-	it('should handle errors gracefully during file deletion', async () => {
+	it('should throw error during file deletion', async () => {
 		jest.mocked(rmSync).mockImplementation(() => { throw new Error('Delete error') });
 
 		expect(() => syncFiles(remoteFiles, localFiles, '/local')).toThrow();
@@ -71,7 +78,7 @@ describe('syncFiles', () => {
 		expect(cpSync).toHaveBeenCalledTimes(0); // It still tries to copy the new file
 	});
 
-	it('should handle errors gracefully during file copying', async () => {
+	it('should throw error during file copying', async () => {
 		jest.mocked(cpSync).mockImplementation(() => { throw new Error('Copy error') });
 
 		expect(() => syncFiles(remoteFiles, localFiles, '/local')).toThrow();

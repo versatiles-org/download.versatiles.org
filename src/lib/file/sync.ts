@@ -23,6 +23,7 @@ export function syncFiles(remoteFiles: FileRef[], localFiles: FileRef[], localFo
 		if (localFile && localFile.size === remoteFile.size) {
 			copyFiles.delete(filename);
 			deleteFiles.delete(filename);
+			remoteFile.fullname = localFile.fullname;
 		}
 	}
 

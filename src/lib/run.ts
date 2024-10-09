@@ -17,8 +17,6 @@ export async function run() {
 	if (domain == null) throw Error('missing $DOMAIN');
 	const baseURL = `https://${domain}/`;
 
-	// -----
-
 	const files = getAllFilesRecursive(remoteFolder);
 
 	if (files.length === 0) throw Error('no remote files found');

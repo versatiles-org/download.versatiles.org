@@ -4,7 +4,7 @@ import { FileRef } from '../file/file_ref.js';
 
 // Function to generate NGINX configuration
 export function buildNginxConf(files: FileRef[]): string {
-	const templateFilename = new URL('../../template/nginx.conf', import.meta.url).pathname;
+	const templateFilename = new URL('../../../template/nginx.conf', import.meta.url).pathname;
 	const templateContent = readFileSync(templateFilename, 'utf-8');
 	const template = Handlebars.compile(templateContent);
 

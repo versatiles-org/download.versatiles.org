@@ -32,7 +32,7 @@ describe('generateNGINX', () => {
 	it('should generate NGINX configuration using the template and write it to the given file', () => {
 		const result = generateNGINX(mockFiles, '/path/to/output/nginx.conf');
 
-		const templateFilename = new URL('../../template/nginx.conf', import.meta.url).pathname;
+		const templateFilename = new URL('../../../template/nginx.conf', import.meta.url).pathname;
 		expect(readFileSync).toHaveBeenCalledWith(templateFilename, 'utf-8');
 
 		// Ensure writeFileSync is called with the correct filename and generated HTML

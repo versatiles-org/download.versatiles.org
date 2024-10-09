@@ -16,7 +16,7 @@ import type { FileGroup } from '../file/file_group.js';
 import { FileRef } from '../file/file_ref.js';
 
 export function buildHTML(fileGroups: FileGroup[]): string {
-	const templateFilename = resolve(import.meta.dirname, '../../template/index.html');
+	const templateFilename = resolve(import.meta.dirname, '../../../template/index.html');
 	const template = Handlebars.compile(readFileSync(templateFilename, 'utf-8'));
 	return template({ fileGroups });
 }

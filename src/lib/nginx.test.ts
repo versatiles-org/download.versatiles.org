@@ -13,7 +13,7 @@ jest.spyOn(console, 'log').mockImplementation(() => { });
 
 const { readFileSync, writeFileSync, statSync } = await import('node:fs');
 const { FileRef } = await import('./file_ref.js');
-const { generateNGINX } = await import('./nginx.js');
+const { generateNginxConf: generateNGINX } = await import('./nginx.js');
 
 describe('generateNGINX', () => {
 	let mockFiles: FileRefType[];

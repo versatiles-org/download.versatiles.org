@@ -3,7 +3,7 @@ import { generateHashes, generateLists } from './hashes.js';
 import { generateHTML } from './html.js';
 import { getAllFilesRecursive } from './file_ref.js';
 import { collectFiles, groupFiles } from './file_group.js';
-import { generateNGINX } from './nginx.js';
+import { generateNginxConf } from './nginx.js';
 import { downloadLocalFiles } from './sync.js';
 
 
@@ -36,5 +36,5 @@ export async function run() {
 	).map(f => f.cloneMoved(volumeFolder, '/volumes/'));
 
 	const confFilename = resolve(nginxFolder, 'site-confs/default.conf');
-	generateNGINX(filesPublic, confFilename);
+	generateNginxConf(filesPublic, confFilename);
 }

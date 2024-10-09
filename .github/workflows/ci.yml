@@ -14,7 +14,7 @@ env:
 
 jobs:
   release:
-    name: Lint and test
+    name: Lint, test and deploy
     runs-on: ubuntu-latest
     steps:
       - name: Checkout

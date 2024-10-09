@@ -12,8 +12,8 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 import Handlebars from 'handlebars';
-import type { FileGroup } from './file_group.js';
-import { FileRef } from './file_ref.js';
+import type { FileGroup } from '../file/file_group.js';
+import { FileRef } from '../file/file_ref.js';
 
 export function buildHTML(fileGroups: FileGroup[]): string {
 	const templateFilename = resolve(import.meta.dirname, '../../template/index.html');

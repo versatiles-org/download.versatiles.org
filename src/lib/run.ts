@@ -1,10 +1,10 @@
 import { resolve } from 'node:path';
-import { generateHashes, generateLists } from './hashes.js';
-import { generateHTML } from './html.js';
-import { getAllFilesRecursive } from './file_ref.js';
-import { collectFiles, groupFiles } from './file_group.js';
-import { generateNginxConf } from './nginx.js';
-import { downloadLocalFiles } from './sync.js';
+import { generateHashes, generateLists } from './file/hashes.js';
+import { generateHTML } from './html/html.js';
+import { getAllFilesRecursive } from './file/file_ref.js';
+import { collectFiles, groupFiles } from './file/file_group.js';
+import { generateNginxConf } from './nginx/nginx.js';
+import { downloadLocalFiles } from './file/sync.js';
 
 
 export async function run() {

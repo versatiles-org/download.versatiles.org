@@ -1,5 +1,5 @@
 import { jest } from '@jest/globals';
-import type { FileRef as FileRefType } from './file_ref.js'
+import type { FileRef as FileRefType } from '../file/file_ref.js'
 
 // Mock the necessary dependencies
 jest.unstable_mockModule('node:fs', () => ({
@@ -12,7 +12,7 @@ jest.unstable_mockModule('node:fs', () => ({
 jest.spyOn(console, 'log').mockImplementation(() => { });
 
 const { readFileSync, writeFileSync, statSync } = await import('node:fs');
-const { FileRef } = await import('./file_ref.js');
+const { FileRef } = await import('../file/file_ref.js');
 const { generateNginxConf: generateNGINX } = await import('./nginx.js');
 
 describe('generateNGINX', () => {

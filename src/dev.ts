@@ -1,8 +1,8 @@
 import express from 'express';
 import { resolve } from 'path';
-import { FileGroup } from './lib/file_group.js';
-import { FileRef } from './lib/file_ref.js';
-import { buildHTML } from './lib/html.js';
+import { FileGroup } from './lib/file/file_group.js';
+import { FileRef } from './lib/file/file_ref.js';
+import { buildHTML } from './lib/html/html.js';
 
 
 
@@ -58,7 +58,7 @@ function getDummyData(): FileGroup[] {
 			olderFiles: [],
 		}
 	];
-	
+
 	function getFile(fullname: string, size: number): FileRef {
 		const f = new FileRef(resolve('/volumes/remote_files/', fullname), size);
 		f.hashes = {

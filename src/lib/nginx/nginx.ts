@@ -1,6 +1,6 @@
 import { readFileSync, writeFileSync } from 'node:fs';
 import Handlebars from 'handlebars';
-import { FileRef } from './file_ref.js';
+import { FileRef } from '../file/file_ref.js';
 
 // Function to generate NGINX configuration
 export function buildNginxConf(files: FileRef[]): string {

@@ -81,7 +81,7 @@ export function generateLists(fileGroups: FileGroup[], baseURL: string, localFol
 		}]
 
 		const text = template({ files });
-		const filename = fileGroup.slug + '.tsv';
+		const filename = `urllist_${fileGroup.slug}.tsv`;
 		const fullname = resolve(localFolder, filename);
 
 		writeFileSync(fullname, text);

@@ -96,11 +96,11 @@ describe('generateLists', () => {
 		const result = generateLists([fileGroup], 'https://example.com', '/local/folder');
 
 		expect(writeFileSync).toHaveBeenCalledTimes(1);
-		expect(writeFileSync).toHaveBeenCalledWith('/local/folder/slug.tsv', 'https://example.com/file1.versatiles;1000;q80=');
+		expect(writeFileSync).toHaveBeenCalledWith('/local/folder/urllist_slug.tsv', 'https://example.com/file1.versatiles;1000;q80=');
 		expect(result.length).toBe(1);
-		expect(result[0].fullname).toBe('/local/folder/slug.tsv');
-		expect(result[0].filename).toBe('slug.tsv');
-		expect(result[0].url).toBe('slug.tsv');
+		expect(result[0].fullname).toBe('/local/folder/urllist_slug.tsv');
+		expect(result[0].filename).toBe('urllist_slug.tsv');
+		expect(result[0].url).toBe('urllist_slug.tsv');
 	});
 
 	it('should throw an error if hashes are missing', () => {

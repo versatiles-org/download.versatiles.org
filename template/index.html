@@ -59,25 +59,40 @@
 		}
 
 		h2 {
-			margin: 3em 0 1em;
+			margin: 5em 0 0.5em;
 		}
 
 		.row {
+			display: block;
 			margin: 0 auto;
 			padding: 0.1em calc(50% - 200px);
 			display: flex;
 			justify-content: space-between;
+			background-color: #111;
+			text-decoration: none;
 		}
 
 		.row:hover {
 			background-color: #333;
+			text-decoration: none;
+		}
+
+		footer {
+			margin: 10em 0 0;
+			text-align: right;
+			opacity: 0.4;
+			font-size: 0.8em;
+			padding: 0.5em;
 		}
 	</style>
 </head>
 
 <body>
 	<main>
-		<div style="width: min(50rem,90%);margin: auto;">
+		<div style="width:min(50rem,90%); margin:auto;">
+			<p style="text-align:center; margin:0">
+				<img width="25%" src="https://versatiles.org/assets/logo/versatiles.svg">
+			</p>
 			<h1><a href="https://versatiles.org/">VersaTiles</a> Downloads</h1>
 			<header class="small">
 				<p>All files are <a href="https://github.com/versatiles-org/versatiles-spec/blob/main/v02/readme.md">VersaTiles v02 containers</a>. Please use this download service only to download these files.</p>
@@ -88,20 +103,20 @@
 			<dd class="small">{{{desc}}}</dd>
 
 			{{#with latestFile}}
-			<div class="row">
-				<span><a href="/{{url}}" title="{{url}}">{{url}}</a></span>
+			<a class="row" href="/{{url}}" title="{{url}}">
+				<span>{{url}}</span>
 				<span>{{sizeString}}</span>
-			</div>
+			</a>
 			{{/with}}
 
 			{{#if olderFiles}}
 			<details>
 				<summary>Show older versions</summary>
 				{{#each olderFiles}}
-				<div class="row">
-					<span><a href="/{{url}}" title="{{url}}">{{url}}</a></span>
+				<a class="row" href="/{{url}}" title="{{url}}">
+					<span>{{url}}</span>
 					<span>{{sizeString}}</span>
-				</div>
+				</a>
 				{{/each}}
 			</details>
 			{{/if}}
@@ -109,6 +124,10 @@
 			{{/each}}
 		</div>
 	</main>
+
+	<footer>
+		<a href="https://github.com/versatiles-org/download.versatiles.org/blob/main/template/index.html">Improve this page on GitHub</a>
+	</footer>
 </body>
 
 </html>

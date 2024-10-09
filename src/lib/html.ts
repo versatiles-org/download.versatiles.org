@@ -15,13 +15,15 @@ import Handlebars from 'handlebars';
 import type { FileGroup } from './file_group.js';
 import { FileRef } from './file_ref.js';
 
-export function generateHTML(fileGroups: FileGroup[], filename: string): FileRef {
-	console.log('Generating HTML...');
-
+export function buildHTML(fileGroups: FileGroup[]): string {
 	const templateFilename = resolve(import.meta.dirname, '../../template/index.html');
 	const template = Handlebars.compile(readFileSync(templateFilename, 'utf-8'));
-	const html = template({ fileGroups });
-	writeFileSync(filename, html);
+	return template({ fileGroups });
+}
+
+export function generateHTML(fileGroups: FileGroup[], filename: string): FileRef {
+	console.log('Generating HTML...');
+	writeFileSync(filename, buildHTML(fileGroups));
 
 	return new FileRef(filename, 'index.html');
 }

@@ -8,6 +8,7 @@
   },
   "scripts": {
     "check": "npm run lint && npm run test",
+    "dev": "tsx --env-file=.env src/dev.ts",
     "lint": "eslint . --color",
     "once": "tsx --env-file=.env src/run_once.ts",
     "server": "tsx --env-file=.env src/server.ts",

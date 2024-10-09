@@ -15,8 +15,8 @@ jest.unstable_mockModule('node:child_process', () => ({
 	spawnSync: jest.fn(),
 }));
 
-jest.spyOn(console, 'error').mockImplementation(() => { });
-jest.spyOn(console, 'log').mockImplementation(() => { });
+//jest.spyOn(console, 'error').mockImplementation(() => { });
+//jest.spyOn(console, 'log').mockImplementation(() => { });
 
 const { existsSync, readFileSync, writeFileSync, statSync } = await import('node:fs');
 const { spawnSync } = await import('node:child_process');
@@ -97,7 +97,10 @@ describe('generateLists', () => {
 
 		expect(writeFileSync).toHaveBeenCalledTimes(1);
 		expect(writeFileSync).toHaveBeenCalledWith('/local/folder/slug.tsv', 'https://example.com/file1.versatiles;1000;q80=');
-		expect(result).toEqual([]);
+		expect(result.length).toBe(1);
+		expect(result[0].fullname).toBe('/local/folder/slug.tsv');
+		expect(result[0].filename).toBe('slug.tsv');
+		expect(result[0].url).toBe('slug.tsv');
 	});
 
 	it('should throw an error if hashes are missing', () => {

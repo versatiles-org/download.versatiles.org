@@ -31,7 +31,12 @@ describe('generateHashes', () => {
 		file2 = new FileRef('/path/file2.versatiles', 2000);
 
 		(existsSync as jest.Mock).mockReset().mockReturnValue(false);
-		(readFileSync as jest.Mock).mockReset().mockImplementation(() => 'existing-hash');
+		(readFileSync as jest.Mock).mockReset().mockImplementation(f => {
+			const parts = String(f).split('.');
+			const extension = parts.pop();
+			const filename = parts.join('.');
+			return `${extension}_c0ffee ${filename}\n`;
+		});
 		(writeFileSync as jest.Mock).mockReset().mockImplementation(() => { });
 		(statSync as jest.Mock).mockReset().mockReturnValue({ size: 100 });
 		(spawnSync as unknown as jest.Mock<(_: string, args: string[]) => { stderr: Buffer, stdout: Buffer }>).mockReset().mockImplementation((_: string, args: string[]) => {
@@ -46,6 +51,11 @@ describe('generateHashes', () => {
 
 	it('should generate and write missing hashes for files', async () => {
 		await generateHashes([file1, file2], '/path/');
+		
+		expect(file1.hashes?.md5).toBe('md5_c0ffee');
+		expect(file1.hashes?.sha).toBe('sha256_c0ffee');
+		expect(file2.hashes?.md5).toBe('md5_c0ffee');
+		expect(file2.hashes?.sha).toBe('sha256_c0ffee');
 
 		expect(spawnSync).toHaveBeenCalledTimes(4);
 
@@ -60,6 +70,9 @@ describe('generateHashes', () => {
 		(existsSync as jest.Mock).mockReturnValue(true);
 
 		await generateHashes([file1], '/path/');
+
+		expect(file1.hashes?.md5).toBe('md5_c0ffee');
+		expect(file1.hashes?.sha).toBe('sha256_c0ffee');
 
 		expect(readFileSync).toHaveBeenCalledTimes(2);
 		expect(readFileSync).toHaveBeenNthCalledWith(1, '/path/file1.versatiles.md5', 'utf8');

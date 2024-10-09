@@ -55,7 +55,7 @@ export async function generateHashes(files: FileRef[], remoteFolder: string) {
 			sha: read('sha256'),
 		};
 		function read(hash: string): string {
-			return readFileSync(f.fullname + '.' + hash, 'utf8').replace(/\s.*/, '')
+			return readFileSync(f.fullname + '.' + hash, 'utf8').replace(/\s.*/ms, '')
 		}
 	})
 }

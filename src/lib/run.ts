@@ -6,15 +6,20 @@ import { downloadLocalFiles } from './file/sync.js';
 import { generateHTML } from './html/html.js';
 import { generateNginxConf } from './nginx/nginx.js';
 
-export async function run() {
+export interface Options {
+	domain?: string;
+	volumeFolder?: string;
+}
+
+export async function run(options: Options = {}) {
 	// Define key folder paths for the volumes, remote, local files, and Nginx configuration.
-	const volumeFolder = new URL('../../volumes/', import.meta.url).pathname;
+	const volumeFolder = options.volumeFolder ?? new URL('../../volumes/', import.meta.url).pathname;
 	const remoteFolder = resolve(volumeFolder, 'remote_files'); // Folder containing remote files.
 	const localFolder = resolve(volumeFolder, 'local_files'); // Folder for downloaded local files.
 	const nginxFolder = resolve(volumeFolder, 'nginx_conf'); // Folder for the generated Nginx config.
 
 	// Get the domain from environment variables. Throw an error if it's not set.
-	const domain = process.env['DOMAIN'];
+	const domain = options.domain ?? process.env['DOMAIN'];
 	if (domain == null) throw Error('missing $DOMAIN');
 	const baseURL = `https://${domain}/`;
 

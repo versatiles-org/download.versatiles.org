@@ -8,7 +8,7 @@ import { generateNginxConf } from './nginx/nginx.js';
 
 export async function run() {
 	// Define key folder paths for the volumes, remote, local files, and Nginx configuration.
-	const volumeFolder = resolve(import.meta.dirname, '../../volumes/');
+	const volumeFolder = new URL('../../volumes/', import.meta.url).pathname;
 	const remoteFolder = resolve(volumeFolder, 'remote_files'); // Folder containing remote files.
 	const localFolder = resolve(volumeFolder, 'local_files'); // Folder for downloaded local files.
 	const nginxFolder = resolve(volumeFolder, 'nginx_conf'); // Folder for the generated Nginx config.

@@ -15,8 +15,7 @@ app.get('/', async (_, res) => {
 })
 
 if (process.env['NODE_ENV'] !== 'test') {
-	app.listen(
-		8080,
+	app.listen(8080,
 		() => console.log('listening on http://localhost:8080/')
 	);
 }

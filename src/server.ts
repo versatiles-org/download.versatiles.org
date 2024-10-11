@@ -1,7 +1,7 @@
 import express from 'express';
 import { run } from './lib/run.js';
 
-const app = express();
+export const app = express();
 
 app.get('/update', async (_req, res) => {
 	console.log('updating');
@@ -12,7 +12,11 @@ app.get('/update', async (_req, res) => {
 	process.exit(0);
 })
 
-app.listen(8080);
+if (process.env['NODE_ENV'] !== 'test') {
+	app.listen(8080,
+		() => console.log('listening on http://localhost:8080/')
+	);
+}
 
 process.on('SIGINT', () => {
 	console.info("Interrupted")

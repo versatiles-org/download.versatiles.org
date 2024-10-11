@@ -30,7 +30,7 @@ jest.unstable_mockModule('./nginx/nginx.js', () => ({
 }));
 
 // Import the module under test after mocking modules
-const { run } = await import('./run.js'); // Adjust the import path to your module
+const { run } = await import('./run.js');
 const { getAllFilesRecursive } = await import('./file/file_ref.js');
 const { collectFiles, groupFiles } = await import('./file/file_group.js');
 const { generateHashes, generateLists } = await import('./file/hashes.js');

@@ -6,7 +6,7 @@ import { buildHTML } from './lib/html/html.js';
 
 
 
-const app = express();
+export const app = express();
 const fileGroups = getDummyData();
 
 app.get('/', async (_, res) => {
@@ -14,9 +14,12 @@ app.get('/', async (_, res) => {
 	res.status(200).type('html').end(html);
 })
 
-app.listen(8080, () => {
-	console.log('listening on http://localhost:8080/')
-});
+if (process.env['NODE_ENV'] !== 'test') {
+	app.listen(
+		8080,
+		() => console.log('listening on http://localhost:8080/')
+	);
+}
 
 
 function getDummyData(): FileGroup[] {

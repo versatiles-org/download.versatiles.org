@@ -42,11 +42,13 @@
 		summary,
 		.small {
 			opacity: 0.4;
-			margin: 1em 0;
 			font-size: 0.8em;
 		}
 
-		summary {
+		summary,
+		header,
+		dd {
+			margin: 1em 0;
 			text-align: center;
 		}
 
@@ -65,7 +67,7 @@
 		.row {
 			display: block;
 			margin: 0 auto;
-			padding: 0.1em calc(50% - 200px);
+			padding: 0.1em max(0px, calc(50% - 250px));
 			display: flex;
 			justify-content: space-between;
 			background-color: #111;
@@ -111,7 +113,7 @@
 
 			{{#if olderFiles}}
 			<details>
-				<summary>Show older versions</summary>
+				<summary class="small">Show older versions</summary>
 				{{#each olderFiles}}
 				<a class="row" href="/{{url}}" title="{{url}}">
 					<span>{{url}}</span>

@@ -65,7 +65,7 @@ function getDummyData(): FileGroup[] {
 		const f = new FileRef(resolve('/volumes/remote_files/', fullname), size);
 		f.hashes = {
 			md5: '3a55c7e14903703e6aca2eed2d5c5091',
-			sha: 'e676999d87d479da5a36d1170189e93ef0d445a4cbad69c7469290d0a8237d5'
+			sha256: 'e676999d87d479da5a36d1170189e93ef0d445a4cbad69c7469290d0a8237d5'
 		}
 		return f;
 	}

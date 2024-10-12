@@ -53,9 +53,9 @@ describe('generateHashes', () => {
 		await generateHashes([file1, file2], '/path/');
 		
 		expect(file1.hashes?.md5).toBe('md5_c0ffee');
-		expect(file1.hashes?.sha).toBe('sha256_c0ffee');
+		expect(file1.hashes?.sha256).toBe('sha256_c0ffee');
 		expect(file2.hashes?.md5).toBe('md5_c0ffee');
-		expect(file2.hashes?.sha).toBe('sha256_c0ffee');
+		expect(file2.hashes?.sha256).toBe('sha256_c0ffee');
 
 		expect(spawnSync).toHaveBeenCalledTimes(4);
 
@@ -72,7 +72,7 @@ describe('generateHashes', () => {
 		await generateHashes([file1], '/path/');
 
 		expect(file1.hashes?.md5).toBe('md5_c0ffee');
-		expect(file1.hashes?.sha).toBe('sha256_c0ffee');
+		expect(file1.hashes?.sha256).toBe('sha256_c0ffee');
 
 		expect(readFileSync).toHaveBeenCalledTimes(2);
 		expect(readFileSync).toHaveBeenNthCalledWith(1, '/path/file1.versatiles.md5', 'utf8');
@@ -89,7 +89,7 @@ describe('generateLists', () => {
 
 	beforeEach(() => {
 		const file = new FileRef('/path/file1.versatiles', 1000);
-		file.hashes = { md5: 'abcd', sha: '0123' };
+		file.hashes = { md5: 'abcd', sha256: '0123' };
 
 		fileGroup = {
 			slug: 'slug',

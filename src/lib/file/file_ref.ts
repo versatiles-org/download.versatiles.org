@@ -7,7 +7,7 @@ export class FileRef {
 	public url: string;
 	public readonly size: number;
 	public readonly sizeString: string;
-	public hashes?: { md5: string, sha: string };
+	public hashes?: { md5: string, sha256: string };
 
 	constructor(fullname: string, url: string);
 	constructor(fullname: string, size: number);
@@ -40,9 +40,9 @@ export class FileRef {
 		if (!this.hashes) throw Error();
 		return this.hashes.md5;
 	}
-	get sha(): string {
+	get sha256(): string {
 		if (!this.hashes) throw Error();
-		return this.hashes.sha;
+		return this.hashes.sha256;
 	}
 	clone(): FileRef {
 		return new FileRef(this);

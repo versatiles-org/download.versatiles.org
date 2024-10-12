@@ -37,7 +37,7 @@ describe('FileRef', () => {
 	it('should throw an error when accessing hashes without setting them', () => {
 		const fileRef = new FileRef('/path/file.versatiles', 200);
 		expect(() => fileRef.md5).toThrow();
-		expect(() => fileRef.sha).toThrow();
+		expect(() => fileRef.sha256).toThrow();
 	});
 });
 

@@ -52,7 +52,7 @@ export async function generateHashes(files: FileRef[], remoteFolder: string) {
 	files.forEach(f => {
 		f.hashes = {
 			md5: read('md5'),
-			sha: read('sha256'),
+			sha256: read('sha256'),
 		};
 		function read(hash: string): string {
 			return readFileSync(f.fullname + '.' + hash, 'utf8').replace(/\s.*/ms, '')
@@ -71,13 +71,13 @@ export function generateLists(fileGroups: FileGroup[], baseURL: string, localFol
 		const { latestFile } = fileGroup;
 		if (latestFile == null) continue;
 		if (!latestFile.md5) throw Error();
-		if (!latestFile.sha) throw Error();
+		if (!latestFile.sha256) throw Error();
 
 		const files = [{
 			url: baseURL + '/' + latestFile.url,
 			size: latestFile.size,
 			md5: hex2base64(latestFile.md5),
-			sha: hex2base64(latestFile.sha),
+			sha256: hex2base64(latestFile.sha256),
 		}]
 
 		const text = template({ files });

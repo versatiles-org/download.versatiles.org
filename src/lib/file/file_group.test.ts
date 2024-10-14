@@ -1,5 +1,6 @@
 import { collectFiles, groupFiles, FileGroup, hex2base64 } from './file_group.js';
 import { FileRef } from './file_ref.js';
+import { FileResponse } from './file_response.js';
 
 describe('groupFiles', () => {
 	const files: FileRef[] = [
@@ -118,8 +119,10 @@ describe('generateLists', () => {
 	let fileGroup: FileGroup;
 
 	beforeEach(() => {
-		const file = new FileRef('/path/file1.versatiles', 1000);
-		file.hashes = { md5: 'abcd', sha256: '0123' };
+		const file1 = new FileRef('/path/file1.versatiles', 1000);
+		const file2 = new FileRef('/path/file2.versatiles', 2000);
+		file1.hashes = { md5: 'abc', sha256: 'def' };
+		file2.hashes = { md5: '123', sha256: '456' };
 
 		fileGroup = new FileGroup({
 			slug: 'slug',
@@ -127,8 +130,8 @@ describe('generateLists', () => {
 			desc: 'Test description',
 			order: 0,
 			local: true,
-			latestFile: file,
-			olderFiles: [],
+			latestFile: file1,
+			olderFiles: [file2],
 		});
 	});
 
@@ -136,7 +139,19 @@ describe('generateLists', () => {
 		const result = fileGroup.getResponseUrlList('https://example.com');
 
 		expect(result.url).toBe('urllist_slug.tsv');
-		expect(result.content).toBe('TsvHttpData-1.0\\nhttps://example.com/file1.versatiles\\t1000\\tq80=\\n');
+		expect(result.content).toBe('TsvHttpData-1.0\\nhttps://example.com/file1.versatiles\\t1000\\tqw==\\n');
+	});
+
+	it('should generate responses', () => {
+		const result = fileGroup.getResponses('https://example.com');
+
+		expect(result.length).toBe(5);
+
+		expect(result[0]).toStrictEqual(new FileResponse('file2.versatiles.md5', '123 file2.versatiles\n'))
+		expect(result[1]).toStrictEqual(new FileResponse('file2.versatiles.sha256', '456 file2.versatiles\n'))
+		expect(result[2]).toStrictEqual(new FileResponse('file1.versatiles.md5', 'abc file1.versatiles\n'))
+		expect(result[3]).toStrictEqual(new FileResponse('file1.versatiles.sha256', 'def file1.versatiles\n'))
+		expect(result[4]).toStrictEqual(new FileResponse('urllist_slug.tsv', 'TsvHttpData-1.0\nhttps://example.com/file1.versatiles\t1000\tqw==\n'))
 	});
 
 	it('should throw an error if hashes are missing', () => {

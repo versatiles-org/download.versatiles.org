@@ -1,5 +1,6 @@
 import type { Stats } from 'node:fs';
 import { jest } from '@jest/globals';
+import { FileResponse } from './file_response.js';
 
 // Mock dependencies from node:fs
 jest.unstable_mockModule('node:fs', () => ({
@@ -38,6 +39,22 @@ describe('FileRef', () => {
 		const fileRef = new FileRef('/path/file.versatiles', 200);
 		expect(() => fileRef.md5).toThrow();
 		expect(() => fileRef.sha256).toThrow();
+	});
+
+	it('should return hashes', () => {
+		const fileRef = new FileRef('/path/file.versatiles', 200);
+		fileRef.hashes = { md5: 'abc', sha256: 'xyz' };
+		expect(fileRef.md5).toBe('abc');
+		expect(fileRef.sha256).toBe('xyz');
+	});
+
+	it('should return hash responses', () => {
+		const fileRef = new FileRef('/path/file.versatiles', 200);
+		fileRef.hashes = { md5: 'abc', sha256: 'xyz' };
+		expect(fileRef.getResponseMd5File())
+			.toStrictEqual(new FileResponse('file.versatiles.md5', 'abc file.versatiles\n'));
+		expect(fileRef.getResponseSha256File())
+			.toStrictEqual(new FileResponse('file.versatiles.sha256', 'xyz file.versatiles\n'));
 	});
 });
 

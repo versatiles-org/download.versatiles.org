@@ -1,5 +1,6 @@
 import { readdirSync, statSync } from 'node:fs';
 import { basename, join, relative, resolve } from 'node:path';
+import { FileResponse } from './file_response.js';
 
 export class FileRef {
 	public fullname: string;
@@ -37,12 +38,18 @@ export class FileRef {
 		this.sizeString = (this.size / (2 ** 30)).toFixed(1) + ' GB';
 	}
 	get md5(): string {
-		if (!this.hashes) throw Error();
+		if (!this.hashes) throw Error(`MD5 hash is missing for file "${this.filename}"`);
 		return this.hashes.md5;
 	}
 	get sha256(): string {
-		if (!this.hashes) throw Error();
+		if (!this.hashes) throw Error(`SHA256 hash is missing for file "${this.filename}"`);
 		return this.hashes.sha256;
+	}
+	getResponseMd5File(): FileResponse {
+		return new FileResponse(`${this.url}.md5`, `${this.md5} ${basename(this.url)}\n`);
+	}
+	getResponseSha256File(): FileResponse {
+		return new FileResponse(`${this.url}.sha256`, `${this.sha256} ${basename(this.url)}\n`);
 	}
 	clone(): FileRef {
 		return new FileRef(this);

@@ -1,7 +1,8 @@
 import { basename } from 'node:path';
 import { FileRef } from './file_ref.js';
+import { FileResponse } from './file_response.js';
 
-export interface FileGroup {
+export class FileGroup {
 	slug: string;
 	title: string;
 	desc: string;
@@ -9,15 +10,39 @@ export interface FileGroup {
 	local: boolean;
 	latestFile?: FileRef;
 	olderFiles: FileRef[];
-}
+	constructor(options: { slug: string, title: string, desc: string, order: number, local?: boolean, latestFile?: FileRef, olderFiles?: FileRef[] }) {
+		this.slug = options.slug;
+		this.title = options.title;
+		this.desc = options.desc;
+		this.order = options.order;
+		this.local = options.local ?? false;
+		this.latestFile = options.latestFile;
+		this.olderFiles = options.olderFiles ?? [];
+	}
+	getResponseUrlList(baseURL: string): FileResponse {
+		const file = this.latestFile;
+		if (file == null) throw Error(`no latest file found in group "${this.slug}"`)
+		const url = new URL(file.url, baseURL).href;
 
-export function isFileGroup(entry: object): entry is FileGroup {
-	return (
-		('slug' in entry && typeof entry.slug == 'string') &&
-		('title' in entry && typeof entry.title == 'string') &&
-		('desc' in entry && typeof entry.desc == 'string') &&
-		('order' in entry && typeof entry.order == 'number') &&
-		('local' in entry && typeof entry.local == 'boolean'));
+		return new FileResponse(
+			`urllist_${this.slug}.tsv`,
+			`TsvHttpData-1.0\n${url}\t${file.size}\t${hex2base64(file.md5)}\n`,
+		);
+	}
+	getResponses(baseURL: string): FileResponse[] {
+		const result: FileResponse[] = this.olderFiles.flatMap(f => [
+			f.getResponseMd5File(),
+			f.getResponseSha256File(),
+		]);
+		if (this.latestFile) {
+			result.push(
+				this.latestFile.getResponseMd5File(),
+				this.latestFile.getResponseSha256File(),
+				this.getResponseUrlList(baseURL),
+			);
+		}
+		return result;
+	}
 }
 
 export function groupFiles(files: FileRef[]): FileGroup[] {
@@ -58,7 +83,7 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					console.error(`Unknown group "${slug}"`);
 			}
 
-			group = { slug, title, desc: desc.join('<br>'), order, local, olderFiles: [] };
+			group = new FileGroup({ slug, title, desc: desc.join('<br>'), order, local });
 			groupMap.set(slug, group);
 		}
 
@@ -91,7 +116,7 @@ export function collectFiles(...entries: (FileGroup | FileGroup[] | FileRef | Fi
 	function addEntry(entry: FileGroup | FileGroup[] | FileRef | FileRef[]) {
 		if (Array.isArray(entry)) {
 			entry.forEach(addEntry);
-		} else if (isFileGroup(entry)) {
+		} else if (entry instanceof FileGroup) {
 			addEntry(entry.olderFiles);
 			if (entry.latestFile) addEntry(entry.latestFile);
 		} else if (entry instanceof FileRef) {
@@ -100,4 +125,10 @@ export function collectFiles(...entries: (FileGroup | FileGroup[] | FileRef | Fi
 			throw Error();
 		}
 	}
+}
+
+
+export function hex2base64(hex: string): string {
+	const base64 = Buffer.from(hex, 'hex').toString('base64url');
+	return base64 + '='.repeat((4 - (base64.length % 4)) % 4);
 }

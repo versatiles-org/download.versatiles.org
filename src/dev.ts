@@ -23,7 +23,7 @@ if (process.env['NODE_ENV'] !== 'test') {
 
 function getDummyData(): FileGroup[] {
 	return [
-		{
+		new FileGroup({
 			slug: 'osm',
 			title: 'OpenStreetMap as vector tiles',
 			order: 0,
@@ -40,25 +40,23 @@ function getDummyData(): FileGroup[] {
 				getFile('osm/osm.20230227.versatiles', 54217850756),
 				getFile('osm/osm.20230101.versatiles', 48112391349),
 			],
-		},
-		{
+		}),
+		new FileGroup({
 			slug: 'hillshade-vectors',
 			title: 'Hillshading as vector tiles',
 			order: 10,
 			local: false,
 			desc: 'Hillshade vector tiles based on <a href="https://github.com/tilezen/joerd">Mapzen Jörð Terrain Tiles</a>.<br>Map Data © <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Mapzen Terrain Tiles, DEM Sources</a>',
 			latestFile: getFile('hillshade-vectors/hillshade-vectors.versatiles', 113202788651),
-			olderFiles: [],
-		},
-		{
+		}),
+		new FileGroup({
 			slug: 'landcover-vectors',
 			title: 'Landcover as vector tiles',
 			order: 20,
 			local: false,
 			desc: 'Landcover vector tiles based on <a href="https://esa-worldcover.org/en/data-access">ESA Worldcover 2021</a>.<br>Map Data © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, available under <a href="http://creativecommons.org/licenses/by/4.0/"> CC-BY 4.0 International</a>',
 			latestFile: getFile('landcover-vectors/landcover-vectors.versatiles', 826877129),
-			olderFiles: [],
-		}
+		})
 	];
 
 	function getFile(fullname: string, size: number): FileRef {

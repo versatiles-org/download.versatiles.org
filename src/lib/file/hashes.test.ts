@@ -1,5 +1,4 @@
 import { jest } from '@jest/globals';
-import type { FileGroup } from './file_group.js';
 import type { FileRef as FileRefType } from './file_ref.js';
 
 jest.unstable_mockModule('node:fs', () => ({
@@ -21,7 +20,7 @@ jest.spyOn(console, 'log').mockImplementation(() => { });
 const { existsSync, readFileSync, writeFileSync, statSync } = await import('node:fs');
 const { spawnSync } = await import('node:child_process');
 const { FileRef } = await import('./file_ref.js');
-const { generateHashes, generateLists, hex2base64 } = await import('./hashes.js');
+const { generateHashes } = await import('./hashes.js');
 
 describe('generateHashes', () => {
 	let file1: FileRefType, file2: FileRefType;
@@ -81,59 +80,5 @@ describe('generateHashes', () => {
 		expect(spawnSync).toHaveBeenCalledTimes(0);
 
 		expect(writeFileSync).not.toHaveBeenCalled();
-	});
-});
-
-describe('generateLists', () => {
-	let fileGroup: FileGroup;
-
-	beforeEach(() => {
-		const file = new FileRef('/path/file1.versatiles', 1000);
-		file.hashes = { md5: 'abcd', sha256: '0123' };
-
-		fileGroup = {
-			slug: 'slug',
-			title: 'OpenStreetMap as vector tiles',
-			desc: 'Test description',
-			order: 0,
-			local: true,
-			latestFile: file,
-			olderFiles: [],
-		};
-
-		(writeFileSync as jest.Mock).mockReset().mockImplementation(() => { });
-	});
-
-	it('should generate lists and write to a file', () => {
-		(readFileSync as jest.Mock).mockReset().mockImplementation(() => '{{#each files}}{{{url}}};{{{size}}};{{{md5}}}{{/each}}');
-		const result = generateLists([fileGroup], 'https://example.com', '/local/folder');
-
-		expect(writeFileSync).toHaveBeenCalledTimes(1);
-		expect(writeFileSync).toHaveBeenCalledWith('/local/folder/urllist_slug.tsv', 'https://example.com/file1.versatiles;1000;q80=');
-		expect(result.length).toBe(1);
-		expect(result[0].fullname).toBe('/local/folder/urllist_slug.tsv');
-		expect(result[0].filename).toBe('urllist_slug.tsv');
-		expect(result[0].url).toBe('urllist_slug.tsv');
-	});
-
-	it('should throw an error if hashes are missing', () => {
-		// Remove the hashes from the latestFile
-		fileGroup.latestFile!.hashes = undefined;
-
-		expect(() => generateLists([fileGroup], 'https://example.com', '/local/folder')).toThrow();
-	});
-});
-
-describe('hex2base64', () => {
-	it('should correctly convert hex to base64url', () => {
-		const hex = 'deadbeef';
-		const base64 = hex2base64(hex);
-		expect(base64).toBe('3q2-7w=='); // Expected base64url-encoded value
-	});
-
-	it('should pad the base64 string to a multiple of 4', () => {
-		const hex = 'deadbe';
-		const base64 = hex2base64(hex);
-		expect(base64).toBe('3q2-'); // Base64url-encoded value with correct padding
 	});
 });

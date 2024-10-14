@@ -5,9 +5,7 @@
 
 import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { relative, resolve } from 'node:path';
-import type { FileGroup } from './file_group.js';
 import { FileRef } from './file_ref.js';
-import Handlebars from 'handlebars';
 import { ProgressBar } from 'work-faster';
 import { spawnSync } from 'node:child_process';
 
@@ -58,41 +56,4 @@ export async function generateHashes(files: FileRef[], remoteFolder: string) {
 			return readFileSync(f.fullname + '.' + hash, 'utf8').replace(/\s.*/ms, '')
 		}
 	})
-}
-
-export function generateLists(fileGroups: FileGroup[], baseURL: string, localFolder: string): FileRef[] {
-	console.log('Generating url lists...');
-
-	const templateFilename = new URL('../../../template/urllist.tsv', import.meta.url).pathname;
-	const template = Handlebars.compile(readFileSync(templateFilename, 'utf-8'));
-	const listFiles: FileRef[] = [];
-
-	for (const fileGroup of fileGroups) {
-		const { latestFile } = fileGroup;
-		if (latestFile == null) continue;
-		if (!latestFile.md5) throw Error();
-		if (!latestFile.sha256) throw Error();
-
-		const files = [{
-			url: baseURL + '/' + latestFile.url,
-			size: latestFile.size,
-			md5: hex2base64(latestFile.md5),
-			sha256: hex2base64(latestFile.sha256),
-		}]
-
-		const text = template({ files });
-		const filename = `urllist_${fileGroup.slug}.tsv`;
-		const fullname = resolve(localFolder, filename);
-
-		writeFileSync(fullname, text);
-
-		listFiles.push(new FileRef(fullname, filename));
-	}
-
-	return listFiles;
-}
-
-export function hex2base64(hex: string): string {
-	const base64 = Buffer.from(hex, 'hex').toString('base64url');
-	return base64 + '='.repeat((4 - (base64.length % 4)) % 4);
 }

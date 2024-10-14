@@ -1,3 +1,0 @@
-TsvHttpData-1.0
-{{#each files}}
-{{{url}}}	{{{size}}}	{{{md5}}}{{/each}}

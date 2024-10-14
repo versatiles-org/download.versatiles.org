@@ -1,4 +1,4 @@
-import { collectFiles, groupFiles, isFileGroup, type FileGroup } from './file_group.js';
+import { collectFiles, groupFiles, FileGroup, hex2base64 } from './file_group.js';
 import { FileRef } from './file_ref.js';
 
 describe('groupFiles', () => {
@@ -61,40 +61,12 @@ describe('groupFiles', () => {
 	});
 });
 
-describe('isFileGroup', () => {
-	it('should return true when the object is a valid FileGroup', () => {
-		const fileGroup: FileGroup = {
-			slug: 'osm',
-			title: 'OpenStreetMap as vector tiles',
-			desc: 'A test description',
-			order: 0,
-			local: true,
-			latestFile: new FileRef('/path/osm.2021.versatiles', 50),
-			olderFiles: [new FileRef('/path/osm.2020.versatiles', 100)]
-		};
-
-		expect(isFileGroup(fileGroup)).toBe(true);
-	});
-
-	it('should return false when the object is not a valid FileGroup', () => {
-		const invalidFileGroup = {
-			slug: 'osm',
-			// Missing title and other required properties
-		};
-
-		expect(isFileGroup(invalidFileGroup)).toBe(false);
-
-		const fileRef = new FileRef('/path/osm.2021.versatiles', 50);
-		expect(isFileGroup(fileRef)).toBe(false);
-	});
-});
-
 describe('collectFiles', () => {
 	const file1 = new FileRef('/path/hillshade-vectors.versatiles', 200);
 	const file2 = new FileRef('/path/osm.2020.versatiles', 100);
 	const file3 = new FileRef('/path/osm.2021.versatiles', 50);
 
-	const fileGroup1: FileGroup = {
+	const fileGroup1 = new FileGroup({
 		slug: 'hillshade-vectors',
 		title: 'Hillshading as vector tiles',
 		desc: 'Hillshading description',
@@ -102,9 +74,9 @@ describe('collectFiles', () => {
 		local: false,
 		latestFile: file1,
 		olderFiles: []
-	};
+	});
 
-	const fileGroup2: FileGroup = {
+	const fileGroup2 = new FileGroup({
 		slug: 'osm',
 		title: 'OpenStreetMap as vector tiles',
 		desc: 'OSM description',
@@ -112,7 +84,7 @@ describe('collectFiles', () => {
 		local: true,
 		latestFile: file3,
 		olderFiles: [file2]
-	};
+	});
 
 	it('should collect files from individual FileRef entries', () => {
 		const result = collectFiles(file1, file2, file3);
@@ -138,5 +110,53 @@ describe('collectFiles', () => {
 		const duplicateFile2 = new FileRef('/path/osm.2020.versatiles', 100);
 		const result = collectFiles(fileGroup1, duplicateFile2, file2);
 		expect(result).toEqual([file1, file2]); // Duplicate removed
+	});
+});
+
+
+describe('generateLists', () => {
+	let fileGroup: FileGroup;
+
+	beforeEach(() => {
+		const file = new FileRef('/path/file1.versatiles', 1000);
+		file.hashes = { md5: 'abcd', sha256: '0123' };
+
+		fileGroup = new FileGroup({
+			slug: 'slug',
+			title: 'OpenStreetMap as vector tiles',
+			desc: 'Test description',
+			order: 0,
+			local: true,
+			latestFile: file,
+			olderFiles: [],
+		});
+	});
+
+	it('should generate lists', () => {
+		const result = fileGroup.getResponseUrlList('https://example.com');
+
+		expect(result.url).toBe('urllist_slug.tsv');
+		expect(result.content).toBe('TsvHttpData-1.0\\nhttps://example.com/file1.versatiles\\t1000\\tq80=\\n');
+	});
+
+	it('should throw an error if hashes are missing', () => {
+		// Remove the hashes from the latestFile
+		fileGroup.latestFile!.hashes = undefined;
+
+		expect(() => fileGroup.getResponseUrlList('https://example.com')).toThrow();
+	});
+});
+
+describe('hex2base64', () => {
+	it('should correctly convert hex to base64url', () => {
+		const hex = 'deadbeef';
+		const base64 = hex2base64(hex);
+		expect(base64).toBe('3q2-7w=='); // Expected base64url-encoded value
+	});
+
+	it('should pad the base64 string to a multiple of 4', () => {
+		const hex = 'deadbe';
+		const base64 = hex2base64(hex);
+		expect(base64).toBe('3q2-'); // Base64url-encoded value with correct padding
 	});
 });

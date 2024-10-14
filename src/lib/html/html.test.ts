@@ -12,13 +12,13 @@ describe('buildHTML', () => {
 	});
 
 	function group(index: number): FileGroup {
-		return {
+		return new FileGroup({
 			slug: 'group_' + index,
 			title: 'Group ' + index,
 			desc: 'a group with index ' + index,
 			order: index * 10,
 			local: false,
 			olderFiles: []
-		}
+		})
 	}
 });

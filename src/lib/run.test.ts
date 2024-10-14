@@ -1,6 +1,6 @@
 import { jest } from '@jest/globals';
-import type { FileRef } from './file/file_ref.js';
-import { join } from 'path';
+import { FileRef } from './file/file_ref.js';
+import { FileGroup } from './file/file_group.js';
 
 jest.unstable_mockModule('./file/file_ref.js', () => ({
 	getAllFilesRecursive: jest.fn(),
@@ -33,7 +33,7 @@ jest.unstable_mockModule('./nginx/nginx.js', () => ({
 const { run } = await import('./run.js');
 const { getAllFilesRecursive } = await import('./file/file_ref.js');
 const { collectFiles, groupFiles } = await import('./file/file_group.js');
-const { generateHashes, generateLists } = await import('./file/hashes.js');
+const { generateHashes } = await import('./file/hashes.js');
 const { downloadLocalFiles } = await import('./file/sync.js');
 const { generateHTML } = await import('./html/html.js');
 const { generateNginxConf } = await import('./nginx/nginx.js');
@@ -44,7 +44,18 @@ describe('run', () => {
 	const remoteFolder = '/mock/volumes/remote_files';
 	const localFolder = '/mock/volumes/local_files';
 	const nginxFolder = '/mock/volumes/nginx_conf';
-	const files = ['file1', 'file2'];
+	const files: FileRef[] = [
+		new FileRef('file1', 100),
+		new FileRef('file2', 200)
+	];
+	files.forEach(f => f.hashes = { md5: 'md5', sha256: 'sha256' });
+	const fileGroups = [new FileGroup({
+		slug: 'slug',
+		desc: 'desc',
+		title: 'title',
+		order: 123,
+		olderFiles: files,
+	})];
 
 	beforeEach(() => {
 		jest.clearAllMocks();
@@ -54,10 +65,9 @@ describe('run', () => {
 
 		// Mock other functions to do nothing
 		(generateHashes as jest.Mock<() => Promise<void>>).mockResolvedValue(undefined);
-		(groupFiles as jest.Mock).mockReturnValue(files);
+		(groupFiles as jest.Mock).mockReturnValue(fileGroups);
 		(downloadLocalFiles as jest.Mock<() => Promise<void>>).mockResolvedValue(undefined);
 		(generateHTML as jest.Mock).mockReturnValue({ filename: 'index.html' });
-		(generateLists as jest.Mock).mockReturnValue([{ filename: 'urllist.tsv' }]);
 		(collectFiles as jest.Mock).mockReturnValue([{ cloneMoved: jest.fn().mockReturnValue('movedFile') }]);
 	});
 
@@ -67,15 +77,6 @@ describe('run', () => {
 		await expect(run({ volumeFolder })).rejects.toThrow('missing $DOMAIN');
 	});
 
-	test('should use domain from options if provided', async () => {
-		await run({ domain, volumeFolder });
-
-		const expectedBaseURL = `https://${domain}/`;
-
-		// Verify generateLists is called with the correct baseURL
-		expect(generateLists).toHaveBeenCalledWith(files, expectedBaseURL, localFolder);
-	});
-
 	test('should throw an error if no files are found in the remote folder', async () => {
 		// Return an empty list of files
 		(getAllFilesRecursive as jest.Mock).mockReturnValue([]);
@@ -83,33 +84,8 @@ describe('run', () => {
 		await expect(run({ domain: domain })).rejects.toThrow('no remote files found');
 	});
 
-	test('should use volumeFolder from options if provided', async () => {
-		const customVolumeFolder = '/custom/volumes/';
-
-		await run({ domain, volumeFolder: customVolumeFolder });
-
-		const expectedBaseURL = `https://${domain}/`;
-
-		// Verify generateLists is called with the correct baseURL
-		expect(generateLists).toHaveBeenCalledWith(files, expectedBaseURL, join(customVolumeFolder, 'local_files'));
-	});
-
-	test('should use environment variables if no options are provided', async () => {
-		// Set the environment variable DOMAIN
-		process.env['DOMAIN'] = domain;
-
-		await run({ volumeFolder });
-
-		const expectedBaseURL = `https://${domain}/`;
-
-		// Verify generateLists is called with the correct baseURL
-		expect(generateLists).toHaveBeenCalledWith(files, expectedBaseURL, localFolder);
-	});
-
 	test('should call the necessary functions with correct arguments', async () => {
 		await run({ domain, volumeFolder });
-
-		const expectedBaseURL = `https://${domain}/`;
 
 		// Verify getAllFilesRecursive is called with the remote folder
 		expect(getAllFilesRecursive).toHaveBeenCalledWith(remoteFolder);
@@ -121,13 +97,10 @@ describe('run', () => {
 		expect(groupFiles).toHaveBeenCalledWith(files);
 
 		// Verify downloadLocalFiles is called with the correct arguments
-		expect(downloadLocalFiles).toHaveBeenCalledWith(files, localFolder);
+		expect(downloadLocalFiles).toHaveBeenCalledWith(fileGroups, localFolder);
 
 		// Verify generateHTML is called with the correct arguments
-		expect(generateHTML).toHaveBeenCalledWith(files, `${localFolder}/index.html`);
-
-		// Verify generateLists is called with the correct arguments
-		expect(generateLists).toHaveBeenCalledWith(files, expectedBaseURL, localFolder);
+		expect(generateHTML).toHaveBeenCalledWith(fileGroups, `${localFolder}/index.html`);
 
 		// Verify collectFiles is called and the paths are "moved"
 		expect(collectFiles).toHaveBeenCalled();
@@ -135,6 +108,10 @@ describe('run', () => {
 		expect(value[0].cloneMoved).toHaveBeenCalledWith(volumeFolder, '/volumes/');
 
 		// Verify generateNginxConf is called with the moved files and the Nginx config path
-		expect(generateNginxConf).toHaveBeenCalledWith(['movedFile'], `${nginxFolder}/site-confs/default.conf`);
+		expect(generateNginxConf).toHaveBeenCalledWith(
+			['movedFile'],
+			[1, 2].flatMap(i => ['md5', 'sha256'].flatMap(h => [{ content: `${h} file${i}\\n`, url: `file${i}.${h}` }])),
+			`${nginxFolder}/site-confs/default.conf`
+		);
 	});
 });

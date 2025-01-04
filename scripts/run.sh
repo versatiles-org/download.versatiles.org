@@ -2,7 +2,8 @@
 set -e
 cd $(dirname $(dirname $0))
 
-docker compose up -d
+docker compose pull
+docker compose up -d --force-recreate --build
 
 while true
 do

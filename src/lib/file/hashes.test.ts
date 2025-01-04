@@ -10,9 +10,8 @@ jest.unstable_mockModule('node:fs', () => ({
 	writeFileSync: jest.fn(),
 }));
 
-jest.unstable_mockModule('node:child_process', () => ({
-	spawnSync: jest.fn(),
-}));
+const child_process = { spawnSync: jest.fn(), };
+jest.unstable_mockModule('node:child_process', () => ({ ...child_process, default: child_process }));
 
 jest.spyOn(console, 'error').mockImplementation(() => { });
 jest.spyOn(console, 'log').mockImplementation(() => { });
@@ -50,7 +49,7 @@ describe('generateHashes', () => {
 
 	it('should generate and write missing hashes for files', async () => {
 		await generateHashes([file1, file2], '/path/');
-		
+
 		expect(file1.hashes?.md5).toBe('md5_c0ffee');
 		expect(file1.hashes?.sha256).toBe('sha256_c0ffee');
 		expect(file2.hashes?.md5).toBe('md5_c0ffee');

@@ -56,7 +56,15 @@ function getDummyData(): FileGroup[] {
 			local: false,
 			desc: 'Landcover vector tiles based on <a href="https://esa-worldcover.org/en/data-access">ESA Worldcover 2021</a>.<br>Map Data © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, available under <a href="http://creativecommons.org/licenses/by/4.0/"> CC-BY 4.0 International</a>',
 			latestFile: getFile('landcover-vectors/landcover-vectors.versatiles', 826877129),
-		})
+		}),
+		new FileGroup({
+			slug: 'bathymetry-vectors',
+			title: 'Bathymetry as vector tiles',
+			order: 30,
+			local: false,
+			desc: 'Bathymetry Vectors, derived from the <a href="https://www.gebco.net/data_and_products/historical_data_sets/#gebco_2021">GEBCO 2021 Grid</a>, made with <a href="https://www.naturalearthdata.com/">NaturalEarth</a> by <a href="https://opendem.info">OpenDEM</a>',
+			latestFile: getFile('bathymetry-vectors/bathymetry-vectors.versatiles', 713796682),
+		}),
 	];
 
 	function getFile(fullname: string, size: number): FileRef {

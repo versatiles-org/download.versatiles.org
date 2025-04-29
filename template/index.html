@@ -72,11 +72,18 @@
 			justify-content: space-between;
 			background-color: #111;
 			text-decoration: none;
+			align-items: center;
 		}
 
 		.row:hover {
 			background-color: #333;
 			text-decoration: none;
+		}
+
+		.row .small {
+			opacity: 0.4;
+			font-size: 0.8em;
+			font-weight: normal;
 		}
 
 		footer {
@@ -115,10 +122,12 @@
 			<details>
 				<summary class="small">Show all versions</summary>
 				{{#each olderFiles}}
-				<a class="row" href="/{{url}}" title="{{url}}">
-					<span>{{url}}</span>
-					<span>{{sizeString}}</span>
-				</a>
+				<div class="row">
+					<a href="/{{url}}">{{url}}</a>
+					<a href="/{{url}}.md5" class="small">md5</a>
+					<a href="/{{url}}.sha256" class="small">sha256</a>
+					<a href="/{{url}}">{{sizeString}}</a>
+				</div>
 				{{/each}}
 			</details>
 			{{/if}}

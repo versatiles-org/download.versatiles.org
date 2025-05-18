@@ -49,6 +49,7 @@ jobs:
         run: npm run test
 
       - name: Webhook
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         run: curl -n "https://download.versatiles.org/${{ secrets.WEBHOOK }}"
 
       - name: Generate test coverage

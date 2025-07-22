@@ -26,7 +26,8 @@
 		"experimentalDecorators": true,
 		"downlevelIteration": true,
 		"declaration": true,
-		"pretty": true
+		"pretty": true,
+		"isolatedModules": true
 	},
 	"include": [
 		"src/**/*"

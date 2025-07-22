@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 import type { FileRef as FileRefType } from './file_ref.js';
 
-jest.unstable_mockModule('node:fs', () => ({
+jest.unstable_mockModule('fs', () => ({
 	createReadStream: jest.fn(),
 	existsSync: jest.fn(),
 	readdirSync: jest.fn(),
@@ -11,13 +11,13 @@ jest.unstable_mockModule('node:fs', () => ({
 }));
 
 const child_process = { spawnSync: jest.fn(), };
-jest.unstable_mockModule('node:child_process', () => ({ ...child_process, default: child_process }));
+jest.unstable_mockModule('child_process', () => ({ ...child_process, default: child_process }));
 
 jest.spyOn(console, 'error').mockImplementation(() => { });
 jest.spyOn(console, 'log').mockImplementation(() => { });
 
-const { existsSync, readFileSync, writeFileSync, statSync } = await import('node:fs');
-const { spawnSync } = await import('node:child_process');
+const { existsSync, readFileSync, writeFileSync, statSync } = await import('fs');
+const { spawnSync } = await import('child_process');
 const { FileRef } = await import('./file_ref.js');
 const { generateHashes } = await import('./hashes.js');
 

@@ -1,4 +1,4 @@
-import { basename } from 'node:path';
+import { basename } from 'path';
 import { FileRef } from './file_ref.js';
 import { FileResponse } from './file_response.js';
 

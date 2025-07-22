@@ -1,6 +1,6 @@
-import { cpSync, rmSync } from 'node:fs';
+import { cpSync, rmSync } from 'fs';
 import { FileRef, getAllFilesRecursive } from './file_ref.js';
-import { resolve } from 'node:path';
+import { resolve } from 'path';
 import { FileGroup } from './file_group.js';
 
 

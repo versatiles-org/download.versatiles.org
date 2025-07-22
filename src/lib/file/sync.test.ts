@@ -1,7 +1,7 @@
 import { jest } from '@jest/globals';
 
-// Mock dependencies from node:fs
-jest.unstable_mockModule('node:fs', () => ({
+// Mock dependencies from fs
+jest.unstable_mockModule('fs', () => ({
 	readdirSync: jest.fn(),
 	statSync: jest.fn(),
 	cpSync: jest.fn(),
@@ -11,7 +11,7 @@ jest.unstable_mockModule('node:fs', () => ({
 jest.spyOn(console, 'error').mockImplementation(() => { });
 jest.spyOn(console, 'log').mockImplementation(() => { });
 
-const { cpSync, rmSync } = await import('node:fs');
+const { cpSync, rmSync } = await import('fs');
 const { FileRef } = await import('./file_ref.js');
 const { syncFiles } = await import('./sync.js');
 

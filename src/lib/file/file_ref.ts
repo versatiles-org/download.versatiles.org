@@ -1,5 +1,5 @@
-import { readdirSync, statSync } from 'node:fs';
-import { basename, join, relative, resolve } from 'node:path';
+import { readdirSync, statSync } from 'fs';
+import { basename, join, relative, resolve } from 'path';
 import { FileResponse } from './file_response.js';
 
 export class FileRef {

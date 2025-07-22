@@ -1,9 +1,9 @@
-import type { Stats } from 'node:fs';
+import type { Stats } from 'fs';
 import { jest } from '@jest/globals';
 import { FileResponse } from './file_response.js';
 
-// Mock dependencies from node:fs
-jest.unstable_mockModule('node:fs', () => ({
+// Mock dependencies from fs
+jest.unstable_mockModule('fs', () => ({
 	readdirSync: jest.fn(),
 	statSync: jest.fn(),
 }));
@@ -11,7 +11,7 @@ jest.unstable_mockModule('node:fs', () => ({
 jest.spyOn(console, 'error').mockImplementation(() => { });
 jest.spyOn(console, 'log').mockImplementation(() => { });
 
-const { readdirSync, statSync } = await import('node:fs');
+const { readdirSync, statSync } = await import('fs');
 const { FileRef, getAllFilesRecursive } = await import('./file_ref.js');
 
 describe('FileRef', () => {

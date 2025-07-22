@@ -1,4 +1,4 @@
-import { readFileSync, writeFileSync } from 'node:fs';
+import { readFileSync, writeFileSync } from 'fs';
 import Handlebars from 'handlebars';
 import type { FileGroup } from '../file/file_group.js';
 import { FileRef } from '../file/file_ref.js';

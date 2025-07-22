@@ -3,11 +3,11 @@
 - Generate missing hashes (e.g., MD5, SHA256) for files in the remote storage.
 */
 
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
-import { relative, resolve } from 'node:path';
+import { existsSync, readFileSync, writeFileSync } from 'fs';
+import { relative, resolve } from 'path';
 import { FileRef } from './file_ref.js';
 import { ProgressBar } from 'work-faster';
-import { spawnSync } from 'node:child_process';
+import { spawnSync } from 'child_process';
 
 export async function generateHashes(files: FileRef[], remoteFolder: string) {
 	const todos: { file: FileRef, hashName: string }[] = [];

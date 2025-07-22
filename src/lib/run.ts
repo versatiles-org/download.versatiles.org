@@ -1,4 +1,4 @@
-import { resolve } from 'node:path';
+import { resolve } from 'path';
 import { getAllFilesRecursive } from './file/file_ref.js';
 import { collectFiles, groupFiles } from './file/file_group.js';
 import { generateHashes } from './file/hashes.js';

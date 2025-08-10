@@ -87,7 +87,7 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					order = 30;
 					break;
 				case 'satellite':
-					title = 'Satellite imagery';
+					title = 'Satellite imagery (Beta)';
 					desc = [
 						'Satellite imagery from various sources.'
 					];

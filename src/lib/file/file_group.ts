@@ -83,8 +83,15 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					title = 'Bathymetry as vector tiles';
 					desc = [
 						'Bathymetry Vectors, derived from the <a href="https://www.gebco.net/data_and_products/historical_data_sets/#gebco_2021">GEBCO 2021 Grid</a>, made with <a href="https://www.naturalearthdata.com/">NaturalEarth</a> by <a href="https://opendem.info">OpenDEM</a>',
-					]
+					];
 					order = 30;
+					break;
+				case 'satellite':
+					title = 'Satellite imagery';
+					desc = [
+						'Satellite imagery from various sources.'
+					];
+					order = 40;
 					break;
 				default:
 					console.error(`Unknown group "${slug}"`);

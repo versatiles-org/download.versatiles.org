@@ -31,8 +31,7 @@ describe('server', () => {
 
 		// Check that the response contains the expected output
 		expect(response.status).toBe(200);
-		expect(response.text).toContain('updating');
-		expect(response.text).toContain('restarting');
+		expect(response.text).toBe('updating');
 
 		// Ensure `run` was called
 		expect(run).toHaveBeenCalled();

@@ -4,10 +4,9 @@ import { run } from './lib/run.js';
 export const app = express();
 
 app.get('/update', async (_req, res) => {
+	res.status(200).end('updating');
 	console.log('updating');
-	res.status(200).write('updating\n')
 	await run();
-	res.end('restarting');
 	console.log('restarting');
 	process.exit(0);
 })

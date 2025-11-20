@@ -2,7 +2,7 @@ import express from 'express';
 import { resolve } from 'path';
 import { FileGroup } from './lib/file/file_group.js';
 import { FileRef } from './lib/file/file_ref.js';
-import { buildHTML } from './lib/html/html.js';
+import { compileTemplate } from './lib/html/html.js';
 
 
 
@@ -10,8 +10,15 @@ export const app = express();
 const fileGroups = getDummyData();
 
 app.get('/', async (_, res) => {
-	const html = buildHTML(fileGroups);
+	const html = compileTemplate(fileGroups, "index.html");
 	res.status(200).type('html').end(html);
+})
+
+app.get('/feed-:slug.xml', async (req, res) => {
+	const s = compileTemplate(fileGroups.filter(fg => {
+		return fg.slug === req.params.slug
+	}), "feed.xml");
+	res.status(200).type('xml').end(s);
 })
 
 if (process.env['NODE_ENV'] !== 'test') {

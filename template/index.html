@@ -86,6 +86,11 @@
 			font-weight: normal;
 		}
 
+		.rss-link {
+			text-align: center;
+			margin-top: 1em;;
+		}
+
 		footer {
 			margin: 10em 0 0;
 			text-align: right;
@@ -119,7 +124,7 @@
 			{{/with}}
 
 			{{#if olderFiles}}
-			<details>
+			<details open>
 				<summary class="small">Show all versions</summary>
 				{{#each olderFiles}}
 				<div class="row">
@@ -129,6 +134,9 @@
 					<a href="/{{url}}">{{sizeString}}</a>
 				</div>
 				{{/each}}
+				<p class="small rss-link">
+					<a href="/feed-{{slug}}.xml">RSS</a>
+				</p>
 			</details>
 			{{/if}}
 

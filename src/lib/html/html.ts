@@ -4,7 +4,7 @@ import type { FileGroup } from '../file/file_group.js';
 import { FileRef } from '../file/file_ref.js';
 
 export function buildHTML(fileGroups: FileGroup[]): string {
-	const templateFilename = new URL('../../../template/index.html', import.meta.url).pathname;
+	const templateFilename = new URL('../../../template/index.html', import.meta.url);
 	const template = Handlebars.compile(readFileSync(templateFilename, 'utf-8'));
 	return template({ fileGroups });
 }

@@ -3,7 +3,7 @@ import { getAllFilesRecursive } from './file/file_ref.js';
 import { collectFiles, groupFiles } from './file/file_group.js';
 import { generateHashes } from './file/hashes.js';
 import { downloadLocalFiles } from './file/sync.js';
-import { buildHTML, buildRSSFeeds } from './template/template.js';
+import { generateHTML, generateRSSFeeds } from './template/template.js';
 import { generateNginxConf } from './nginx/nginx.js';
 import { FileResponse } from './file/file_response.js';
 
@@ -42,9 +42,9 @@ export async function run(options: Options = {}) {
 	// Collect files to generate public-facing resources, like HTML and file lists.
 	const publicFiles = collectFiles(
 		fileGroups,
-		// `buildHTML` creates index.html and returns a FileRef
-		buildHTML(fileGroups, resolve(localFolder, 'index.html')),
-		buildRSSFeeds(fileGroups, resolve(localFolder)),
+		// `generateHTML` creates index.html and returns a FileRef
+		generateHTML(fileGroups, resolve(localFolder, 'index.html')),
+		generateRSSFeeds(fileGroups, resolve(localFolder)),
 	).map(f => f.cloneMoved(volumeFolder, '/volumes/'));
 	// FileRefs are cloned and their paths "moved" so they have to correct paths in the Nginx configuration
 

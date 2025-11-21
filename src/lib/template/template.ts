@@ -10,14 +10,14 @@ export function renderTemplate(fileGroups: FileGroup[], templateFilename: string
 	return template({ fileGroups });
 }
 
-export function buildHTML(fileGroups: FileGroup[], filename: string): FileRef {
+export function generateHTML(fileGroups: FileGroup[], filename: string): FileRef {
 	console.log('Generating HTML...');
 	writeFileSync(filename, renderTemplate(fileGroups, "index.html"));
 
 	return new FileRef(filename, 'index.html');
 }
 
-export function buildRSSFeeds(fileGroups: FileGroup[], outputDir: string): FileRef[] {
+export function generateRSSFeeds(fileGroups: FileGroup[], outputDir: string): FileRef[] {
 	console.log('Generating RSS feeds...');
 	const refs: FileRef[] = []
 

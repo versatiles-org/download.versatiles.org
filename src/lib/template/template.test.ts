@@ -5,7 +5,7 @@ describe('renderTemplate', () => {
 
 	test('should build HTML using the Handlebars template', () => {
 		const fileGroups = [group(1), group(2)];
-		const result = renderTemplate(fileGroups);
+		const result = renderTemplate(fileGroups, "index.html");
 		expect(result).toContain('<html>');
 		expect(result).toContain('a group with index 1');
 		expect(result).toContain('a group with index 2');

@@ -44,7 +44,7 @@ export async function run(options: Options = {}) {
 		fileGroups,
 		// `buildHTML` creates index.html and returns a FileRef
 		buildHTML(fileGroups, resolve(localFolder, 'index.html')),
-		...buildRSSFeeds(fileGroups, resolve(localFolder)),
+		buildRSSFeeds(fileGroups, resolve(localFolder)),
 	).map(f => f.cloneMoved(volumeFolder, '/volumes/'));
 	// FileRefs are cloned and their paths "moved" so they have to correct paths in the Nginx configuration
 

@@ -12,8 +12,8 @@
     "lint": "eslint . --color",
     "once": "tsx --env-file=.env src/run_once.ts",
     "server": "tsx --env-file=.env src/server.ts",
-    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
-    "test-coverage": "NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
+    "test-coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
     "upgrade": "npm-check-updates -u && rm -f package-lock.json; rm -rf node_modules; npm i"
   },
   "type": "module",
@@ -39,6 +39,7 @@
     "@types/jest": "^30.0.0",
     "@types/node": "^24.10.0",
     "@types/supertest": "^6.0.3",
+    "cross-env": "^10.1.0",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
     "jest": "^30.2.0",

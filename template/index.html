@@ -12,6 +12,12 @@
 	<link rel="icon" type="image/png" href="https://versatiles.org/assets/logo/versatiles.64.png" sizes="64x64">
 	<link rel="icon" type="image/png" href="https://versatiles.org/assets/logo/versatiles.96.png" sizes="96x96">
 
+	{{#each fileGroups}}
+	{{#if olderFiles}}
+	<link rel="alternate" type="application/rss+xml" title="Versatiles data releases: {{slug}}" href="/feed-{{slug}}.xml" />
+	{{/if}}
+   	{{/each}}
+
 	<style type="text/css">
 		body {
 			background: #080808;

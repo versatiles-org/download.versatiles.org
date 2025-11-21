@@ -8,8 +8,8 @@
         <item>
             <title>{{url}}</title>
             <link>https://download.versatiles.org/{{url}}</link>
-            <description>{{ sizeString }}</description>
             <guid>https://download.versatiles.org/{{url}}</guid>
+            <description>{{ sizeString }}</description>
         </item>
         {{/each}}
     </channel>

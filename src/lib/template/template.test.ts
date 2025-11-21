@@ -1,11 +1,11 @@
-import { buildHTML } from './html.js';
+import { renderTemplate } from './template.js';
 import { FileGroup } from '../file/file_group.js';
 
-describe('buildHTML', () => {
+describe('renderTemplate', () => {
 
 	test('should build HTML using the Handlebars template', () => {
 		const fileGroups = [group(1), group(2)];
-		const result = buildHTML(fileGroups);
+		const result = renderTemplate(fileGroups);
 		expect(result).toContain('<html>');
 		expect(result).toContain('a group with index 1');
 		expect(result).toContain('a group with index 2');

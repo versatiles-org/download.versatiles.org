@@ -21,8 +21,10 @@ jest.unstable_mockModule('./file/sync.js', () => ({
 	downloadLocalFiles: jest.fn(),
 }));
 
-jest.unstable_mockModule('./html/html.js', () => ({
-	generateHTML: jest.fn(),
+jest.unstable_mockModule('./template/template.js', () => ({
+	renderTemplate: jest.fn(),
+	buildHTML: jest.fn(),
+	buildRSSFeeds: jest.fn(),
 }));
 
 jest.unstable_mockModule('./nginx/nginx.js', () => ({
@@ -35,7 +37,7 @@ const { getAllFilesRecursive } = await import('./file/file_ref.js');
 const { collectFiles, groupFiles } = await import('./file/file_group.js');
 const { generateHashes } = await import('./file/hashes.js');
 const { downloadLocalFiles } = await import('./file/sync.js');
-const { generateHTML } = await import('./html/html.js');
+const { buildHTML, buildRSSFeeds, renderTemplate } = await import('./template/template.js');
 const { generateNginxConf } = await import('./nginx/nginx.js');
 
 describe('run', () => {
@@ -67,7 +69,7 @@ describe('run', () => {
 		(generateHashes as jest.Mock<() => Promise<void>>).mockResolvedValue(undefined);
 		(groupFiles as jest.Mock).mockReturnValue(fileGroups);
 		(downloadLocalFiles as jest.Mock<() => Promise<void>>).mockResolvedValue(undefined);
-		(generateHTML as jest.Mock).mockReturnValue({ filename: 'index.html' });
+		(buildHTML as jest.Mock).mockReturnValue({ filename: 'index.html' });
 		(collectFiles as jest.Mock).mockReturnValue([{ cloneMoved: jest.fn().mockReturnValue('movedFile') }]);
 	});
 
@@ -99,8 +101,8 @@ describe('run', () => {
 		// Verify downloadLocalFiles is called with the correct arguments
 		expect(downloadLocalFiles).toHaveBeenCalledWith(fileGroups, localFolder);
 
-		// Verify generateHTML is called with the correct arguments
-		expect(generateHTML).toHaveBeenCalledWith(fileGroups, `${localFolder}/index.html`);
+		// Verify buildHTML is called with the correct arguments
+		expect(buildHTML).toHaveBeenCalledWith(fileGroups, `${localFolder}/index.html`);
 
 		// Verify collectFiles is called and the paths are "moved"
 		expect(collectFiles).toHaveBeenCalled();

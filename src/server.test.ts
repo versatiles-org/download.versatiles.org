@@ -12,7 +12,8 @@ const { app } = await import('./server.js');
 describe('server', () => {
 	// Mock `process.exit` to avoid terminating the test process
 	const exitSpy = vi.spyOn(process, 'exit')
-	vi.spyOn(console, 'log').mockReturnValue();
+	console.log = vi.fn();
+	console.error = vi.fn();
 
 	beforeEach(() => {
 		vi.clearAllMocks();

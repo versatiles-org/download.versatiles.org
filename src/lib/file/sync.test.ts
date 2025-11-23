@@ -8,8 +8,8 @@ vi.mock('fs', () => ({
 	rmSync: vi.fn(),
 }));
 
-vi.spyOn(console, 'error').mockImplementation(() => { });
-vi.spyOn(console, 'log').mockImplementation(() => { });
+console.log = vi.fn();
+console.error = vi.fn();
 
 const { cpSync, rmSync } = await import('fs');
 const { FileRef } = await import('./file_ref.js');

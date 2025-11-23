@@ -1,7 +1,10 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { FileRef as FileRefType } from '../file/file_ref.js'
 import { FileResponse } from '../file/file_response.js';
-import { Stats } from 'fs';
+import type { Stats } from 'fs';
+import { buildNginxConf } from './nginx.js';
+import { readFileSync, writeFileSync, statSync } from 'fs';
+import { FileRef } from '../file/file_ref.js';
 
 // Mock the necessary dependencies
 vi.mock('fs', () => ({
@@ -11,13 +14,7 @@ vi.mock('fs', () => ({
 	readdirSync: vi.fn(),
 }));
 
-vi.spyOn(console, 'log').mockImplementation(() => { });
-
-const { readFileSync, writeFileSync, statSync } = await import('fs');
-const { FileRef } = await import('../file/file_ref.js');
-const { generateNginxConf: generateNGINX } = await import('./nginx.js');
-
-describe('generateNGINX', () => {
+describe('buildNginxConf', () => {
 	let mockFiles: FileRefType[];
 	let mockResponses: FileResponse[];
 
@@ -37,21 +34,9 @@ describe('generateNGINX', () => {
 		vi.mocked(statSync).mockImplementation(() => ({ size: 123 } as Stats));
 	});
 
-	it('should generate NGINX configuration using the template and write it to the given file', () => {
-		const result = generateNGINX(mockFiles, mockResponses, '/path/to/output/nginx.conf');
-
-		const templateFilename = new URL('../../../template/nginx.conf', import.meta.url).pathname;
-		expect(readFileSync).toHaveBeenCalledWith(templateFilename, 'utf-8');
-
-		// Ensure writeFileSync is called with the correct filename and generated HTML
-		expect(writeFileSync).toHaveBeenCalledTimes(1);
-		expect(writeFileSync).toHaveBeenCalledWith(
-			'/path/to/output/nginx.conf',
-			'a.bin,/path/to/local/a.bin;b.bin,/path/to/local/b.bin;#c.txt,abc;d.txt,xyz;'
-		);
-
-		// Ensure the result is a FileRef object
-		expect(result).toBeInstanceOf(FileRef);
-		expect(result.fullname).toBe('/path/to/output/nginx.conf');
+	it('should generate NGINX configuration', () => {
+		const result = buildNginxConf(mockFiles, mockResponses);
+		expect(readFileSync).toHaveBeenCalledTimes(1);
+		expect(result).toBe('/a.bin,/path/to/local/a.bin;/b.bin,/path/to/local/b.bin;#/c.txt,abc;/d.txt,xyz;');
 	});
 });

@@ -19,13 +19,10 @@ export function buildNginxConf(files: FileRef[], responses: FileResponse[]): str
 }
 
 // Function to generate NGINX configuration
-export function generateNginxConf(files: FileRef[], responses: FileResponse[], filename: string): FileRef {
+export function generateNginxConf(files: FileRef[], responses: FileResponse[], filename: string) {
 	console.log('Generating NGINX configuration...');
 
 	// Write the generated configuration to the specified filename
 	writeFileSync(filename, buildNginxConf(files, responses));
 	console.log(' - Configuration successfully written');
-
-	// Return a new FileRef for the generated config file
-	return new FileRef(filename, '');
 }

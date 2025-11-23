@@ -14,9 +14,6 @@ vi.mock('fs', () => ({
 const child_process = { spawnSync: vi.fn(), };
 vi.mock('child_process', () => ({ ...child_process, default: child_process }));
 
-vi.spyOn(console, 'error').mockImplementation(() => { });
-vi.spyOn(console, 'log').mockImplementation(() => { });
-
 const { existsSync, readFileSync, writeFileSync, statSync } = await import('fs');
 const { spawnSync } = await import('child_process');
 const { FileRef } = await import('./file_ref.js');

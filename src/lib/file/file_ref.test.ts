@@ -8,9 +8,6 @@ vi.mock('fs', () => ({
 	statSync: vi.fn(),
 }));
 
-vi.spyOn(console, 'error').mockImplementation(() => { });
-vi.spyOn(console, 'log').mockImplementation(() => { });
-
 const { readdirSync, statSync } = await import('fs');
 const { FileRef, getAllFilesRecursive } = await import('./file_ref.js');
 

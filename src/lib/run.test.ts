@@ -37,7 +37,7 @@ const { getAllFilesRecursive } = await import('./file/file_ref.js');
 const { collectFiles, groupFiles } = await import('./file/file_group.js');
 const { generateHashes } = await import('./file/hashes.js');
 const { downloadLocalFiles } = await import('./file/sync.js');
-const { generateHTML, generateRSSFeeds, renderTemplate } = await import('./template/template.js');
+const { generateHTML } = await import('./template/template.js');
 const { generateNginxConf } = await import('./nginx/nginx.js');
 
 describe('run', () => {

@@ -1,7 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { generateRSSFeeds, renderTemplate } from './template.js';
 import { FileGroup } from '../file/file_group.js';
 import { tmpdir } from 'os';
+
+console.log = vi.fn();
 
 describe('renderTemplate', () => {
 	function fileGroups(): FileGroup[] {

@@ -2,6 +2,8 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { FileRef as FileRefType } from './file_ref.js';
 import { Stats } from 'fs';
 
+console.log = vi.fn();
+
 vi.mock('fs', () => ({
 	createReadStream: vi.fn(),
 	existsSync: vi.fn(),

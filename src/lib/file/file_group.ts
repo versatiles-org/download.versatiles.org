@@ -2,13 +2,58 @@ import { basename } from 'path';
 import { FileRef } from './file_ref.js';
 import { FileResponse } from './file_response.js';
 
+/**
+ * Represents a logical group of related files (typically different versions of
+ * the same dataset) in the download.versatiles.org catalog.
+ *
+ * A group is identified by its `slug` (derived from the file name) and may
+ * contain multiple `FileRef` instances:
+ *
+ * - `latestFile`: the most recent file that should be advertised and used by default
+ * - `olderFiles`: additional versions that remain available for download
+ *
+ * The high-level workflow is:
+ * - `groupFiles()` discovers all `FileRef`s and assigns them to `FileGroup`s
+ *   based on the slug (usually the basename without extension).
+ * - For each group, `latestFile` is determined from the file names and may
+ *   have its `url` normalised (e.g. date suffix removed).
+ * - The remaining entries are kept in `olderFiles` and exposed as "previous versions".
+ *
+ * The `local` flag indicates whether the latest file of this group should be
+ * mirrored to a local volume for fast download.
+ */
 export class FileGroup {
+	/** Machine-readable identifier of the group (derived from the file basename). */
 	slug: string;
+
+	/** Human-readable title shown in the download listing. */
 	title: string;
+
+	/** HTML-formatted description, including attribution and licence information. */
 	desc: string;
+
+	/**
+	 * Sort order of the group in the UI.
+	 * Lower values appear first in the listing.
+	 */
 	order: number;
+
+	/**
+	 * Whether the latest file of this group should be mirrored to a local volume
+	 * (used for hosting "local" copies with better performance).
+	 */
 	local: boolean;
+
+	/**
+	 * The current default file for this group.
+	 * Set by `groupFiles()` based on the most recent file name.
+	 */
 	latestFile?: FileRef;
+
+	/**
+	 * All available versions for this group, sorted from newest to oldest.
+	 * The first entry is cloned and promoted to `latestFile` during grouping.
+	 */
 	olderFiles: FileRef[];
 	constructor(options: { slug: string, title: string, desc: string, order: number, local?: boolean, latestFile?: FileRef, olderFiles?: FileRef[] }) {
 		this.slug = options.slug;
@@ -19,6 +64,18 @@ export class FileGroup {
 		this.latestFile = options.latestFile;
 		this.olderFiles = options.olderFiles ?? [];
 	}
+	/**
+	 * Builds a `FileResponse` representing a TSV url list for the latest file
+	 * in this group. The format follows the "TsvHttpData-1.0" specification:
+	 *
+	 *   TsvHttpData-1.0
+	 *   <url>\t<size>\t<base64url(md5)>\n
+	 *
+	 * The `baseURL` parameter is used to turn the file's relative `url` into
+	 * an absolute URL.
+	 *
+	 * Throws if no `latestFile` has been assigned to this group.
+	 */
 	getResponseUrlList(baseURL: string): FileResponse {
 		const file = this.latestFile;
 		if (file == null) throw Error(`no latest file found in group "${this.slug}"`)
@@ -29,6 +86,12 @@ export class FileGroup {
 			`TsvHttpData-1.0\n${url}\t${file.size}\t${hex2base64(file.md5)}\n`,
 		);
 	}
+	/**
+	 * Returns all virtual responses associated with this group:
+	 *
+	 * - `.md5` and `.sha256` checksum files for all versions
+	 * - a TSV url list (`/urllist_<slug>.tsv`) for the latest version
+	 */
 	getResponses(baseURL: string): FileResponse[] {
 		const result: FileResponse[] = this.olderFiles.flatMap(f => [
 			f.getResponseMd5File(),
@@ -45,6 +108,25 @@ export class FileGroup {
 	}
 }
 
+/**
+ * Groups a flat list of `FileRef`s into logical `FileGroup`s.
+ *
+ * - The group `slug` is derived from `basename(file.filename)` without extension.
+ * - Known slugs (`osm`, `hillshade-vectors`, `landcover-vectors`,
+ *   `bathymetry-vectors`, `satellite`) get predefined titles, descriptions,
+ *   ordering and the `local` flag.
+ * - Unknown slugs are logged to stderr and still added with placeholder values.
+ *
+ * Within each group:
+ * - Files are sorted by `filename` descending (newest first).
+ * - The first entry is cloned into `latestFile`.
+ * - If the filename contains a date in the form `.YYYYMMDD.`, it is removed
+ *   from the `latestFile.url` to provide a stable, version-agnostic URL.
+ *   Otherwise, the original URL is kept and the file is removed from
+ *   `olderFiles` (so it only appears as `latestFile`).
+ *
+ * The resulting list is sorted by `order` for display.
+ */
 export function groupFiles(files: FileRef[]): FileGroup[] {
 	const groupMap = new Map<string, FileGroup>();
 	files.forEach(file => {
@@ -122,6 +204,13 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 	return groupList;
 }
 
+/**
+ * Collects all `FileRef`s from one or more `FileGroup` / `FileRef` inputs,
+ * flattening nested arrays and deduplicating by `url`.
+ *
+ * This is used to build the final list of files that should be exposed by
+ * nginx (e.g. all data files plus generated HTML / RSS).
+ */
 export function collectFiles(...entries: (FileGroup | FileGroup[] | FileRef | FileRef[])[]): FileRef[] {
 	const files = new Map<string, FileRef>();
 	for (const entry of entries) addEntry(entry);
@@ -136,12 +225,18 @@ export function collectFiles(...entries: (FileGroup | FileGroup[] | FileRef | Fi
 		} else if (entry instanceof FileRef) {
 			files.set(entry.url, entry);
 		} else {
-			throw Error();
+			throw new Error('Unsupported entry type in collectFiles; expected FileGroup, FileRef or arrays of those.');
 		}
 	}
 }
 
 
+/**
+ * Converts a hexadecimal hash string into a base64url-encoded string
+ * with proper padding.
+ *
+ * This is used for integrity fields where base64url encoding is required.
+ */
 export function hex2base64(hex: string): string {
 	const base64 = Buffer.from(hex, 'hex').toString('base64url');
 	return base64 + '='.repeat((4 - (base64.length % 4)) % 4);

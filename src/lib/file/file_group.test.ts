@@ -1,6 +1,7 @@
 import { collectFiles, groupFiles, FileGroup, hex2base64 } from './file_group.js';
 import { FileRef } from './file_ref.js';
 import { FileResponse } from './file_response.js';
+import { describe, it, expect, beforeEach } from 'vitest';
 
 describe('groupFiles', () => {
 	const files: FileRef[] = [

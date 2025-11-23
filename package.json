@@ -12,8 +12,8 @@
     "lint": "eslint . --color",
     "once": "tsx --env-file=.env src/run_once.ts",
     "server": "tsx --env-file=.env src/server.ts",
-    "test": "cross-env NODE_OPTIONS=--experimental-vm-modules jest",
-    "test-coverage": "cross-env NODE_OPTIONS=--experimental-vm-modules jest --coverage",
+    "test": "cross-env vitest run",
+    "test-coverage": "cross-env vitest run --coverage",
     "upgrade": "npm-check-updates -u && rm -f package-lock.json; rm -rf node_modules; npm i"
   },
   "type": "module",
@@ -36,16 +36,15 @@
     "@eslint/js": "^9.39.1",
     "@types/eslint__js": "^9.14.0",
     "@types/express": "^5.0.5",
-    "@types/jest": "^30.0.0",
     "@types/node": "^24.10.1",
     "@types/supertest": "^6.0.3",
+    "@vitest/coverage-v8": "^4.0.13",
     "cross-env": "^10.1.0",
     "eslint": "^9.39.1",
     "globals": "^16.5.0",
-    "jest": "^30.2.0",
     "npm-check-updates": "^19.1.2",
     "supertest": "^7.1.4",
-    "ts-jest": "^29.4.5",
-    "typescript-eslint": "^8.47.0"
+    "typescript-eslint": "^8.47.0",
+    "vitest": "^4.0.13"
   }
 }

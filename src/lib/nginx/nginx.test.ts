@@ -1,16 +1,17 @@
-import { jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import type { FileRef as FileRefType } from '../file/file_ref.js'
 import { FileResponse } from '../file/file_response.js';
+import { Stats } from 'fs';
 
 // Mock the necessary dependencies
-jest.unstable_mockModule('fs', () => ({
-	readFileSync: jest.fn(),
-	writeFileSync: jest.fn(),
-	statSync: jest.fn(),
-	readdirSync: jest.fn(),
+vi.mock('fs', () => ({
+	readFileSync: vi.fn(),
+	writeFileSync: vi.fn(),
+	statSync: vi.fn(),
+	readdirSync: vi.fn(),
 }));
 
-jest.spyOn(console, 'log').mockImplementation(() => { });
+vi.spyOn(console, 'log').mockImplementation(() => { });
 
 const { readFileSync, writeFileSync, statSync } = await import('fs');
 const { FileRef } = await import('../file/file_ref.js');
@@ -31,9 +32,9 @@ describe('generateNGINX', () => {
 			new FileResponse('d.txt', 'xyz'),
 		];
 
-		(readFileSync as jest.Mock).mockReturnValue('{{#each files}}{{{url}}},{{{fullname}}};{{/each}}#{{#each responses}}{{{url}}},{{{content}}};{{/each}}');
-		(writeFileSync as jest.Mock).mockImplementation(() => { });
-		(statSync as jest.Mock).mockImplementation(() => ({ size: 123 }));
+		vi.mocked(readFileSync).mockReturnValue('{{#each files}}{{{url}}},{{{fullname}}};{{/each}}#{{#each responses}}{{{url}}},{{{content}}};{{/each}}');
+		vi.mocked(writeFileSync).mockImplementation(() => { });
+		vi.mocked(statSync).mockImplementation(() => ({ size: 123 } as Stats));
 	});
 
 	it('should generate NGINX configuration using the template and write it to the given file', () => {

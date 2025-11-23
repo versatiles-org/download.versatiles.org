@@ -1,15 +1,15 @@
 import type { Stats } from 'fs';
-import { jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FileResponse } from './file_response.js';
 
 // Mock dependencies from fs
-jest.unstable_mockModule('fs', () => ({
-	readdirSync: jest.fn(),
-	statSync: jest.fn(),
+vi.mock('fs', () => ({
+	readdirSync: vi.fn(),
+	statSync: vi.fn(),
 }));
 
-jest.spyOn(console, 'error').mockImplementation(() => { });
-jest.spyOn(console, 'log').mockImplementation(() => { });
+vi.spyOn(console, 'error').mockImplementation(() => { });
+vi.spyOn(console, 'log').mockImplementation(() => { });
 
 const { readdirSync, statSync } = await import('fs');
 const { FileRef, getAllFilesRecursive } = await import('./file_ref.js');
@@ -63,8 +63,8 @@ describe('getAllFilesRecursive', () => {
 	const mockFiles = ['file1.versatiles', 'file2.versatiles', 'file3.txt'];
 
 	beforeEach(() => {
-		jest.mocked(readdirSync as (path: string) => string[]).mockReset().mockReturnValue(mockFiles);
-		jest.mocked(statSync as (path: string) => Stats).mockReset().mockImplementation(_ => {
+		vi.mocked(readdirSync as (path: string) => string[]).mockReset().mockReturnValue(mockFiles);
+		vi.mocked(statSync as (path: string) => Stats).mockReset().mockImplementation(_ => {
 			return { isDirectory: () => false, size: 100 } as Stats;
 		});
 	});
@@ -81,13 +81,13 @@ describe('getAllFilesRecursive', () => {
 	});
 
 	it('should handle an empty folder', () => {
-		jest.mocked(readdirSync).mockReturnValue([]);
+		vi.mocked(readdirSync).mockReturnValue([]);
 		const result = getAllFilesRecursive('/empty/folder');
 		expect(result.length).toBe(0);
 	});
 
 	it('should skip files that do not end with .versatiles', () => {
-		jest.mocked(readdirSync as (path: string) => string[]).mockReturnValue(['file.txt', 'file.versatiles']);
+		vi.mocked(readdirSync as (path: string) => string[]).mockReturnValue(['file.txt', 'file.versatiles']);
 		const result = getAllFilesRecursive('/folder');
 		expect(result.length).toBe(1); // Only the .versatiles file should be included
 		expect(result[0].filename).toBe('file.versatiles');
@@ -95,7 +95,7 @@ describe('getAllFilesRecursive', () => {
 	});
 
 	it('should recurse into subdirectories', () => {
-		jest.mocked(readdirSync as (path: string) => string[]).mockImplementation(folderPath => {
+		vi.mocked(readdirSync as (path: string) => string[]).mockImplementation(folderPath => {
 			if (folderPath === '/test/folder') {
 				return ['subfolder', 'file.versatiles'];
 			} else if (folderPath === '/test/folder/subfolder') {
@@ -104,7 +104,7 @@ describe('getAllFilesRecursive', () => {
 			return [];
 		});
 
-		jest.mocked(statSync as (path: string) => Stats).mockImplementation(filePath => {
+		vi.mocked(statSync as (path: string) => Stats).mockImplementation(filePath => {
 			if (filePath === '/test/folder/subfolder') {
 				return { isDirectory: () => true } as Stats; // Mock subdirectory
 			}

@@ -1,15 +1,15 @@
-import { jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock dependencies from fs
-jest.unstable_mockModule('fs', () => ({
-	readdirSync: jest.fn(),
-	statSync: jest.fn(),
-	cpSync: jest.fn(),
-	rmSync: jest.fn(),
+vi.mock('fs', () => ({
+	readdirSync: vi.fn(),
+	statSync: vi.fn(),
+	cpSync: vi.fn(),
+	rmSync: vi.fn(),
 }));
 
-jest.spyOn(console, 'error').mockImplementation(() => { });
-jest.spyOn(console, 'log').mockImplementation(() => { });
+vi.spyOn(console, 'error').mockImplementation(() => { });
+vi.spyOn(console, 'log').mockImplementation(() => { });
 
 const { cpSync, rmSync } = await import('fs');
 const { FileRef } = await import('./file_ref.js');
@@ -30,8 +30,8 @@ describe('syncFiles', () => {
 	];
 
 	beforeEach(() => {
-		jest.mocked(rmSync).mockReset().mockReturnValue(undefined);
-		jest.mocked(cpSync).mockReset().mockReturnValue(undefined);
+		vi.mocked(rmSync).mockReset().mockReturnValue(undefined);
+		vi.mocked(cpSync).mockReset().mockReturnValue(undefined);
 	});
 
 	it('should delete local files not in remote and copy new files from remote', async () => {
@@ -71,7 +71,7 @@ describe('syncFiles', () => {
 	});
 
 	it('should throw error during file deletion', async () => {
-		jest.mocked(rmSync).mockImplementation(() => { throw new Error('Delete error') });
+		vi.mocked(rmSync).mockImplementation(() => { throw new Error('Delete error') });
 
 		expect(() => syncFiles(remoteFiles, localFiles, '/local')).toThrow();
 		expect(rmSync).toHaveBeenCalledTimes(1); // It tries to delete the file
@@ -79,7 +79,7 @@ describe('syncFiles', () => {
 	});
 
 	it('should throw error during file copying', async () => {
-		jest.mocked(cpSync).mockImplementation(() => { throw new Error('Copy error') });
+		vi.mocked(cpSync).mockImplementation(() => { throw new Error('Copy error') });
 
 		expect(() => syncFiles(remoteFiles, localFiles, '/local')).toThrow();
 		expect(rmSync).toHaveBeenCalledTimes(1); // It still tries to delete the old file

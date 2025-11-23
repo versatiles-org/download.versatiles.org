@@ -1,9 +1,10 @@
+import { describe, expect, it } from 'vitest';
 import { renderTemplate } from './template.js';
 import { FileGroup } from '../file/file_group.js';
 
 describe('renderTemplate', () => {
 
-	test('should build HTML using the Handlebars template', () => {
+	it('should build HTML using the Handlebars template', () => {
 		const fileGroups = [group(1), group(2)];
 		const result = renderTemplate(fileGroups, "index.html");
 		expect(result).toContain('<html>');

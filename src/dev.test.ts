@@ -1,18 +1,17 @@
-import { jest } from '@jest/globals';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
 import request from 'supertest';
 
-jest.unstable_mockModule('./lib/template/template.js', () => ({
-	renderTemplate: jest.fn().mockImplementation(() => "test content")
+vi.mock('./lib/template/template.js', () => ({
+	renderTemplate: vi.fn().mockImplementation(() => "test content")
 }));
 
 const { app } = await import('./dev.js');
 const { renderTemplate } = await import('./lib/template/template.js');
 
 describe('Express App', () => {
-	beforeAll(() => { });
-	afterEach(() => { jest.clearAllMocks() });
+	beforeEach(() => (vi.clearAllMocks()));
 
-	test('GET / should return status 200 and the HTML content', async () => {
+	it('GET / should return status 200 and the HTML content', async () => {
 
 		const response = await request(app).get('/');
 
@@ -24,7 +23,7 @@ describe('Express App', () => {
 		expect(renderTemplate).toHaveBeenNthCalledWith(1, expect.any(Array), "index.html");
 	});
 
-	test('GET /feed-osm.xml should return status 200 and XML content', async () => {
+	it('GET /feed-osm.xml should return status 200 and XML content', async () => {
 
 		const response = await request(app).get('/feed-osm.xml');
 

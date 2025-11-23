@@ -1,9 +1,9 @@
 import request from 'supertest';
-import { jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 
 // Mock the `run` function from `./lib/run.js`
-jest.unstable_mockModule('./lib/run.js', () => ({
-	run: jest.fn(),
+vi.mock('./lib/run.js', () => ({
+	run: vi.fn(),
 }));
 
 const { run } = await import('./lib/run.js');
@@ -11,20 +11,20 @@ const { app } = await import('./server.js');
 
 describe('server', () => {
 	// Mock `process.exit` to avoid terminating the test process
-	const exitSpy = jest.spyOn(process, 'exit')
-	jest.spyOn(console, 'log').mockReturnValue();
+	const exitSpy = vi.spyOn(process, 'exit')
+	vi.spyOn(console, 'log').mockReturnValue();
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 		exitSpy.mockImplementation(
 			(() => { /* do nothing */ }) as () => never
 		);
 	});
 
-	test('GET /update should call run and terminate the process with status 200', async () => {
+	it('GET /update should call run and terminate the process with status 200', async () => {
 
 		// Mock `run` to resolve immediately (to simulate its completion)
-		(run as jest.Mock<() => Promise<undefined>>).mockResolvedValue(undefined);
+		vi.mocked(run).mockResolvedValue(undefined);
 
 		// Use supertest to send a GET request to /update
 		const response = await request(app).get('/update');
@@ -40,7 +40,7 @@ describe('server', () => {
 		expect(exitSpy).toHaveBeenCalledWith(0);
 	});
 
-	test('SIGINT should trigger process.exit with code 0', () => {
+	it('SIGINT should trigger process.exit with code 0', () => {
 		// Simulate SIGINT signal
 		process.emit('SIGINT');
 

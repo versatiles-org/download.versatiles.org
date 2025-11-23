@@ -1,34 +1,41 @@
-import { jest } from '@jest/globals';
+import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FileRef } from './file/file_ref.js';
 import { FileGroup } from './file/file_group.js';
 
-jest.unstable_mockModule('./file/file_ref.js', () => ({
-	getAllFilesRecursive: jest.fn(),
-	FileRef: jest.fn(),
+vi.mock(import('./file/file_ref.js'), async originalImport => {
+	const originalModule = await originalImport();
+	return {
+		...originalModule,
+		getAllFilesRecursive: vi.fn(),
+	}
+});
+
+vi.mock(import('./file/file_group.js'), async originalImport => {
+	const originalModule = await originalImport();
+	return {
+		...originalModule,
+		collectFiles: vi.fn(),
+		groupFiles: vi.fn(),
+	}
+});
+
+vi.mock('./file/hashes.js', () => ({
+	generateHashes: vi.fn(),
+	generateLists: vi.fn(),
 }));
 
-jest.unstable_mockModule('./file/file_group.js', () => ({
-	collectFiles: jest.fn(),
-	groupFiles: jest.fn(),
+vi.mock('./file/sync.js', () => ({
+	downloadLocalFiles: vi.fn(),
 }));
 
-jest.unstable_mockModule('./file/hashes.js', () => ({
-	generateHashes: jest.fn(),
-	generateLists: jest.fn(),
+vi.mock('./template/template.js', () => ({
+	renderTemplate: vi.fn(),
+	generateHTML: vi.fn(),
+	generateRSSFeeds: vi.fn(),
 }));
 
-jest.unstable_mockModule('./file/sync.js', () => ({
-	downloadLocalFiles: jest.fn(),
-}));
-
-jest.unstable_mockModule('./template/template.js', () => ({
-	renderTemplate: jest.fn(),
-	generateHTML: jest.fn(),
-	generateRSSFeeds: jest.fn(),
-}));
-
-jest.unstable_mockModule('./nginx/nginx.js', () => ({
-	generateNginxConf: jest.fn(),
+vi.mock('./nginx/nginx.js', () => ({
+	generateNginxConf: vi.fn(),
 }));
 
 // Import the module under test after mocking modules
@@ -60,33 +67,33 @@ describe('run', () => {
 	})];
 
 	beforeEach(() => {
-		jest.clearAllMocks();
+		vi.clearAllMocks();
 
 		// Mock getAllFilesRecursive to return a list of files
-		(getAllFilesRecursive as jest.Mock).mockReturnValue(files);
+		vi.mocked(getAllFilesRecursive).mockReturnValue(files);
 
 		// Mock other functions to do nothing
-		(generateHashes as jest.Mock<() => Promise<void>>).mockResolvedValue(undefined);
-		(groupFiles as jest.Mock).mockReturnValue(fileGroups);
-		(downloadLocalFiles as jest.Mock<() => Promise<void>>).mockResolvedValue(undefined);
-		(generateHTML as jest.Mock).mockReturnValue({ filename: 'index.html' });
-		(collectFiles as jest.Mock).mockReturnValue([{ cloneMoved: jest.fn().mockReturnValue('movedFile') }]);
+		vi.mocked(generateHashes).mockResolvedValue(undefined);
+		vi.mocked(groupFiles).mockReturnValue(fileGroups);
+		vi.mocked(downloadLocalFiles).mockResolvedValue(undefined);
+		vi.mocked(generateHTML).mockReturnValue({ filename: 'index.html' } as FileRef);
+		vi.mocked(collectFiles).mockReturnValue([{ cloneMoved: vi.fn().mockReturnValue('movedFile') }] as unknown as FileRef[]);
 	});
 
-	test('should throw an error if $DOMAIN is not set and no domain is provided in options', async () => {
+	it('should throw an error if $DOMAIN is not set and no domain is provided in options', async () => {
 		delete process.env['DOMAIN']; // Unset the domain
 
 		await expect(run({ volumeFolder })).rejects.toThrow('missing $DOMAIN');
 	});
 
-	test('should throw an error if no files are found in the remote folder', async () => {
+	it('should throw an error if no files are found in the remote folder', async () => {
 		// Return an empty list of files
-		(getAllFilesRecursive as jest.Mock).mockReturnValue([]);
+		vi.mocked(getAllFilesRecursive).mockReturnValue([]);
 
-		await expect(run({ domain: domain })).rejects.toThrow('no remote files found');
+		await expect(run({ domain })).rejects.toThrow('no remote files found');
 	});
 
-	test('should call the necessary functions with correct arguments', async () => {
+	it('should call the necessary functions with correct arguments', async () => {
 		await run({ domain, volumeFolder });
 
 		// Verify getAllFilesRecursive is called with the remote folder
@@ -106,7 +113,7 @@ describe('run', () => {
 
 		// Verify collectFiles is called and the paths are "moved"
 		expect(collectFiles).toHaveBeenCalled();
-		const value = jest.mocked(collectFiles).mock.results[0].value as FileRef[];
+		const value = vi.mocked(collectFiles).mock.results[0].value as FileRef[];
 		expect(value[0].cloneMoved).toHaveBeenCalledWith(volumeFolder, '/volumes/');
 
 		// Verify generateNginxConf is called with the moved files and the Nginx config path

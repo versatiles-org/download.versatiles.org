@@ -38,7 +38,8 @@ describe('generateHashes', () => {
 		});
 		vi.mocked(writeFileSync).mockReset().mockImplementation(() => { });
 		vi.mocked(statSync).mockReset().mockReturnValue({ size: 100 } as Stats);
-		vi.mocked<unknown>(spawnSync).mockReset().mockImplementation((_: string, args: string[]) => {
+		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		vi.mocked<any>(spawnSync).mockReset().mockImplementation((_: string, args: string[]) => {
 			const filename = args.pop();
 			const hash = args.pop()?.replace('sum', '');
 			return {

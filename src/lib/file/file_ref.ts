@@ -81,7 +81,7 @@ export class FileRef {
 
 		this.sizeString = (this.size / (2 ** 30)).toFixed(1) + ' GB';
 
-		if (!/^\/[^\/]/.test(this.url)) {
+		if (!/^\/[^/]/.test(this.url)) {
 			throw new Error(`FileRef.url must start with a single '/', got: ${this.url}`);
 		}
 	}

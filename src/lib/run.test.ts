@@ -119,7 +119,7 @@ describe('run', () => {
 		// Verify generateNginxConf is called with the moved files and the Nginx config path
 		expect(generateNginxConf).toHaveBeenCalledWith(
 			['movedFile'],
-			[1, 2].flatMap(i => ['md5', 'sha256'].flatMap(h => [{ content: `${h} file${i}\\n`, url: `file${i}.${h}` }])),
+			[1, 2].flatMap(i => ['md5', 'sha256'].flatMap(h => [{ content: `${h} file${i}\\n`, url: `/file${i}.${h}` }])),
 			`${nginxFolder}/site-confs/default.conf`
 		);
 	});

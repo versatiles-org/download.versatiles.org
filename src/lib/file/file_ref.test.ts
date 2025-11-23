@@ -20,7 +20,7 @@ describe('FileRef', () => {
 		expect(fileRef.fullname).toBe('/path/file.versatiles');
 		expect(fileRef.filename).toBe('file.versatiles');
 		expect(fileRef.size).toBe(200);
-		expect(fileRef.url).toBe('file.versatiles');
+		expect(fileRef.url).toBe('/file.versatiles');
 	});
 
 	it('should clone a FileRef object', () => {
@@ -52,9 +52,9 @@ describe('FileRef', () => {
 		const fileRef = new FileRef('/path/file.versatiles', 200);
 		fileRef.hashes = { md5: 'abc', sha256: 'xyz' };
 		expect(fileRef.getResponseMd5File())
-			.toStrictEqual(new FileResponse('file.versatiles.md5', 'abc file.versatiles\n'));
+			.toStrictEqual(new FileResponse('/file.versatiles.md5', 'abc file.versatiles\n'));
 		expect(fileRef.getResponseSha256File())
-			.toStrictEqual(new FileResponse('file.versatiles.sha256', 'xyz file.versatiles\n'));
+			.toStrictEqual(new FileResponse('/file.versatiles.sha256', 'xyz file.versatiles\n'));
 	});
 });
 

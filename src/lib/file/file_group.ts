@@ -25,7 +25,7 @@ export class FileGroup {
 		const url = new URL(file.url, baseURL).href;
 
 		return new FileResponse(
-			`urllist_${this.slug}.tsv`,
+			`/urllist_${this.slug}.tsv`,
 			`TsvHttpData-1.0\n${url}\t${file.size}\t${hex2base64(file.md5)}\n`,
 		);
 	}

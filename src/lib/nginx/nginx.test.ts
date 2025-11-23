@@ -28,8 +28,8 @@ describe('generateNGINX', () => {
 		];
 
 		mockResponses = [
-			new FileResponse('c.txt', 'abc'),
-			new FileResponse('d.txt', 'xyz'),
+			new FileResponse('/c.txt', 'abc'),
+			new FileResponse('/d.txt', 'xyz'),
 		];
 
 		vi.mocked(readFileSync).mockReturnValue('{{#each files}}{{{url}}},{{{fullname}}};{{/each}}#{{#each responses}}{{{url}}},{{{content}}};{{/each}}');

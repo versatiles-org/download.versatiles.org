@@ -14,7 +14,7 @@ export function generateHTML(fileGroups: FileGroup[], filename: string): FileRef
 	console.log('Generating HTML...');
 	writeFileSync(filename, renderTemplate(fileGroups, "index.html"));
 
-	return new FileRef(filename, 'index.html');
+	return new FileRef(filename, '/index.html');
 }
 
 export function generateRSSFeeds(fileGroups: FileGroup[], outputDir: string): FileRef[] {
@@ -25,7 +25,7 @@ export function generateRSSFeeds(fileGroups: FileGroup[], outputDir: string): Fi
 		const filename = `feed-${g.slug}.xml`
 		const outputPath = resolve(outputDir, filename)
 		writeFileSync(outputPath, renderTemplate([g], "feed.xml"));
-		refs.push(new FileRef(outputPath, filename))
+		refs.push(new FileRef(outputPath, '/'+filename))
 	})
 
 	return refs;

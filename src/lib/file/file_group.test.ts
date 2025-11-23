@@ -139,7 +139,7 @@ describe('generateLists', () => {
 	it('should generate lists', () => {
 		const result = fileGroup.getResponseUrlList('https://example.com');
 
-		expect(result.url).toBe('urllist_slug.tsv');
+		expect(result.url).toBe('/urllist_slug.tsv');
 		expect(result.content).toBe('TsvHttpData-1.0\\nhttps://example.com/file1.versatiles\\t1000\\tqw==\\n');
 	});
 
@@ -148,11 +148,11 @@ describe('generateLists', () => {
 
 		expect(result.length).toBe(5);
 
-		expect(result[0]).toStrictEqual(new FileResponse('file2.versatiles.md5', '123 file2.versatiles\n'))
-		expect(result[1]).toStrictEqual(new FileResponse('file2.versatiles.sha256', '456 file2.versatiles\n'))
-		expect(result[2]).toStrictEqual(new FileResponse('file1.versatiles.md5', 'abc file1.versatiles\n'))
-		expect(result[3]).toStrictEqual(new FileResponse('file1.versatiles.sha256', 'def file1.versatiles\n'))
-		expect(result[4]).toStrictEqual(new FileResponse('urllist_slug.tsv', 'TsvHttpData-1.0\nhttps://example.com/file1.versatiles\t1000\tqw==\n'))
+		expect(result[0]).toStrictEqual(new FileResponse('/file2.versatiles.md5', '123 file2.versatiles\n'))
+		expect(result[1]).toStrictEqual(new FileResponse('/file2.versatiles.sha256', '456 file2.versatiles\n'))
+		expect(result[2]).toStrictEqual(new FileResponse('/file1.versatiles.md5', 'abc file1.versatiles\n'))
+		expect(result[3]).toStrictEqual(new FileResponse('/file1.versatiles.sha256', 'def file1.versatiles\n'))
+		expect(result[4]).toStrictEqual(new FileResponse('/urllist_slug.tsv', 'TsvHttpData-1.0\nhttps://example.com/file1.versatiles\t1000\tqw==\n'))
 	});
 
 	it('should throw an error if hashes are missing', () => {

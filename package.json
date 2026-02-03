@@ -26,28 +26,28 @@
   },
   "license": "MIT",
   "dependencies": {
-    "cookie": "^1.0.2",
-    "express": "^5.1.0",
+    "cookie": "^1.1.1",
+    "express": "^5.2.1",
     "handlebars": "^4.7.8",
-    "tsx": "^4.20.6",
+    "tsx": "^4.21.0",
     "typescript": "^5.9.3",
-    "work-faster": "^2.5.3"
+    "work-faster": "^2.5.5"
   },
   "private": true,
   "devDependencies": {
-    "@eslint/js": "^9.39.1",
-    "@types/eslint__js": "^9.14.0",
-    "@types/express": "^5.0.5",
+    "@eslint/js": "^9.39.2",
+    "@types/eslint__js": "^8.42.3",
+    "@types/express": "^5.0.6",
     "@types/node": "^25.2.0",
     "@types/supertest": "^6.0.3",
-    "@versatiles/release-tool": "^2.4.5",
-    "@vitest/coverage-v8": "^4.0.13",
+    "@versatiles/release-tool": "^2.6.0",
+    "@vitest/coverage-v8": "^4.0.18",
     "cross-env": "^10.1.0",
-    "eslint": "^9.39.1",
+    "eslint": "^9.39.2",
     "globals": "^17.3.0",
-    "npm-check-updates": "^19.1.2",
-    "supertest": "^7.1.4",
-    "typescript-eslint": "^8.47.0",
-    "vitest": "^4.0.13"
+    "npm-check-updates": "^19.3.2",
+    "supertest": "^7.2.2",
+    "typescript-eslint": "^8.54.0",
+    "vitest": "^4.0.18"
   }
 }

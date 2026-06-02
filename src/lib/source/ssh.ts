@@ -11,12 +11,26 @@
  * - `SSH_KEY` — path to the identity file (default `.ssh/storage`).
  */
 import { spawn, spawnSync } from 'child_process';
+import { homedir } from 'os';
+import { join, resolve } from 'path';
 
 /** SSH port of the Hetzner Storage Box. */
 const SSH_PORT = '23';
 
-/** Path to the SSH identity file. */
-const SSH_KEY = process.env['SSH_KEY'] ?? '.ssh/storage';
+/**
+ * Resolves the SSH key path to an absolute path, expanding a leading `~` or
+ * `$HOME` (env files pass these literally — neither Node nor ssh expand them).
+ */
+function resolveKeyPath(p: string): string {
+	let out = p;
+	if (out === '~') out = homedir();
+	else if (out.startsWith('~/')) out = join(homedir(), out.slice(2));
+	else if (out.startsWith('$HOME/')) out = join(homedir(), out.slice('$HOME/'.length));
+	return resolve(out);
+}
+
+/** Path to the SSH identity file (absolute). */
+const SSH_KEY = resolveKeyPath(process.env['SSH_KEY'] ?? '.ssh/storage');
 
 /** Connection options shared by ssh and scp (the port flag differs, set per call). */
 const SSH_COMMON_OPTIONS = ['-i', SSH_KEY, '-oBatchMode=yes', '-oStrictHostKeyChecking=accept-new'];

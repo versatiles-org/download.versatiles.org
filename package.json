@@ -7,15 +7,22 @@
     "url": "https://github.com/versatiles-org/download.versatiles.org.git"
   },
   "scripts": {
-    "check": "npm run lint && npm run test",
-    "dev": "tsx --env-file=.env src/dev.ts",
+    "build:site": "vite build",
+    "check": "npm run lint && npm run typecheck && npm run test",
+    "dev": "tsx src/generate_testdata.ts && vite dev",
     "doc": "npm run doc-graph",
     "doc-graph": "vrt deps-graph | vrt doc-insert README.md '## Dependency Graph'",
-    "lint": "eslint . --color",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
     "once": "tsx --env-file=.env src/run_once.ts",
+    "prepare": "svelte-kit sync",
+    "preview:site": "vite preview",
     "setup": "bash scripts/setup.sh",
-    "test": "cross-env vitest run",
-    "test-coverage": "cross-env vitest run --coverage",
+    "test": "vitest run",
+    "test-coverage": "vitest run --coverage",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc --noEmit",
     "upgrade": "vrt deps-upgrade"
   },
   "type": "module",
@@ -25,27 +32,27 @@
     "url": "https://github.com/MichaelKreil"
   },
   "license": "MIT",
+  "private": true,
   "dependencies": {
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.61.1",
     "handlebars": "^4.7.9",
+    "sass": "^1.100.0",
+    "svelte": "^5.56.0",
     "tsx": "^4.22.4",
     "typescript": "^6.0.3",
-    "work-faster": "^2.5.7"
+    "vite": "^8.0.14",
+    "vitest": "^4.1.8"
   },
-  "private": true,
   "devDependencies": {
-    "@eslint/js": "^10.0.1",
-    "@types/express": "^5.0.6",
-    "express": "^5.2.1",
     "@types/node": "^25.9.1",
-    "@types/supertest": "^7.2.0",
+    "@typescript-eslint/eslint-plugin": "^8.60.1",
+    "@typescript-eslint/parser": "^8.60.1",
     "@versatiles/release-tool": "^2.8.0",
     "@vitest/coverage-v8": "^4.1.8",
-    "cross-env": "^10.1.0",
     "eslint": "^10.4.1",
-    "globals": "^17.6.0",
-    "npm-check-updates": "^22.2.1",
-    "supertest": "^7.2.2",
-    "typescript-eslint": "^8.60.1",
-    "vitest": "^4.1.8"
+    "prettier": "^3.8.3",
+    "prettier-plugin-svelte": "^4.0.1",
+    "svelte-check": "^4.4.8"
   }
 }

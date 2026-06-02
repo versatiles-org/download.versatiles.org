@@ -72,17 +72,38 @@ function keyOf(file: FileRef): string {
 /**
  * Runs rclone. By default captures stdout/stderr (for small, parseable output);
  * with `inherit` it streams straight to the console (for long-running uploads,
- * so progress is visible and nothing is buffered).
+ * so progress is visible and nothing is buffered). `input` is piped to stdin
+ * (used by `rcat` to upload generated content without a temp file).
  */
-export function runRclone(args: string[], opts: { inherit?: boolean } = {}): { status: number; stdout: string; stderr: string } {
+export function runRclone(args: string[], opts: { inherit?: boolean; input?: string } = {}): { status: number; stdout: string; stderr: string } {
 	const result = opts.inherit
 		? spawnSync(RCLONE_BIN, args, { stdio: 'inherit' })
-		: spawnSync(RCLONE_BIN, args, { encoding: 'utf-8', maxBuffer: 64 * 1024 * 1024 });
+		: spawnSync(RCLONE_BIN, args, { encoding: 'utf-8', maxBuffer: 64 * 1024 * 1024, input: opts.input });
 	return {
 		status: result.status ?? 1,
 		stdout: result.stdout?.toString() ?? '',
 		stderr: result.stderr?.toString() ?? '',
 	};
+}
+
+/**
+ * Uploads generated content to an R2 object via `rclone rcat`, setting the given
+ * Content-Type. `url` is the object's path/key (with or without a leading slash).
+ *
+ * Throws if the upload fails.
+ */
+export function uploadObject(url: string, content: string, contentType: string): void {
+	const cfg = config();
+	const key = url.replace(/^\//, '');
+	const result = runRclone([
+		'rcat',
+		'--metadata',
+		'--metadata-set', `content-type=${contentType}`,
+		r2Dest(cfg, key),
+	], { input: content });
+	if (result.status !== 0) {
+		throw new Error(`rclone failed to upload ${key} (exit ${result.status})`);
+	}
 }
 
 /** Returns the md5 stored in an R2 object's metadata, or null if absent/missing. */

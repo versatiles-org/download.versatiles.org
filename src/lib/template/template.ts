@@ -8,14 +8,13 @@
  * - `index.html` — the main overview page listing all file groups
  * - `feed-<slug>.xml` — per-group RSS feeds for version updates
  *
- * These outputs are written to disk and wrapped in `FileRef` objects so they
- * can be included in the final NGINX configuration and file inventory.
+ * These outputs are returned as `FileResponse` objects so they can be uploaded
+ * to R2 as site assets (see `../site/site.ts`).
  */
-import { readFileSync, writeFileSync } from 'fs';
+import { readFileSync } from 'fs';
 import Handlebars from 'handlebars';
 import type { FileGroup } from '../file/file_group.js';
-import { FileRef } from '../file/file_ref.js';
-import { resolve } from 'path';
+import { FileResponse } from '../file/file_response.js';
 
 /**
  * Renders a Handlebars template from the `template/` directory.
@@ -36,42 +35,16 @@ export function renderTemplate(fileGroups: FileGroup[], templateFilename: string
 }
 
 /**
- * Generates the main `index.html` file.
- *
- * - Uses the `index.html` Handlebars template.
- * - Writes the result to `filename`.
- * - Wraps the output in a `FileRef` with URL `/index.html` so it becomes part
- *   of the public file set.
- *
- * Logs progress to stdout.
+ * Generates the main `index.html` as a `FileResponse` (key `/index.html`).
  */
-export function generateHTML(fileGroups: FileGroup[], filename: string): FileRef {
-	console.log('Generating HTML...');
-	writeFileSync(filename, renderTemplate(fileGroups, "index.html"));
-
-	return new FileRef(filename, '/index.html');
+export function generateHTML(fileGroups: FileGroup[]): FileResponse {
+	return new FileResponse('/index.html', renderTemplate(fileGroups, 'index.html'), 'text/html');
 }
 
 /**
- * Generates per‑group RSS feeds (`feed-<slug>.xml`).
- *
- * For each `FileGroup`:
- * - Renders the `feed.xml` template with a single‑element array `[group]`
- * - Writes the output to `<outputDir>/feed-<slug>.xml`
- * - Creates a `FileRef` with URL `/feed-<slug>.xml`
- *
- * Returns the list of all generated `FileRef`s.
+ * Generates per‑group RSS feeds (`/feed-<slug>.xml`) as `FileResponse` objects.
  */
-export function generateRSSFeeds(fileGroups: FileGroup[], outputDir: string): FileRef[] {
-	console.log('Generating RSS feeds...');
-	const refs: FileRef[] = []
-
-	fileGroups.forEach(g => {
-		const filename = `feed-${g.slug}.xml`
-		const outputPath = resolve(outputDir, filename)
-		writeFileSync(outputPath, renderTemplate([g], "feed.xml"));
-		refs.push(new FileRef(outputPath, '/'+filename))
-	})
-
-	return refs;
+export function generateRSSFeeds(fileGroups: FileGroup[]): FileResponse[] {
+	return fileGroups.map(g =>
+		new FileResponse(`/feed-${g.slug}.xml`, renderTemplate([g], 'feed.xml'), 'application/rss+xml'));
 }

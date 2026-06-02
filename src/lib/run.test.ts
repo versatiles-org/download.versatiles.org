@@ -18,10 +18,8 @@ vi.mock('./file/hashes.js', () => ({
 	generateHashes: vi.fn(),
 }));
 
-vi.mock('./template/template.js', () => ({
-	renderTemplate: vi.fn(),
-	generateHTML: vi.fn(),
-	generateRSSFeeds: vi.fn(),
+vi.mock('./site/site.js', () => ({
+	buildAndUploadSite: vi.fn(),
 }));
 
 // Import the module under test after mocking modules
@@ -29,12 +27,10 @@ const { run } = await import('./run.js');
 const { getRemoteFiles } = await import('./source/scan.js');
 const { groupFiles } = await import('./file/file_group.js');
 const { generateHashes } = await import('./file/hashes.js');
-const { generateHTML, generateRSSFeeds } = await import('./template/template.js');
+const { buildAndUploadSite } = await import('./site/site.js');
 
 describe('run', () => {
 	const domain = 'example.com';
-	const volumeFolder = '/mock/volumes/';
-	const localFolder = '/mock/volumes/local_files';
 	const files: FileRef[] = [
 		new FileRef('file1', 100),
 		new FileRef('file2', 200)
@@ -57,14 +53,13 @@ describe('run', () => {
 		// Mock other functions to do nothing
 		vi.mocked(generateHashes).mockResolvedValue(undefined);
 		vi.mocked(groupFiles).mockReturnValue(fileGroups);
-		vi.mocked(generateHTML).mockReturnValue({ filename: 'index.html' } as FileRef);
-		vi.mocked(generateRSSFeeds).mockReturnValue([]);
+		vi.mocked(buildAndUploadSite).mockReturnValue(0);
 	});
 
 	it('should throw an error if $DOMAIN is not set and no domain is provided in options', async () => {
 		delete process.env['DOMAIN']; // Unset the domain
 
-		await expect(run({ volumeFolder })).rejects.toThrow('missing $DOMAIN');
+		await expect(run({})).rejects.toThrow('missing $DOMAIN');
 	});
 
 	it('should throw an error if no files are found in the remote folder', async () => {
@@ -75,7 +70,7 @@ describe('run', () => {
 	});
 
 	it('should call the necessary functions with correct arguments', async () => {
-		await run({ domain, volumeFolder });
+		await run({ domain });
 
 		// Verify getRemoteFiles is called
 		expect(getRemoteFiles).toHaveBeenCalled();
@@ -86,8 +81,7 @@ describe('run', () => {
 		// Verify groupFiles is called with the correct file list
 		expect(groupFiles).toHaveBeenCalledWith(files);
 
-		// Verify the static site is generated into the local folder
-		expect(generateHTML).toHaveBeenCalledWith(fileGroups, `${localFolder}/index.html`);
-		expect(generateRSSFeeds).toHaveBeenCalledWith(fileGroups, localFolder);
+		// Verify the site is built and uploaded with the absolute base URL
+		expect(buildAndUploadSite).toHaveBeenCalledWith(fileGroups, 'https://example.com/');
 	});
 });

@@ -140,7 +140,7 @@ describe('generateLists', () => {
 		const result = fileGroup.getResponseUrlList('https://example.com');
 
 		expect(result.url).toBe('/urllist_slug.tsv');
-		expect(result.content).toBe('TsvHttpData-1.0\\nhttps://example.com/file1.versatiles\\t1000\\tqw==\\n');
+		expect(result.content).toBe('TsvHttpData-1.0\nhttps://example.com/file1.versatiles\t1000\tqw==\n');
 	});
 
 	it('should generate responses', () => {

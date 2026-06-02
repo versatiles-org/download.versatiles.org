@@ -6,7 +6,7 @@ const cp = { spawnSync: vi.fn() };
 vi.mock('child_process', () => cp);
 
 const { FileRef } = await import('../file/file_ref.js');
-const { mirrorToR2 } = await import('./rclone.js');
+const { mirrorToR2, uploadObject } = await import('./rclone.js');
 
 /** Builds a remote data FileRef with a given destination url and md5. */
 function dataFile(remotePath: string, url: string, md5: string): InstanceType<typeof FileRef> {
@@ -92,5 +92,27 @@ describe('mirrorToR2', () => {
 		delete process.env['R2_BUCKET'];
 		expect(() => mirrorToR2([dataFile('/home/osm/osm.versatiles', '/osm.versatiles', 'abc')]))
 			.toThrow(/R2_BUCKET/);
+	});
+});
+
+describe('uploadObject', () => {
+	it('uploads content via rcat with the given content-type', () => {
+		cp.spawnSync.mockReturnValue({ status: 0, stdout: '' });
+
+		uploadObject('/index.html', '<html></html>', 'text/html');
+
+		const call = cp.spawnSync.mock.calls[0];
+		const args = call[1] as string[];
+		const opts = call[2] as { input?: string };
+		expect(args[0]).toBe('rcat');
+		expect(args).toContain('content-type=text/html');
+		expect(args).toContain('r2:downloads/index.html');
+		expect(opts.input).toBe('<html></html>');
+	});
+
+	it('throws when the upload fails', () => {
+		cp.spawnSync.mockReturnValue({ status: 1, stderr: 'boom' });
+		expect(() => uploadObject('/index.html', 'x', 'text/html'))
+			.toThrow(/rclone failed to upload index.html/);
 	});
 });

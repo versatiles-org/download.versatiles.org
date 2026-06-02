@@ -5,17 +5,18 @@
  * - discovers all `.versatiles` files on the Storage Box via SSH
  * - downloads or computes MD5/SHA256 sidecars for each file
  * - groups files into logical `FileGroup`s with metadata
+ * - mirrors the data files to Cloudflare R2
  * - builds the static site (HTML, RSS, sidecars, url lists) and uploads it to R2
  *
- * This module is the single entry point for one-shot updates (`run_once.ts`).
+ * Atomic publish: the data files are mirrored **before** the site is uploaded,
+ * so the site never advertises a file that isn't fully present on R2.
  *
- * NOTE: This file is mid-migration (issue #22). Mirroring the data files to R2
- * (and the atomic-publish ordering — data first, site last) is wired in a later
- * phase; for now only the site upload is wired.
+ * This module is the single entry point for one-shot updates (`run_once.ts`).
  */
 import { getRemoteFiles } from './source/scan.js';
-import { groupFiles } from './file/file_group.js';
+import { collectFiles, groupFiles } from './file/file_group.js';
 import { generateHashes } from './file/hashes.js';
+import { mirrorToR2 } from './mirror/rclone.js';
 import { buildAndUploadSite } from './site/site.js';
 
 /**
@@ -36,12 +37,13 @@ export interface Options {
  * 2. Discover all `.versatiles` files on the Storage Box via SSH.
  * 3. Download or compute MD5/SHA256 sidecars for each file.
  * 4. Group files into `FileGroup`s and derive metadata.
- * 5. Build the static site and upload it to R2.
+ * 5. Mirror the data files to R2.
+ * 6. Build the static site and upload it to R2 (last).
  *
  * Throws:
  * - If `domain` is missing (no `DOMAIN` env and no `options.domain` provided).
  * - If no remote files are found.
- * - If any downstream step fails (hashing, grouping, templating, upload).
+ * - If any downstream step fails (hashing, grouping, mirroring, templating, upload).
  */
 export async function run(options: Options = {}) {
 	// Get the domain from environment variables. Throw an error if it's not set.
@@ -61,6 +63,12 @@ export async function run(options: Options = {}) {
 	// Group files based on their names.
 	const fileGroups = groupFiles(files);
 
-	// Build the static site (index.html, RSS, sidecars, url lists) and upload to R2.
+	// Mirror the data files to R2 *before* publishing the site (atomic publish).
+	const dataFiles = collectFiles(fileGroups);
+	mirrorToR2(dataFiles);
+
+	// Build the static site (index.html, RSS, sidecars, url lists) and upload last.
 	buildAndUploadSite(fileGroups, baseURL);
+
+	console.log('Update complete.');
 }

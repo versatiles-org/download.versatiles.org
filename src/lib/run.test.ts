@@ -18,6 +18,10 @@ vi.mock('./file/hashes.js', () => ({
 	generateHashes: vi.fn(),
 }));
 
+vi.mock('./mirror/rclone.js', () => ({
+	mirrorToR2: vi.fn(),
+}));
+
 vi.mock('./site/site.js', () => ({
 	buildAndUploadSite: vi.fn(),
 }));
@@ -27,6 +31,7 @@ const { run } = await import('./run.js');
 const { getRemoteFiles } = await import('./source/scan.js');
 const { groupFiles } = await import('./file/file_group.js');
 const { generateHashes } = await import('./file/hashes.js');
+const { mirrorToR2 } = await import('./mirror/rclone.js');
 const { buildAndUploadSite } = await import('./site/site.js');
 
 describe('run', () => {
@@ -53,6 +58,7 @@ describe('run', () => {
 		// Mock other functions to do nothing
 		vi.mocked(generateHashes).mockResolvedValue(undefined);
 		vi.mocked(groupFiles).mockReturnValue(fileGroups);
+		vi.mocked(mirrorToR2).mockReturnValue({ uploaded: 0, skipped: 0 });
 		vi.mocked(buildAndUploadSite).mockReturnValue(0);
 	});
 
@@ -81,7 +87,18 @@ describe('run', () => {
 		// Verify groupFiles is called with the correct file list
 		expect(groupFiles).toHaveBeenCalledWith(files);
 
+		// Verify the data files are mirrored (collected from the groups).
+		expect(mirrorToR2).toHaveBeenCalledWith(files);
+
 		// Verify the site is built and uploaded with the absolute base URL
 		expect(buildAndUploadSite).toHaveBeenCalledWith(fileGroups, 'https://example.com/');
+	});
+
+	it('should mirror the data before uploading the site (atomic publish)', async () => {
+		await run({ domain });
+
+		const mirrorOrder = vi.mocked(mirrorToR2).mock.invocationCallOrder[0];
+		const siteOrder = vi.mocked(buildAndUploadSite).mock.invocationCallOrder[0];
+		expect(mirrorOrder).toBeLessThan(siteOrder);
 	});
 });

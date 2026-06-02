@@ -121,6 +121,20 @@ rclone config create "$RCLONE_SFTP_REMOTE" sftp \
 # signature and yields 401 Unauthorized.
 R2_ENDPOINT="$(printf '%s' "$R2_ENDPOINT" | sed -E 's#^(https?://[^/]+).*#\1#')"
 
+# Validate the S3 credential shape early — the most common mistake is pasting the
+# Cloudflare API "Token value" (cfat_…, a Bearer token) instead of the S3
+# Secret Access Key, which only surfaces later as a 401.
+if ! printf '%s' "$R2_ACCESS_KEY_ID" | grep -qiE '^[0-9a-f]{32}$'; then
+	echo "ERROR: R2_ACCESS_KEY_ID should be 32 hex chars (the S3 'Access Key ID')." >&2
+	exit 1
+fi
+if ! printf '%s' "$R2_SECRET_ACCESS_KEY" | grep -qiE '^[0-9a-f]{64}$'; then
+	echo "ERROR: R2_SECRET_ACCESS_KEY should be 64 hex chars (the S3 'Secret Access Key')." >&2
+	echo "       Do NOT use the Cloudflare API 'Token value' (cfat_…); use the S3" >&2
+	echo "       'Secret Access Key' from the same R2 token's credentials section." >&2
+	exit 1
+fi
+
 echo "Configuring rclone remote '$RCLONE_R2_REMOTE' (s3 -> R2)..."
 rclone config delete "$RCLONE_R2_REMOTE" 2>/dev/null || true
 rclone config create "$RCLONE_R2_REMOTE" s3 \
@@ -140,6 +154,29 @@ echo "-----------------------------------------------------------------"
 echo "If the folders above are EMPTY but appear under '$RCLONE_SFTP_REMOTE:home',"
 echo "set RCLONE_SFTP_STRIP_PREFIX=\"/\" in .env and re-run."
 echo
+
+# Pick the endpoint that can actually reach the bucket. EU-jurisdiction buckets
+# are only reachable via the ".eu." endpoint; if R2_ENDPOINT has the wrong
+# jurisdiction, auto-correct it (and tell the user to update .env).
+echo "Checking R2 endpoint / jurisdiction..."
+if ! rclone lsf "$RCLONE_R2_REMOTE:$R2_BUCKET" >/dev/null 2>&1; then
+	alt="$R2_ENDPOINT"
+	case "$R2_ENDPOINT" in
+		*.eu.r2.cloudflarestorage.com) alt="${R2_ENDPOINT/.eu.r2/.r2}" ;;
+		*.r2.cloudflarestorage.com)    alt="${R2_ENDPOINT/.r2/.eu.r2}" ;;
+	esac
+	if [ "$alt" != "$R2_ENDPOINT" ] && rclone lsf "$RCLONE_R2_REMOTE:$R2_BUCKET" --s3-endpoint "$alt" >/dev/null 2>&1; then
+		echo "  Bucket is reachable via: $alt"
+		echo "  (its jurisdiction differs from R2_ENDPOINT — please update R2_ENDPOINT in .env)"
+		rclone config update "$RCLONE_R2_REMOTE" endpoint "$alt" >/dev/null
+		R2_ENDPOINT="$alt"
+	else
+		echo "ERROR: cannot access bucket '$R2_BUCKET' on R2." >&2
+		echo "       Check the token has 'Object Read & Write' on this bucket, and that" >&2
+		echo "       R2_ENDPOINT matches the bucket's jurisdiction (EU buckets need '.eu.')." >&2
+		exit 1
+	fi
+fi
 
 echo "Verifying R2 remote (write/read/delete round-trip)..."
 echo "ok" | rclone rcat "$RCLONE_R2_REMOTE:$R2_BUCKET/_healthcheck.txt"

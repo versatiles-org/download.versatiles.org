@@ -11,24 +11,29 @@
 import { FileRef } from '../file/file_ref.js';
 import { sshExecSync } from './ssh.js';
 
-/** Remote root that is scanned for datasets. */
-const REMOTE_ROOT = '/home';
+/** Default remote root scanned for datasets (override with STORAGE_ROOT). */
+const DEFAULT_ROOT = '/home';
 
 /**
  * Scans the Storage Box and returns all `.versatiles` files, sorted by remote path.
  *
+ * Only the subtree given by `STORAGE_ROOT` (default `/home`) is scanned, so the
+ * mirror can be limited to the download.versatiles.org datasets (e.g. set
+ * `STORAGE_ROOT=/home/download`).
+ *
  * Throws if the SSH scan command fails.
  */
 export function getRemoteFiles(): FileRef[] {
-	console.log('Scanning remote storage via SSH...');
+	const root = process.env['STORAGE_ROOT'] ?? DEFAULT_ROOT;
+	console.log(`Scanning remote storage (${root}) via SSH...`);
 
-	const result = sshExecSync(['ls', '-lR', REMOTE_ROOT]);
+	const result = sshExecSync(['ls', '-lR', root]);
 	if (result.status !== 0) {
 		throw new Error(`Failed to scan remote storage via SSH: ${result.stderr}`);
 	}
 
 	const files: FileRef[] = [];
-	let currentDir = REMOTE_ROOT;
+	let currentDir = root;
 
 	for (const line of result.stdout.trim().split('\n')) {
 		// Directory header: "/home/dirname:"

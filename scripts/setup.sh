@@ -115,6 +115,12 @@ rclone config create "$RCLONE_SFTP_REMOTE" sftp \
 	disable_hashcheck true \
 	--non-interactive >/dev/null
 
+# Normalize the R2 endpoint to scheme://host. Cloudflare's per-bucket "S3 API"
+# URL includes the bucket path, but rclone needs the account endpoint only (it
+# appends the bucket from the remote path); a path here breaks the SigV4
+# signature and yields 401 Unauthorized.
+R2_ENDPOINT="$(printf '%s' "$R2_ENDPOINT" | sed -E 's#^(https?://[^/]+).*#\1#')"
+
 echo "Configuring rclone remote '$RCLONE_R2_REMOTE' (s3 -> R2)..."
 rclone config delete "$RCLONE_R2_REMOTE" 2>/dev/null || true
 rclone config create "$RCLONE_R2_REMOTE" s3 \

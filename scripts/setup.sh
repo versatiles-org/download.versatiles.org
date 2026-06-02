@@ -57,17 +57,39 @@ if [ ! -f "$SSH_KEY" ]; then
 	exit 1
 fi
 
+# Derive SFTP user/host from STORAGE_URL (user@host) and an absolute key path.
+SFTP_USER="${STORAGE_URL%@*}"
+SFTP_HOST="${STORAGE_URL#*@}"
+KEY_FILE="$(cd "$(dirname "$SSH_KEY")" && pwd)/$(basename "$SSH_KEY")"
+KNOWN_HOSTS="$HOME/.ssh/known_hosts"
+
+# Pre-flight: connect once over SSH. This verifies the key authenticates AND
+# records the Storage Box host key in known_hosts (accept-new) — without it,
+# rclone's host-key validation fails on first contact.
+echo "Testing SSH connection to $SFTP_HOST ..."
+mkdir -p "$HOME/.ssh"
+ssh_err="$(mktemp)"
+if ! ssh -p "$SSH_PORT" -i "$KEY_FILE" \
+	-o IdentitiesOnly=yes \
+	-o StrictHostKeyChecking=accept-new \
+	-o BatchMode=yes \
+	-o ConnectTimeout=15 \
+	"$STORAGE_URL" "ls /home" >/dev/null 2>"$ssh_err"; then
+	echo "ERROR: could not connect to the Storage Box over SSH:" >&2
+	sed 's/^/       /' "$ssh_err" >&2 || true
+	rm -f "$ssh_err"
+	echo "       Check STORAGE_URL, SSH_PORT, and that SSH_KEY is authorized on the box." >&2
+	exit 1
+fi
+rm -f "$ssh_err"
+echo "SSH OK — host key recorded in $KNOWN_HOSTS."
+
 # Install rclone if not present.
 if ! command -v rclone >/dev/null 2>&1; then
 	echo "Installing rclone..."
 	curl -fsSL https://rclone.org/install.sh | sudo bash
 fi
 echo "rclone: $(rclone version | head -n1)"
-
-# Derive SFTP user/host from STORAGE_URL (user@host) and an absolute key path.
-SFTP_USER="${STORAGE_URL%@*}"
-SFTP_HOST="${STORAGE_URL#*@}"
-KEY_FILE="$(cd "$(dirname "$SSH_KEY")" && pwd)/$(basename "$SSH_KEY")"
 
 echo "Configuring rclone remote '$RCLONE_SFTP_REMOTE' (sftp -> $SFTP_HOST)..."
 rclone config delete "$RCLONE_SFTP_REMOTE" 2>/dev/null || true
@@ -76,6 +98,7 @@ rclone config create "$RCLONE_SFTP_REMOTE" sftp \
 	user "$SFTP_USER" \
 	port "$SSH_PORT" \
 	key_file "$KEY_FILE" \
+	known_hosts_file "$KNOWN_HOSTS" \
 	shell_type none \
 	disable_hashcheck true \
 	--non-interactive >/dev/null

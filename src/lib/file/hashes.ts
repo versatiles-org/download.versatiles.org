@@ -1,103 +1,120 @@
-
 /**
- * Hash generation utilities for `.versatiles` files.
+ * Hash / sidecar handling for `.versatiles` files on the Storage Box.
  *
- * This module is responsible for ensuring that each file in the remote storage
- * has associated `.md5` and `.sha256` checksum files. Missing hashes are computed
- * over SSH on the remote host and written locally next to the file.
+ * For every file the updater needs the MD5 and SHA256 checksum. Each is obtained
+ * by, in order of preference:
+ *   1. downloading the existing `.<type>` sidecar from the Storage Box (the
+ *      producing pipeline maintains these), or
+ *   2. computing it remotely (`<type>sum`) and uploading the sidecar back so the
+ *      next run can simply download it.
  *
- * Workflow:
- * - For every `FileRef`, check whether `<file>.md5` and `<file>.sha256` exist.
- * - For each missing hash, execute `{md5,sha256}sum` remotely via SSH.
- * - Store the resulting checksum string in the corresponding sidecar file.
- * - Finally, read all checksum files and assign the values to `file.hashes`.
+ * Downloads are cheap and run with limited parallelism; remote computation is
+ * heavy (reads the whole multi-GB file) and runs strictly one at a time.
  *
- * Requirements:
- * - The remote server must expose a shell with the hashing utilities installed.
- * - Environment variable `STORAGE_URL` must contain the SSH user@host.
- * - SSH identity `.ssh/storage` must exist in the container environment.
- *
- * All hash values loaded here become available through `FileRef.md5` and
- * `FileRef.sha256`.
+ * ⚠️ Never use the R2/S3 ETag as the hash — for multipart uploads it is not the
+ * MD5. The checksums always come from these sidecars.
  */
-
-import { existsSync, readFileSync, writeFileSync } from 'fs';
-import { relative, resolve } from 'path';
+import { basename, join } from 'path';
+import { tmpdir } from 'os';
+import { writeFileSync, unlinkSync } from 'fs';
 import { FileRef } from './file_ref.js';
-import { ProgressBar } from 'work-faster';
-import { spawnSync } from 'child_process';
+import { sshExec, scpUpload } from '../source/ssh.js';
+
+/** Maximum number of concurrent sidecar downloads (lightweight). */
+const DOWNLOAD_CONCURRENCY = 8;
+
+/** Maximum number of concurrent remote hash computations (heavy — keep at 1). */
+const COMPUTE_CONCURRENCY = 1;
+
+type HashType = 'md5' | 'sha256';
+
+interface HashTask { file: FileRef; type: HashType }
 
 /**
- * Ensures that all provided files have MD5 and SHA256 checksum sidecar files.
+ * Populates `file.hashes = { md5, sha256 }` for every file, downloading existing
+ * sidecars where possible and computing (then uploading) the rest.
  *
- * For each file:
- * - If `<file>.md5` or `<file>.sha256` is missing, compute it remotely via SSH.
- * - The remote command is executed in the directory that mirrors the
- *   structure of `remoteFolder`.
- * - Progress is measured in bytes processed (sum of file sizes).
- *
- * After all missing hashes are written, every file in `files` receives a
- * populated `file.hashes = { md5, sha256 }`.
- *
- * Throws:
- * - If SSH returns anything on stderr.
- * - If a checksum file cannot be read or has invalid format.
+ * Throws if a hash can neither be downloaded nor computed.
  */
-export async function generateHashes(files: FileRef[], remoteFolder: string) {
-	/** List of all (file, hashName) tasks that must be computed remotely. */
-	const todos: { file: FileRef, hashName: string }[] = [];
+export async function generateHashes(files: FileRef[]) {
+	console.log('Fetching hashes from remote storage...');
 
-	console.log('Check hashes...');
-	files.forEach(file => {
-		const fullnameMD5 = file.fullname + '.md5';
-		if (!existsSync(fullnameMD5)) todos.push({ file, hashName: 'md5' });
+	const stats = { downloaded: 0, calculated: 0 };
+	/** Map of `${remotePath}.${type}` -> hash value. */
+	const hashes = new Map<string, string>();
+	const key = (t: HashTask): string => `${t.file.remotePath}.${t.type}`;
 
-		const fullnameSHA = file.fullname + '.sha256';
-		if (!existsSync(fullnameSHA)) todos.push({ file, hashName: 'sha256' });
-	})
-
-	/**
-	 * Compute missing hashes remotely and write `<file>.<hashName>` sidecar files.
-	 * The remote path is constructed by mapping the local file path into the
-	 * remote storage root using `relative(remoteFolder, file.fullname)`.
-	 */
-	if (todos.length > 0) {
-		console.log(' - Calculate hashes...');
-
-		const sum = todos.reduce((s, t) => s + t.file.size, 0);
-		const progress = new ProgressBar(sum);
-
-		for (const todo of todos) {
-			const { file, hashName } = todo;
-			const path = resolve('/home/', relative(remoteFolder, todo.file.fullname));
-			const args = [
-				process.env['STORAGE_URL'] ?? 'STORAGE_URL is missing',
-				'-p', '23',
-				'-i', '.ssh/storage',
-				'-oBatchMode=yes',
-				hashName + 'sum',
-				path
-			]
-			const result = spawnSync('ssh', args);
-			if (result.stderr.length > 0) throw Error(result.stderr.toString());
-			const hashString = result.stdout.toString().replace(/\s.*\//, ' ');
-			writeFileSync(file.fullname + '.' + hashName, hashString);
-			progress.increment(file.size);
-		}
+	const tasks: HashTask[] = [];
+	for (const file of files) {
+		for (const type of ['md5', 'sha256'] as HashType[]) tasks.push({ file, type });
 	}
 
-	console.log('Read hashes...');
-	files.forEach(f => {
-		f.hashes = {
-			md5: read('md5'),
-			sha256: read('sha256'),
-		};
-		/**
-		 * Reads a checksum file and strips everything after the first whitespace.
-		 * The checksum utilities typically output `<hash>  <filename>`.
-		 */
-		function read(hash: string): string {
-			return readFileSync(f.fullname + '.' + hash, 'utf8').replace(/\s.*/ms, '')
+	// Phase 1: download existing sidecars in parallel (lightweight).
+	const needsCompute: HashTask[] = [];
+	await runWithConcurrency(tasks.map(t => async () => {
+		const hash = await downloadSidecar(t.file.remotePath, t.type);
+		if (hash) {
+			hashes.set(key(t), hash);
+			stats.downloaded++;
+		} else {
+			needsCompute.push(t);
 		}
-	})
+	}), DOWNLOAD_CONCURRENCY);
+
+	// Phase 2: compute missing hashes remotely, one at a time (heavy).
+	await runWithConcurrency(needsCompute.map(t => async () => {
+		hashes.set(key(t), await computeSidecar(t.file.remotePath, t.type));
+		stats.calculated++;
+	}), COMPUTE_CONCURRENCY);
+
+	console.log(` - ${stats.downloaded} downloaded, ${stats.calculated} calculated`);
+
+	for (const file of files) {
+		file.hashes = {
+			md5: get(file, 'md5'),
+			sha256: get(file, 'sha256'),
+		};
+	}
+
+	function get(file: FileRef, type: HashType): string {
+		const hash = hashes.get(`${file.remotePath}.${type}`);
+		if (!hash) throw new Error(`Missing ${type} hash for "${file.filename}"`);
+		return hash;
+	}
+}
+
+/** Downloads and parses an existing `.<type>` sidecar. Returns the hash or null. */
+async function downloadSidecar(remotePath: string, type: HashType): Promise<string | null> {
+	const result = await sshExec(['cat', `${remotePath}.${type}`]);
+	if (!result.success || result.stdout.length === 0) return null;
+	const hash = result.stdout.split(/\s/)[0];
+	return hash && hash.length >= 32 ? hash : null;
+}
+
+/** Computes a hash remotely, uploads the sidecar back, and returns the hash. */
+async function computeSidecar(remotePath: string, type: HashType): Promise<string> {
+	console.log(` - Calculating ${type} for ${basename(remotePath)} on remote...`);
+	const result = await sshExec([`${type}sum`, remotePath]);
+	const hash = result.success ? result.stdout.split(/\s/)[0] : '';
+	if (!hash || hash.length < 32) throw new Error(`Failed to calculate ${type} for ${remotePath}`);
+
+	// Persist the sidecar back to the Storage Box for future runs.
+	const tmpFile = join(tmpdir(), `hash-${basename(remotePath)}.${type}`);
+	writeFileSync(tmpFile, `${hash}  ${basename(remotePath)}\n`);
+	try {
+		const ok = await scpUpload(tmpFile, `${remotePath}.${type}`);
+		if (!ok) throw new Error(`Failed to upload ${type} sidecar for ${basename(remotePath)}`);
+	} finally {
+		unlinkSync(tmpFile);
+	}
+	return hash;
+}
+
+/** Runs async task thunks with a maximum concurrency. */
+async function runWithConcurrency(tasks: (() => Promise<void>)[], limit: number): Promise<void> {
+	let index = 0;
+	async function worker(): Promise<void> {
+		while (index < tasks.length) await tasks[index++]();
+	}
+	await Promise.all(Array.from({ length: Math.min(limit, tasks.length) }, () => worker()));
 }

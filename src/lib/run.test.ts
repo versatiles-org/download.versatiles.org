@@ -2,13 +2,9 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FileRef } from './file/file_ref.js';
 import { FileGroup } from './file/file_group.js';
 
-vi.mock(import('./file/file_ref.js'), async originalImport => {
-	const originalModule = await originalImport();
-	return {
-		...originalModule,
-		getAllFilesRecursive: vi.fn(),
-	}
-});
+vi.mock('./source/scan.js', () => ({
+	getRemoteFiles: vi.fn(),
+}));
 
 vi.mock(import('./file/file_group.js'), async originalImport => {
 	const originalModule = await originalImport();
@@ -30,7 +26,7 @@ vi.mock('./template/template.js', () => ({
 
 // Import the module under test after mocking modules
 const { run } = await import('./run.js');
-const { getAllFilesRecursive } = await import('./file/file_ref.js');
+const { getRemoteFiles } = await import('./source/scan.js');
 const { groupFiles } = await import('./file/file_group.js');
 const { generateHashes } = await import('./file/hashes.js');
 const { generateHTML, generateRSSFeeds } = await import('./template/template.js');
@@ -38,7 +34,6 @@ const { generateHTML, generateRSSFeeds } = await import('./template/template.js'
 describe('run', () => {
 	const domain = 'example.com';
 	const volumeFolder = '/mock/volumes/';
-	const remoteFolder = '/mock/volumes/remote_files';
 	const localFolder = '/mock/volumes/local_files';
 	const files: FileRef[] = [
 		new FileRef('file1', 100),
@@ -56,8 +51,8 @@ describe('run', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
-		// Mock getAllFilesRecursive to return a list of files
-		vi.mocked(getAllFilesRecursive).mockReturnValue(files);
+		// Mock getRemoteFiles to return a list of files
+		vi.mocked(getRemoteFiles).mockReturnValue(files);
 
 		// Mock other functions to do nothing
 		vi.mocked(generateHashes).mockResolvedValue(undefined);
@@ -74,7 +69,7 @@ describe('run', () => {
 
 	it('should throw an error if no files are found in the remote folder', async () => {
 		// Return an empty list of files
-		vi.mocked(getAllFilesRecursive).mockReturnValue([]);
+		vi.mocked(getRemoteFiles).mockReturnValue([]);
 
 		await expect(run({ domain })).rejects.toThrow('no remote files found');
 	});
@@ -82,11 +77,11 @@ describe('run', () => {
 	it('should call the necessary functions with correct arguments', async () => {
 		await run({ domain, volumeFolder });
 
-		// Verify getAllFilesRecursive is called with the remote folder
-		expect(getAllFilesRecursive).toHaveBeenCalledWith(remoteFolder);
+		// Verify getRemoteFiles is called
+		expect(getRemoteFiles).toHaveBeenCalled();
 
-		// Verify generateHashes is called with the correct arguments
-		expect(generateHashes).toHaveBeenCalledWith(files, remoteFolder);
+		// Verify generateHashes is called with the file list
+		expect(generateHashes).toHaveBeenCalledWith(files);
 
 		// Verify groupFiles is called with the correct file list
 		expect(groupFiles).toHaveBeenCalledWith(files);

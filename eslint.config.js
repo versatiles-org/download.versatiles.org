@@ -10,6 +10,7 @@ export default [
 			'coverage/**/*',
 			'dist/**/*',
 			'volumes/**/*',
+			'worker/**/*',
 		]
 	},
 	js.configs.recommended,

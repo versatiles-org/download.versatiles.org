@@ -1,6 +1,7 @@
 
 .env
 .ssh
+.wrangler
 coverage
 node_modules
 volumes

@@ -1,0 +1,15 @@
+name = "download-versatiles-org"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Serve the site (and, by default, the data files) on the public hostname.
+# This binds the Worker to download.versatiles.org with a Cloudflare-managed cert.
+routes = [
+  { pattern = "download.versatiles.org", custom_domain = true }
+]
+
+# R2 bucket holding the data files, sidecars and generated site assets.
+# `bucket_name` must match the bucket the updater mirrors into (R2_BUCKET).
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "download-versatiles-org"

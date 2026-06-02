@@ -24,7 +24,6 @@
 		"noUnusedParameters": true,
 		"emitDecoratorMetadata": true,
 		"experimentalDecorators": true,
-		"downlevelIteration": true,
 		"declaration": true,
 		"pretty": true,
 		"isolatedModules": true

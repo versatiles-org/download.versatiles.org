@@ -51,12 +51,18 @@ function config(): RcloneConfig {
 }
 
 /**
- * Source path on the SFTP remote. The Storage Box home is `/home`, and the scan
- * produces absolute `/home/...` paths; rclone SFTP paths are relative to the
- * remote root, so the `/home/` prefix is stripped.
+ * Source path on the SFTP remote. The scan produces absolute `/home/...` paths;
+ * rclone SFTP paths are relative to the remote's login directory, so a prefix is
+ * stripped. The prefix defaults to `/home/` (override with
+ * `RCLONE_SFTP_STRIP_PREFIX`, e.g. `/` if the folders appear under
+ * `<remote>:home`).
  */
 function sftpSource(cfg: RcloneConfig, remotePath: string): string {
-	return `${cfg.sftpRemote}:${remotePath.replace(/^\/home\//, '')}`;
+	const prefix = process.env['RCLONE_SFTP_STRIP_PREFIX'] ?? '/home/';
+	const rel = remotePath.startsWith(prefix)
+		? remotePath.slice(prefix.length)
+		: remotePath.replace(/^\/+/, '');
+	return `${cfg.sftpRemote}:${rel}`;
 }
 
 /** Destination object on the R2 remote. */

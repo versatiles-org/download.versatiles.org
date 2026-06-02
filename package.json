@@ -13,6 +13,7 @@
     "doc-graph": "vrt deps-graph | vrt doc-insert README.md '## Dependency Graph'",
     "lint": "eslint . --color",
     "once": "tsx --env-file=.env src/run_once.ts",
+    "setup": "bash scripts/setup.sh",
     "test": "cross-env vitest run",
     "test-coverage": "cross-env vitest run --coverage",
     "upgrade": "vrt deps-upgrade"

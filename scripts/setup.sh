@@ -41,8 +41,19 @@ require R2_ENDPOINT
 SSH_KEY="${SSH_KEY:-.ssh/storage}"
 SSH_PORT="${SSH_PORT:-23}"
 
+# Expand a leading ~ or $HOME so paths like ~/.ssh/id_ed25519 work from .env.
+# (The patterns intentionally match the literal text read from .env.)
+# shellcheck disable=SC2088,SC2016
+case "$SSH_KEY" in
+	"~") SSH_KEY="$HOME" ;;
+	"~/"*) SSH_KEY="$HOME/${SSH_KEY#\~/}" ;;
+	'$HOME/'*) SSH_KEY="$HOME/${SSH_KEY#\$HOME/}" ;;
+esac
+
 if [ ! -f "$SSH_KEY" ]; then
-	echo "ERROR: SSH key not found at '$SSH_KEY'. Place the Storage Box key there (chmod 600)." >&2
+	echo "ERROR: SSH key not found at '$SSH_KEY'." >&2
+	echo "       Set SSH_KEY in .env to the absolute path of a key authorized on the Storage Box," >&2
+	echo "       e.g.  SSH_KEY=\"\$HOME/.ssh/id_ed25519\"" >&2
 	exit 1
 fi
 

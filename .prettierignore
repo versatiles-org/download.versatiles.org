@@ -1,4 +1,5 @@
 .svelte-kit
+*.code-workspace
 package*.json
 build
 coverage

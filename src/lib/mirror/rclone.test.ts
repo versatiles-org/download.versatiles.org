@@ -6,7 +6,7 @@ const cp = { spawnSync: vi.fn() };
 vi.mock('child_process', () => cp);
 
 const { FileRef } = await import('../file/file_ref.js');
-const { mirrorToR2, uploadObject } = await import('./rclone.js');
+const { mirrorToR2, uploadObject, uploadDir } = await import('./rclone.js');
 
 /** Builds a remote data FileRef with a given destination url and md5. */
 function dataFile(remotePath: string, url: string, md5: string): InstanceType<typeof FileRef> {
@@ -18,7 +18,7 @@ function dataFile(remotePath: string, url: string, md5: string): InstanceType<ty
 
 /** Finds the args of the (single) `copyto` invocation, or undefined. */
 function copytoArgs(): string[] | undefined {
-	const call = cp.spawnSync.mock.calls.find(c => (c[1] as string[])[0] === 'copyto');
+	const call = cp.spawnSync.mock.calls.find((c) => (c[1] as string[])[0] === 'copyto');
 	return call?.[1] as string[] | undefined;
 }
 
@@ -43,9 +43,8 @@ afterEach(() => {
 describe('mirrorToR2', () => {
 	it('skips files whose R2 md5 already matches', () => {
 		cp.spawnSync.mockImplementation((_bin: string, args: string[]) =>
-			args[0] === 'lsjson'
-				? { status: 0, stdout: JSON.stringify([{ Metadata: { md5: 'abc' } }]) }
-				: { status: 0 });
+			args[0] === 'lsjson' ? { status: 0, stdout: JSON.stringify([{ Metadata: { md5: 'abc' } }]) } : { status: 0 },
+		);
 
 		const stats = mirrorToR2([dataFile('/home/osm/osm.20240701.versatiles', '/osm.versatiles', 'abc')]);
 
@@ -55,9 +54,8 @@ describe('mirrorToR2', () => {
 
 	it('uploads when the R2 md5 differs, mapping source → flat key', () => {
 		cp.spawnSync.mockImplementation((_bin: string, args: string[]) =>
-			args[0] === 'lsjson'
-				? { status: 0, stdout: JSON.stringify([{ Metadata: { md5: 'old' } }]) }
-				: { status: 0 });
+			args[0] === 'lsjson' ? { status: 0, stdout: JSON.stringify([{ Metadata: { md5: 'old' } }]) } : { status: 0 },
+		);
 
 		const stats = mirrorToR2([dataFile('/home/osm/osm.20240701.versatiles', '/osm.versatiles', 'new')]);
 
@@ -73,7 +71,8 @@ describe('mirrorToR2', () => {
 
 	it('uploads when the R2 object does not exist yet', () => {
 		cp.spawnSync.mockImplementation((_bin: string, args: string[]) =>
-			args[0] === 'lsjson' ? { status: 3, stdout: '' } : { status: 0 });
+			args[0] === 'lsjson' ? { status: 3, stdout: '' } : { status: 0 },
+		);
 
 		const stats = mirrorToR2([dataFile('/home/osm/osm.versatiles', '/osm.versatiles', 'abc')]);
 
@@ -82,16 +81,17 @@ describe('mirrorToR2', () => {
 
 	it('throws when an upload fails', () => {
 		cp.spawnSync.mockImplementation((_bin: string, args: string[]) =>
-			args[0] === 'lsjson' ? { status: 3, stdout: '' } : { status: 1, stderr: 'boom' });
+			args[0] === 'lsjson' ? { status: 3, stdout: '' } : { status: 1, stderr: 'boom' },
+		);
 
-		expect(() => mirrorToR2([dataFile('/home/osm/osm.versatiles', '/osm.versatiles', 'abc')]))
-			.toThrow(/rclone failed to upload osm.versatiles/);
+		expect(() => mirrorToR2([dataFile('/home/osm/osm.versatiles', '/osm.versatiles', 'abc')])).toThrow(
+			/rclone failed to upload osm.versatiles/,
+		);
 	});
 
 	it('throws when required configuration is missing', () => {
 		delete process.env['R2_BUCKET'];
-		expect(() => mirrorToR2([dataFile('/home/osm/osm.versatiles', '/osm.versatiles', 'abc')]))
-			.toThrow(/R2_BUCKET/);
+		expect(() => mirrorToR2([dataFile('/home/osm/osm.versatiles', '/osm.versatiles', 'abc')])).toThrow(/R2_BUCKET/);
 	});
 });
 
@@ -112,7 +112,24 @@ describe('uploadObject', () => {
 
 	it('throws when the upload fails', () => {
 		cp.spawnSync.mockReturnValue({ status: 1, stderr: 'boom' });
-		expect(() => uploadObject('/index.html', 'x', 'text/html'))
-			.toThrow(/rclone failed to upload index.html/);
+		expect(() => uploadObject('/index.html', 'x', 'text/html')).toThrow(/rclone failed to upload index.html/);
+	});
+});
+
+describe('uploadDir', () => {
+	it('copies a local dir to the bucket root', () => {
+		cp.spawnSync.mockReturnValue({ status: 0 });
+
+		uploadDir('/repo/build');
+
+		const args = cp.spawnSync.mock.calls[0][1] as string[];
+		expect(args[0]).toBe('copy');
+		expect(args).toContain('/repo/build');
+		expect(args).toContain('r2:downloads');
+	});
+
+	it('throws when the copy fails', () => {
+		cp.spawnSync.mockReturnValue({ status: 1 });
+		expect(() => uploadDir('/repo/build')).toThrow(/rclone failed to upload \/repo\/build/);
 	});
 });

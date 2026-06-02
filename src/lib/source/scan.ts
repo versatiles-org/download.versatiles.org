@@ -37,7 +37,10 @@ export function getRemoteFiles(): FileRef[] {
 
 	for (const line of result.stdout.trim().split('\n')) {
 		// Directory header: "/home/dirname:"
-		if (line.endsWith(':')) { currentDir = line.slice(0, -1); continue; }
+		if (line.endsWith(':')) {
+			currentDir = line.slice(0, -1);
+			continue;
+		}
 
 		// Skip blank lines, "total N" summaries and directory entries.
 		if (!line.trim() || line.startsWith('total ')) continue;

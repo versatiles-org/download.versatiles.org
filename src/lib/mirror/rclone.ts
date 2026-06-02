@@ -59,9 +59,7 @@ function config(): RcloneConfig {
  */
 function sftpSource(cfg: RcloneConfig, remotePath: string): string {
 	const prefix = process.env['RCLONE_SFTP_STRIP_PREFIX'] ?? '/home/';
-	const rel = remotePath.startsWith(prefix)
-		? remotePath.slice(prefix.length)
-		: remotePath.replace(/^\/+/, '');
+	const rel = remotePath.startsWith(prefix) ? remotePath.slice(prefix.length) : remotePath.replace(/^\/+/, '');
 	return `${cfg.sftpRemote}:${rel}`;
 }
 
@@ -81,7 +79,10 @@ function keyOf(file: FileRef): string {
  * so progress is visible and nothing is buffered). `input` is piped to stdin
  * (used by `rcat` to upload generated content without a temp file).
  */
-export function runRclone(args: string[], opts: { inherit?: boolean; input?: string } = {}): { status: number; stdout: string; stderr: string } {
+export function runRclone(
+	args: string[],
+	opts: { inherit?: boolean; input?: string } = {},
+): { status: number; stdout: string; stderr: string } {
 	const result = opts.inherit
 		? spawnSync(RCLONE_BIN, args, { stdio: 'inherit' })
 		: spawnSync(RCLONE_BIN, args, { encoding: 'utf-8', maxBuffer: 64 * 1024 * 1024, input: opts.input });
@@ -101,14 +102,28 @@ export function runRclone(args: string[], opts: { inherit?: boolean; input?: str
 export function uploadObject(url: string, content: string, contentType: string): void {
 	const cfg = config();
 	const key = url.replace(/^\//, '');
-	const result = runRclone([
-		'rcat',
-		'--metadata',
-		'--metadata-set', `content-type=${contentType}`,
-		r2Dest(cfg, key),
-	], { input: content });
+	const result = runRclone(['rcat', '--metadata', '--metadata-set', `content-type=${contentType}`, r2Dest(cfg, key)], {
+		input: content,
+	});
 	if (result.status !== 0) {
 		throw new Error(`rclone failed to upload ${key} (exit ${result.status})`);
+	}
+}
+
+/**
+ * Uploads a local directory tree to the R2 bucket (optionally under `destPrefix`),
+ * transferring only changed files. Used to publish the built static site
+ * (`build/` → bucket root: index.html, feeds, `_app/…` assets).
+ *
+ * Throws if the copy fails.
+ */
+export function uploadDir(localDir: string, destPrefix = ''): void {
+	const cfg = config();
+	const dest = destPrefix ? r2Dest(cfg, destPrefix) : `${cfg.r2Remote}:${cfg.bucket}`;
+	console.log(`Uploading ${localDir} -> ${dest} ...`);
+	const result = runRclone(['copy', localDir, dest, '--progress'], { inherit: true });
+	if (result.status !== 0) {
+		throw new Error(`rclone failed to upload ${localDir} (exit ${result.status})`);
 	}
 }
 
@@ -153,17 +168,24 @@ export function mirrorToR2(files: FileRef[]): MirrorStats {
 		}
 
 		console.log(` - Uploading ${key} (${file.sizeString})`);
-		const result = runRclone([
-			'copyto',
-			'--progress',
-			'--retries', '3',
-			'--metadata',
-			'--metadata-set', `md5=${file.md5}`,
-			'--metadata-set', `sha256=${file.sha256}`,
-			'--metadata-set', 'content-type=application/octet-stream',
-			sftpSource(cfg, file.remotePath),
-			r2Dest(cfg, key),
-		], { inherit: true });
+		const result = runRclone(
+			[
+				'copyto',
+				'--progress',
+				'--retries',
+				'3',
+				'--metadata',
+				'--metadata-set',
+				`md5=${file.md5}`,
+				'--metadata-set',
+				`sha256=${file.sha256}`,
+				'--metadata-set',
+				'content-type=application/octet-stream',
+				sftpSource(cfg, file.remotePath),
+				r2Dest(cfg, key),
+			],
+			{ inherit: true },
+		);
 
 		if (result.status !== 0) {
 			throw new Error(`rclone failed to upload ${key} (exit ${result.status})`);

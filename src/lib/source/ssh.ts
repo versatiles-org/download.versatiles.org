@@ -48,7 +48,10 @@ export function buildSSHArgs(remoteArgs: string[]): string[] {
 }
 
 /** Runs a remote command synchronously and returns its status, stdout and stderr. */
-export function sshExecSync(remoteArgs: string[], timeout = 120000): { status: number; stdout: string; stderr: string } {
+export function sshExecSync(
+	remoteArgs: string[],
+	timeout = 120000,
+): { status: number; stdout: string; stderr: string } {
 	const result = spawnSync('ssh', buildSSHArgs(remoteArgs), { encoding: 'utf-8', timeout });
 	return { status: result.status ?? 1, stdout: result.stdout ?? '', stderr: result.stderr ?? '' };
 }
@@ -56,22 +59,24 @@ export function sshExecSync(remoteArgs: string[], timeout = 120000): { status: n
 /** Runs a remote command asynchronously; resolves with a success flag and stdout. */
 export function sshExec(remoteArgs: string[]): Promise<{ success: boolean; stdout: string }> {
 	const args = buildSSHArgs(remoteArgs);
-	return new Promise(resolve => {
+	return new Promise((resolve) => {
 		const proc = spawn('ssh', args);
 		const chunks: Buffer[] = [];
 		proc.stdout.on('data', (d: Buffer) => chunks.push(d));
-		proc.stderr.on('data', () => { /* ignore */ });
+		proc.stderr.on('data', () => {
+			/* ignore */
+		});
 		proc.on('error', () => resolve({ success: false, stdout: '' }));
-		proc.on('close', code => resolve({ success: code === 0, stdout: Buffer.concat(chunks).toString().trim() }));
+		proc.on('close', (code) => resolve({ success: code === 0, stdout: Buffer.concat(chunks).toString().trim() }));
 	});
 }
 
 /** Uploads a local file to the Storage Box via scp. Resolves true on success. */
 export function scpUpload(localPath: string, remotePath: string): Promise<boolean> {
 	const args = ['-P', SSH_PORT, ...SSH_COMMON_OPTIONS, localPath, `${storageUrl()}:${remotePath}`];
-	return new Promise(resolve => {
+	return new Promise((resolve) => {
 		const proc = spawn('scp', args);
 		proc.on('error', () => resolve(false));
-		proc.on('close', code => resolve(code === 0));
+		proc.on('close', (code) => resolve(code === 0));
 	});
 }

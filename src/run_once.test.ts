@@ -22,7 +22,7 @@ describe('run_once', () => {
 		const run = vi.fn().mockRejectedValue(new Error('boom'));
 		vi.doMock('./lib/run.js', () => ({ run }));
 		const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
-		const err = vi.spyOn(console, 'error').mockImplementation(() => { });
+		const err = vi.spyOn(console, 'error').mockImplementation(() => {});
 
 		await import('./run_once.js');
 

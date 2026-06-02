@@ -4,7 +4,13 @@ import { FileRef } from '../file/file_ref.js';
 
 console.log = vi.fn();
 
-const rclone = { uploadObject: vi.fn() };
+const { fsMock, cpMock, rclone } = vi.hoisted(() => ({
+	fsMock: { writeFileSync: vi.fn(), mkdirSync: vi.fn() },
+	cpMock: { execSync: vi.fn() },
+	rclone: { uploadObject: vi.fn(), uploadDir: vi.fn() },
+}));
+vi.mock('fs', () => fsMock);
+vi.mock('child_process', () => cpMock);
 vi.mock('../mirror/rclone.js', () => rclone);
 
 const { buildAndUploadSite } = await import('./site.js');
@@ -12,31 +18,40 @@ const { buildAndUploadSite } = await import('./site.js');
 describe('buildAndUploadSite', () => {
 	beforeEach(() => vi.clearAllMocks());
 
-	it('uploads index.html, one RSS feed per group, and each group response', () => {
-		const file = new FileRef('/home/osm/osm.versatiles', 2 ** 30, '/home/osm/osm.versatiles');
+	function group(): FileGroup {
+		const file = new FileRef('/home/download/osm/osm.versatiles', 2 ** 30, '/home/download/osm/osm.versatiles');
 		file.hashes = { md5: 'abc', sha256: 'def' };
-		const group = new FileGroup({
+		return new FileGroup({
 			slug: 'osm',
 			title: 'OpenStreetMap',
-			desc: 'desc',
+			desc: 'd',
 			order: 0,
 			latestFile: file,
 			olderFiles: [],
 		});
+	}
 
-		const count = buildAndUploadSite([group], 'https://download.versatiles.org/');
+	it('writes the data file, builds, uploads objects then the build dir', () => {
+		const count = buildAndUploadSite([group()], 'https://download.versatiles.org/');
 
-		const urls = rclone.uploadObject.mock.calls.map(c => c[0] as string);
-		// index.html + feed-osm.xml + (md5, sha256, urllist) for the latest file
-		expect(urls).toContain('/index.html');
-		expect(urls).toContain('/feed-osm.xml');
+		// 1. data file written
+		const wrote = fsMock.writeFileSync.mock.calls[0];
+		expect(String(wrote[0])).toMatch(/data\/fileGroups\.json$/);
+		expect(String(wrote[1])).toContain('"slug":"osm"');
+
+		// 2. vite build invoked
+		expect(cpMock.execSync).toHaveBeenCalledWith(expect.stringContaining('vite build'), expect.anything());
+
+		// 3. checksum/url-list objects uploaded (md5, sha256, urllist for the latest file)
+		const urls = rclone.uploadObject.mock.calls.map((c) => c[0] as string);
 		expect(urls).toContain('/osm.versatiles.md5');
 		expect(urls).toContain('/osm.versatiles.sha256');
 		expect(urls).toContain('/urllist_osm.tsv');
 		expect(count).toBe(urls.length);
 
-		// Content types are forwarded.
-		const html = rclone.uploadObject.mock.calls.find(c => c[0] === '/index.html')!;
-		expect(html[2]).toBe('text/html');
+		// 4. build dir uploaded, and AFTER the objects (atomic publish ordering)
+		expect(rclone.uploadDir).toHaveBeenCalledTimes(1);
+		const lastObjectOrder = Math.max(...rclone.uploadObject.mock.invocationCallOrder);
+		expect(rclone.uploadDir.mock.invocationCallOrder[0]).toBeGreaterThan(lastObjectOrder);
 	});
 });

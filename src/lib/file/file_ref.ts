@@ -47,7 +47,7 @@ export class FileRef {
 	public remotePath: string;
 
 	/** Optional precomputed hashes for integrity / checksum files. */
-	public hashes?: { md5: string, sha256: string };
+	public hashes?: { md5: string; sha256: string };
 
 	constructor(fullname: string, url: string);
 	constructor(fullname: string, size: number);
@@ -73,7 +73,9 @@ export class FileRef {
 				this.size = b;
 				this.remotePath = '';
 			} else {
-				throw new Error('Invalid FileRef constructor arguments: expected (fullname, url:string), (fullname, size:number) or (fullname, size:number, remotePath:string).');
+				throw new Error(
+					'Invalid FileRef constructor arguments: expected (fullname, url:string), (fullname, size:number) or (fullname, size:number, remotePath:string).',
+				);
 			}
 		} else if (a instanceof FileRef) {
 			this.fullname = a.fullname;
@@ -86,7 +88,7 @@ export class FileRef {
 			throw new Error('Invalid FileRef constructor arguments: expected a string path or an existing FileRef instance.');
 		}
 
-		this.sizeString = (this.size / (2 ** 30)).toFixed(1) + ' GB';
+		this.sizeString = (this.size / 2 ** 30).toFixed(1) + ' GB';
 
 		if (!/^\/[^/]/.test(this.url)) {
 			throw new Error(`FileRef.url must start with a single '/', got: ${this.url}`);

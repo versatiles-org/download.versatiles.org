@@ -6,12 +6,12 @@ vi.mock('./source/scan.js', () => ({
 	getRemoteFiles: vi.fn(),
 }));
 
-vi.mock(import('./file/file_group.js'), async originalImport => {
+vi.mock(import('./file/file_group.js'), async (originalImport) => {
 	const originalModule = await originalImport();
 	return {
 		...originalModule,
 		groupFiles: vi.fn(),
-	}
+	};
 });
 
 vi.mock('./file/hashes.js', () => ({
@@ -36,18 +36,17 @@ const { buildAndUploadSite } = await import('./site/site.js');
 
 describe('run', () => {
 	const domain = 'example.com';
-	const files: FileRef[] = [
-		new FileRef('file1', 100),
-		new FileRef('file2', 200)
+	const files: FileRef[] = [new FileRef('file1', 100), new FileRef('file2', 200)];
+	files.forEach((f) => (f.hashes = { md5: 'md5', sha256: 'sha256' }));
+	const fileGroups = [
+		new FileGroup({
+			slug: 'slug',
+			desc: 'desc',
+			title: 'title',
+			order: 123,
+			olderFiles: files,
+		}),
 	];
-	files.forEach(f => f.hashes = { md5: 'md5', sha256: 'sha256' });
-	const fileGroups = [new FileGroup({
-		slug: 'slug',
-		desc: 'desc',
-		title: 'title',
-		order: 123,
-		olderFiles: files,
-	})];
 
 	beforeEach(() => {
 		vi.clearAllMocks();

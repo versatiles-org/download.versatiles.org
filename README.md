@@ -37,7 +37,7 @@ Hetzner Storage Box  (source of truth — where .versatiles files are produced)
         │   1. scan Hetzner for *.versatiles (+ .md5/.sha256 sidecars)   src/lib/source
         │   2. download/compute hashes                                   src/lib/file/hashes.ts
         │   3. mirror changed data → R2  (rclone, S3 API)                src/lib/mirror
-        │   4. build the static site (HTML + RSS + sidecars + url lists) src/lib/site
+        │   4. build the static site (SvelteKit prerender) + sidecars    src/lib/site, src/routes
         │   5. upload site → R2          (LAST = atomic publish)
         ▼
 Cloudflare R2 bucket  ── custom domain + Worker, $0 egress ──▶  https://download.versatiles.org/…
@@ -45,7 +45,7 @@ Cloudflare R2 bucket  ── custom domain + Worker, $0 egress ──▶  https:
         └──▶ consumed by the versatiles tile-server (resolves <slug> → URL via the convention below)
 ```
 
-**Atomic publish:** the data files are mirrored *before* the site is uploaded, so the
+**Atomic publish:** the data files are mirrored _before_ the site is uploaded, so the
 site never advertises a file that isn't fully present on R2.
 
 ## Bucket layout & naming convention
@@ -63,7 +63,9 @@ the sidecars:
 
 ## Development (frontend preview)
 
-To work on the HTML/RSS templates you don't need any cloud access:
+The website is a [SvelteKit](https://svelte.dev/) app prerendered with
+`adapter-static`. To work on it you don't need any cloud access — `npm run dev`
+generates sample data and starts the Vite dev server:
 
 ```bash
 git clone https://github.com/versatiles-org/download.versatiles.org.git
@@ -72,7 +74,11 @@ npm install
 npm run dev
 ```
 
-Then edit [`template/index.html`](template/index.html) and reload `http://localhost:8080`.
+Then edit [`src/routes/+page.svelte`](src/routes/+page.svelte) (and
+[`src/lib/ConvertHelper.svelte`](src/lib/ConvertHelper.svelte)) and reload
+`http://localhost:5173`. Sample data comes from
+[`src/generate_testdata.ts`](src/generate_testdata.ts); dataset titles and
+descriptions live in [`src/lib/file/file_group.ts`](src/lib/file/file_group.ts).
 
 ## Configuration
 
@@ -122,12 +128,14 @@ After a deploy / cutover, confirm:
 
 ## Available Scripts
 
-- **`npm run check`**: Runs both linting and testing.
-- **`npm run dev`**: Starts the local template preview server.
-- **`npm run lint`**: Lints the codebase with ESLint.
+- **`npm run setup`**: Installs & configures rclone on the host from `.env`.
 - **`npm run once`**: Runs the updater once (`run_once.ts`).
-- **`npm run test`**: Runs the test suite with Vitest.
-- **`npm run test-coverage`**: Runs tests with a coverage report.
+- **`npm run dev`**: Generates sample data and starts the SvelteKit dev server.
+- **`npm run build:site`**: Prerenders the static site to `build/` (`vite build`).
+- **`npm run check`**: Runs lint + typecheck + tests.
+- **`npm run lint`** / **`npm run format`**: ESLint / Prettier.
+- **`npm run typecheck`**: `svelte-check` + `tsc`.
+- **`npm run test`** / **`npm run test-coverage`**: Vitest.
 - **`npm run upgrade`**: Updates dependencies.
 
 ## Running Tests
@@ -142,14 +150,13 @@ npm run test-coverage   # with coverage
 ## Code Structure Overview
 
 - **`src/lib/source/`** — SSH/SFTP helpers and the remote file scan (`scan.ts`, `ssh.ts`).
-- **`src/lib/file/`** — core domain types: `FileRef`, `FileGroup`, `FileResponse`, hash/sidecar handling.
-- **`src/lib/mirror/`** — the `rclone` wrapper that mirrors data and uploads objects to R2.
-- **`src/lib/template/`** — HTML + RSS rendering with Handlebars.
-- **`src/lib/site/`** — builds and uploads all site objects to R2.
+- **`src/lib/file/`** — core domain types: `FileRef`, `FileGroup` (dataset metadata), `FileResponse`, hash/sidecar handling.
+- **`src/lib/mirror/`** — the `rclone` wrapper (`mirrorToR2`, `uploadObject`, `uploadDir`).
+- **`src/lib/site/`** — writes `data/fileGroups.json`, runs `vite build`, uploads the site + sidecars to R2.
 - **`src/lib/run.ts`** — orchestrates the whole pipeline.
+- **`src/routes/`**, **`src/lib/data.ts`**, **`src/lib/ConvertHelper.svelte`**, **`src/app.html`** — the SvelteKit frontend.
+- **`src/generate_testdata.ts`** — sample data for local dev.
 - **`src/run_once.ts`** — manual one-shot entry point.
-- **`src/dev.ts`** — local server that renders templates with dummy data.
-- **`template/`** — Handlebars templates for HTML and RSS.
 - **`worker/`** — the Cloudflare Worker that fronts the R2 bucket.
 
 ## Contributing
@@ -169,7 +176,7 @@ config:
 flowchart TB
 
 subgraph 0["src"]
-1["dev.ts"]
+1["generate_testdata.ts"]
 subgraph 2["lib"]
 subgraph 3["file"]
 4["file_group.ts"]
@@ -177,9 +184,8 @@ subgraph 3["file"]
 6["file_response.ts"]
 9["hashes.ts"]
 end
-subgraph 7["template"]
-8["template.ts"]
-end
+7["ConvertHelper.svelte"]
+8["data.ts"]
 subgraph A["source"]
 B["ssh.ts"]
 H["scan.ts"]
@@ -192,15 +198,22 @@ subgraph F["site"]
 G["site.ts"]
 end
 end
-I["run_once.ts"]
+subgraph I["routes"]
+J["+layout.server.ts"]
+K["+layout.svelte"]
+L["+page.server.ts"]
+M["+page.svelte"]
+subgraph N["feed-[slug].xml"]
+O["+server.ts"]
+end
+end
+P["run_once.ts"]
 end
 1-->4
 1-->5
-1-->8
 4-->5
 4-->6
 5-->6
-8-->6
 9-->B
 E-->4
 E-->9
@@ -208,12 +221,11 @@ E-->D
 E-->G
 E-->H
 G-->D
-G-->8
 H-->5
 H-->B
-I-->E
+P-->E
 
-class 0,2,3,7,A,C,F subgraphs;
+class 0,2,3,A,C,F,I,N subgraphs;
 classDef subgraphs fill-opacity:0.1, fill:#888, color:#888, stroke:#888;
 ```
 

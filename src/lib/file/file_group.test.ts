@@ -34,7 +34,14 @@ describe('FileGroup', () => {
 		});
 
 		it('accepts optional local and tileType flags', () => {
-			const group = new FileGroup({ slug: 'test', title: 'Test', desc: 'Test', order: 1, local: true, tileType: 'raster' });
+			const group = new FileGroup({
+				slug: 'test',
+				title: 'Test',
+				desc: 'Test',
+				order: 1,
+				local: true,
+				tileType: 'raster',
+			});
 			expect(group.local).toBe(true);
 			expect(group.tileType).toBe('raster');
 		});

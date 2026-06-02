@@ -30,7 +30,7 @@ describe('getRemoteFiles', () => {
 		const files = getRemoteFiles();
 
 		// Sorted by remote path; sidecar and directory entry excluded.
-		expect(files.map(f => f.remotePath)).toEqual([
+		expect(files.map((f) => f.remotePath)).toEqual([
 			'/home/osm/osm.20240101.versatiles',
 			'/home/osm/osm.20240701.versatiles',
 		]);

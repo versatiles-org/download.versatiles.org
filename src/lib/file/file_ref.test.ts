@@ -49,10 +49,12 @@ describe('FileRef', () => {
 	it('should return hash responses', () => {
 		const fileRef = new FileRef('/path/file.versatiles', 200);
 		fileRef.hashes = { md5: 'abc', sha256: 'xyz' };
-		expect(fileRef.getResponseMd5File())
-			.toStrictEqual(new FileResponse('/file.versatiles.md5', 'abc file.versatiles\n'));
-		expect(fileRef.getResponseSha256File())
-			.toStrictEqual(new FileResponse('/file.versatiles.sha256', 'xyz file.versatiles\n'));
+		expect(fileRef.getResponseMd5File()).toStrictEqual(
+			new FileResponse('/file.versatiles.md5', 'abc file.versatiles\n'),
+		);
+		expect(fileRef.getResponseSha256File()).toStrictEqual(
+			new FileResponse('/file.versatiles.sha256', 'xyz file.versatiles\n'),
+		);
 	});
 
 	it('should throw for invalid constructor arguments', () => {

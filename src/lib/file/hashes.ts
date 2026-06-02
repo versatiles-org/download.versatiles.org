@@ -28,7 +28,10 @@ const COMPUTE_CONCURRENCY = 1;
 
 type HashType = 'md5' | 'sha256';
 
-interface HashTask { file: FileRef; type: HashType }
+interface HashTask {
+	file: FileRef;
+	type: HashType;
+}
 
 /**
  * Populates `file.hashes = { md5, sha256 }` for every file, downloading existing
@@ -51,21 +54,27 @@ export async function generateHashes(files: FileRef[]) {
 
 	// Phase 1: download existing sidecars in parallel (lightweight).
 	const needsCompute: HashTask[] = [];
-	await runWithConcurrency(tasks.map(t => async () => {
-		const hash = await downloadSidecar(t.file.remotePath, t.type);
-		if (hash) {
-			hashes.set(key(t), hash);
-			stats.downloaded++;
-		} else {
-			needsCompute.push(t);
-		}
-	}), DOWNLOAD_CONCURRENCY);
+	await runWithConcurrency(
+		tasks.map((t) => async () => {
+			const hash = await downloadSidecar(t.file.remotePath, t.type);
+			if (hash) {
+				hashes.set(key(t), hash);
+				stats.downloaded++;
+			} else {
+				needsCompute.push(t);
+			}
+		}),
+		DOWNLOAD_CONCURRENCY,
+	);
 
 	// Phase 2: compute missing hashes remotely, one at a time (heavy).
-	await runWithConcurrency(needsCompute.map(t => async () => {
-		hashes.set(key(t), await computeSidecar(t.file.remotePath, t.type));
-		stats.calculated++;
-	}), COMPUTE_CONCURRENCY);
+	await runWithConcurrency(
+		needsCompute.map((t) => async () => {
+			hashes.set(key(t), await computeSidecar(t.file.remotePath, t.type));
+			stats.calculated++;
+		}),
+		COMPUTE_CONCURRENCY,
+	);
 
 	console.log(` - ${stats.downloaded} downloaded, ${stats.calculated} calculated`);
 

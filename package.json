@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build:site": "vite build",
-    "check": "npm run lint && npm run typecheck && npm run test",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test",
     "dev": "tsx src/generate_testdata.ts && vite dev",
     "doc": "npm run doc-graph",
     "doc-graph": "vrt deps-graph | vrt doc-insert README.md '## Dependency Graph'",
@@ -36,7 +36,6 @@
   "dependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.61.1",
-    "handlebars": "^4.7.9",
     "sass": "^1.100.0",
     "svelte": "^5.56.0",
     "tsx": "^4.22.4",

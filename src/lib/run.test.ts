@@ -14,18 +14,12 @@ vi.mock(import('./file/file_group.js'), async originalImport => {
 	const originalModule = await originalImport();
 	return {
 		...originalModule,
-		collectFiles: vi.fn(),
 		groupFiles: vi.fn(),
 	}
 });
 
 vi.mock('./file/hashes.js', () => ({
 	generateHashes: vi.fn(),
-	generateLists: vi.fn(),
-}));
-
-vi.mock('./file/sync.js', () => ({
-	downloadLocalFiles: vi.fn(),
 }));
 
 vi.mock('./template/template.js', () => ({
@@ -34,25 +28,18 @@ vi.mock('./template/template.js', () => ({
 	generateRSSFeeds: vi.fn(),
 }));
 
-vi.mock('./nginx/nginx.js', () => ({
-	generateNginxConf: vi.fn(),
-}));
-
 // Import the module under test after mocking modules
 const { run } = await import('./run.js');
 const { getAllFilesRecursive } = await import('./file/file_ref.js');
-const { collectFiles, groupFiles } = await import('./file/file_group.js');
+const { groupFiles } = await import('./file/file_group.js');
 const { generateHashes } = await import('./file/hashes.js');
-const { downloadLocalFiles } = await import('./file/sync.js');
-const { generateHTML } = await import('./template/template.js');
-const { generateNginxConf } = await import('./nginx/nginx.js');
+const { generateHTML, generateRSSFeeds } = await import('./template/template.js');
 
 describe('run', () => {
 	const domain = 'example.com';
 	const volumeFolder = '/mock/volumes/';
 	const remoteFolder = '/mock/volumes/remote_files';
 	const localFolder = '/mock/volumes/local_files';
-	const nginxFolder = '/mock/volumes/nginx_conf';
 	const files: FileRef[] = [
 		new FileRef('file1', 100),
 		new FileRef('file2', 200)
@@ -75,9 +62,8 @@ describe('run', () => {
 		// Mock other functions to do nothing
 		vi.mocked(generateHashes).mockResolvedValue(undefined);
 		vi.mocked(groupFiles).mockReturnValue(fileGroups);
-		vi.mocked(downloadLocalFiles).mockResolvedValue(undefined);
 		vi.mocked(generateHTML).mockReturnValue({ filename: 'index.html' } as FileRef);
-		vi.mocked(collectFiles).mockReturnValue([{ cloneMoved: vi.fn().mockReturnValue('movedFile') }] as unknown as FileRef[]);
+		vi.mocked(generateRSSFeeds).mockReturnValue([]);
 	});
 
 	it('should throw an error if $DOMAIN is not set and no domain is provided in options', async () => {
@@ -105,22 +91,8 @@ describe('run', () => {
 		// Verify groupFiles is called with the correct file list
 		expect(groupFiles).toHaveBeenCalledWith(files);
 
-		// Verify downloadLocalFiles is called with the correct arguments
-		expect(downloadLocalFiles).toHaveBeenCalledWith(fileGroups, localFolder);
-
-		// Verify generateHTML is called with the correct arguments
+		// Verify the static site is generated into the local folder
 		expect(generateHTML).toHaveBeenCalledWith(fileGroups, `${localFolder}/index.html`);
-
-		// Verify collectFiles is called and the paths are "moved"
-		expect(collectFiles).toHaveBeenCalled();
-		const value = vi.mocked(collectFiles).mock.results[0].value as FileRef[];
-		expect(value[0].cloneMoved).toHaveBeenCalledWith(volumeFolder, '/volumes/');
-
-		// Verify generateNginxConf is called with the moved files and the Nginx config path
-		expect(generateNginxConf).toHaveBeenCalledWith(
-			['movedFile'],
-			[1, 2].flatMap(i => ['md5', 'sha256'].flatMap(h => [{ content: `${h} file${i}\\n`, url: `/file${i}.${h}` }])),
-			`${nginxFolder}/site-confs/default.conf`
-		);
+		expect(generateRSSFeeds).toHaveBeenCalledWith(fileGroups, localFolder);
 	});
 });

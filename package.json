@@ -13,7 +13,6 @@
     "doc-graph": "vrt deps-graph | vrt doc-insert README.md '## Dependency Graph'",
     "lint": "eslint . --color",
     "once": "tsx --env-file=.env src/run_once.ts",
-    "server": "tsx --env-file=.env src/server.ts",
     "test": "cross-env vitest run",
     "test-coverage": "cross-env vitest run --coverage",
     "upgrade": "vrt deps-upgrade"
@@ -26,8 +25,6 @@
   },
   "license": "MIT",
   "dependencies": {
-    "cookie": "^1.1.1",
-    "express": "^5.2.1",
     "handlebars": "^4.7.8",
     "tsx": "^4.21.0",
     "typescript": "^5.9.3",
@@ -38,6 +35,7 @@
     "@eslint/js": "^9.39.2",
     "@types/eslint__js": "^8.42.3",
     "@types/express": "^5.0.6",
+    "express": "^5.2.1",
     "@types/node": "^25.2.0",
     "@types/supertest": "^6.0.3",
     "@versatiles/release-tool": "^2.6.0",

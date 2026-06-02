@@ -1,27 +1,24 @@
 /**
- * Orchestrates the full update pipeline for download.versatiles.org.
+ * Orchestrates the update pipeline for download.versatiles.org.
  *
  * The `run()` function:
- * - locates the volume folders (remote files, local files, nginx config)
+ * - locates the volume folders (remote files, site output)
  * - discovers all `.versatiles` files in remote storage
  * - generates or loads checksum hashes for each file
  * - groups files into logical `FileGroup`s with metadata
- * - mirrors selected "local" files into the local high-speed folder
  * - renders HTML (`index.html`) and RSS feeds for all groups
- * - prepares the list of public files and inline responses
- * - writes the final NGINX configuration
  *
- * This module is the single entry point for both one-shot updates (`run_once.ts`)
- * and the HTTP-triggered update endpoint (`server.ts`).
+ * This module is the single entry point for one-shot updates (`run_once.ts`).
+ *
+ * NOTE: This file is mid-migration (issue #22). The serving stack (nginx config
+ * generation and the local SSD mirror) has been removed; mirroring data to
+ * Cloudflare R2 and uploading the generated site are added in later phases.
  */
 import { resolve } from 'path';
 import { getAllFilesRecursive } from './file/file_ref.js';
-import { collectFiles, groupFiles } from './file/file_group.js';
+import { groupFiles } from './file/file_group.js';
 import { generateHashes } from './file/hashes.js';
-import { downloadLocalFiles } from './file/sync.js';
 import { generateHTML, generateRSSFeeds } from './template/template.js';
-import { generateNginxConf } from './nginx/nginx.js';
-import { FileResponse } from './file/file_response.js';
 
 /**
  * Configuration options for the `run()` pipeline.
@@ -30,8 +27,7 @@ import { FileResponse } from './file/file_response.js';
  *   (falls back to the `DOMAIN` environment variable when omitted).
  * - `volumeFolder`: root folder containing the expected subdirectories:
  *   - `remote_files/` — remote storage mount with `.versatiles` files
- *   - `local_files/` — local mirror used for high-speed download
- *   - `nginx_conf/` — output location for the generated NGINX config
+ *   - `local_files/` — output location for the generated site assets
  *
  * When `volumeFolder` is not provided, a default `volumes/` folder relative to
  * this module is used.
@@ -42,36 +38,30 @@ export interface Options {
 }
 
 /**
- * Executes the full site update pipeline.
+ * Executes the update pipeline.
  *
  * Steps:
- * 1. Resolve `volumeFolder`, `remoteFolder`, `localFolder`, and `nginxFolder`.
+ * 1. Resolve `volumeFolder`, `remoteFolder`, and `localFolder`.
  * 2. Resolve `domain` from `options.domain` or the `DOMAIN` environment variable.
  * 3. Recursively discover all `.versatiles` files in `remoteFolder`.
  * 4. Generate or load MD5/SHA256 hashes for each file.
  * 5. Group files into `FileGroup`s and derive metadata.
- * 6. Mirror "local" files into `localFolder`.
- * 7. Generate `index.html` and per-group RSS feeds into `localFolder`.
- * 8. Build the list of public `FileRef`s (with container-relative paths).
- * 9. Derive all `FileResponse`s for synthetic endpoints.
- * 10. Render and write the NGINX configuration into `nginxFolder`.
+ * 6. Generate `index.html` and per-group RSS feeds into `localFolder`.
  *
  * Throws:
  * - If `domain` is missing (no `DOMAIN` env and no `options.domain` provided).
  * - If no remote files are found in `remoteFolder`.
- * - If any downstream step fails (hashing, grouping, syncing, templating, nginx).
+ * - If any downstream step fails (hashing, grouping, templating).
  */
 export async function run(options: Options = {}) {
-	// Define key folder paths for the volumes, remote, local files, and Nginx configuration.
+	// Define key folder paths for the volumes, remote files, and site output.
 	const volumeFolder = options.volumeFolder ?? new URL('../../volumes/', import.meta.url).pathname;
 	const remoteFolder = resolve(volumeFolder, 'remote_files'); // Folder containing remote files.
-	const localFolder = resolve(volumeFolder, 'local_files'); // Folder for downloaded local files.
-	const nginxFolder = resolve(volumeFolder, 'nginx_conf'); // Folder for the generated Nginx config.
+	const localFolder = resolve(volumeFolder, 'local_files'); // Folder for the generated site assets.
 
 	// Get the domain from environment variables. Throw an error if it's not set.
 	const domain = options.domain ?? process.env['DOMAIN'];
 	if (domain == null) throw Error('missing $DOMAIN');
-	const baseURL = `https://${domain}/`;
 
 	// Get a list of all files in the remote folder recursively.
 	const files = getAllFilesRecursive(remoteFolder);
@@ -85,21 +75,7 @@ export async function run(options: Options = {}) {
 	// Group files based on their names.
 	const fileGroups = groupFiles(files);
 
-	// Download remote files to the local folder if needed.
-	await downloadLocalFiles(fileGroups, localFolder);
-
-	// Collect files to generate public-facing resources, like HTML and file lists.
-	const publicFiles = collectFiles(
-		fileGroups,
-		// `generateHTML` creates index.html and returns a FileRef
-		generateHTML(fileGroups, resolve(localFolder, 'index.html')),
-		generateRSSFeeds(fileGroups, resolve(localFolder)),
-	).map(f => f.cloneMoved(volumeFolder, '/volumes/'));
-	// FileRefs are cloned and their paths "moved" so they have to correct paths in the Nginx configuration
-
-	const publicResponses: FileResponse[] = fileGroups.flatMap(f => f.getResponses(baseURL));
-
-	// Generate an Nginx configuration file and save it.
-	const confFilename = resolve(nginxFolder, 'site-confs/default.conf');
-	generateNginxConf(publicFiles, publicResponses, confFilename);
+	// Generate the static site (index.html + per-group RSS feeds).
+	generateHTML(fileGroups, resolve(localFolder, 'index.html'));
+	generateRSSFeeds(fileGroups, resolve(localFolder));
 }

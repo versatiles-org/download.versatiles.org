@@ -84,6 +84,18 @@ fi
 rm -f "$ssh_err"
 echo "SSH OK — host key recorded in $KNOWN_HOSTS."
 
+# Record ALL of the box's host-key types. `ssh` above only stores the single
+# algorithm it negotiated; rclone may negotiate a different one and would then
+# fail with "knownhosts: key mismatch". ssh-keyscan covers rsa/ecdsa/ed25519.
+if command -v ssh-keyscan >/dev/null 2>&1; then
+	keyscan_tmp="$(mktemp)"
+	if ssh-keyscan -p "$SSH_PORT" "$SFTP_HOST" >"$keyscan_tmp" 2>/dev/null && [ -s "$keyscan_tmp" ]; then
+		cat "$keyscan_tmp" >>"$KNOWN_HOSTS"
+		sort -u "$KNOWN_HOSTS" -o "$KNOWN_HOSTS"
+	fi
+	rm -f "$keyscan_tmp"
+fi
+
 # Install rclone if not present.
 if ! command -v rclone >/dev/null 2>&1; then
 	echo "Installing rclone..."

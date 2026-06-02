@@ -80,6 +80,23 @@ Then edit [`src/routes/+page.svelte`](src/routes/+page.svelte) (and
 [`src/generate_testdata.ts`](src/generate_testdata.ts); dataset titles and
 descriptions live in [`src/lib/file/file_group.ts`](src/lib/file/file_group.ts).
 
+> [!NOTE]
+> This repo sets `ignore-scripts=true` in [`.npmrc`](.npmrc) (supply-chain
+> hardening — dependency install scripts don't run). That also skips the root
+> `prepare` step, so after a plain `npm install` run **`npm run prepare`** once
+> (it runs `svelte-kit sync`, which generates the `.svelte-kit/` types that
+> `tsconfig.json` extends). The install warnings (low-severity audit advisories,
+> funding notices) are harmless.
+>
+> ```bash
+> npm install        # or: npm ci
+> npm run prepare    # svelte-kit sync (skipped during install)
+> ```
+>
+> You can skip `npm run prepare` if your next command already syncs:
+> `npm run dev`, `npm run build:site`, and `npm run typecheck` all do. Only a
+> standalone `npm run lint` / `npm run check` needs it first.
+
 ## Configuration
 
 The updater is configured via environment variables (see [`.env.sample`](.env.sample)):

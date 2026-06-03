@@ -12,7 +12,7 @@
  * `../mirror/rclone.ts`); per the atomic-publish ordering, the site is published
  * only after the data is in place.
  */
-import { writeFileSync, mkdirSync } from 'fs';
+import { writeFileSync, mkdirSync, readFileSync, existsSync } from 'fs';
 import { execSync } from 'child_process';
 import { resolve } from 'path';
 import type { FileGroup } from '../file/file_group.js';
@@ -43,8 +43,17 @@ export function buildAndUploadSite(fileGroups: FileGroup[], baseURL: string): nu
 		uploadObject(object.url, object.content, object.contentType);
 	}
 
-	// 4. Upload the build output last (index.html advertises everything).
+	// 4. Upload the build output (index.html advertises everything, so site-last).
 	uploadDir(resolve('build'));
+
+	// 5. Re-upload the RSS feeds with the correct Content-Type. `rclone` sets it
+	//    from the `.xml` extension (text/xml), so override with application/rss+xml.
+	for (const group of fileGroups) {
+		const feedPath = resolve('build', `feed-${group.slug}.xml`);
+		if (existsSync(feedPath)) {
+			uploadObject(`/feed-${group.slug}.xml`, readFileSync(feedPath, 'utf-8'), 'application/rss+xml');
+		}
+	}
 
 	console.log('Site published.');
 	return objects.length;

@@ -5,7 +5,12 @@ import { FileRef } from '../file/file_ref.js';
 console.log = vi.fn();
 
 const { fsMock, cpMock, rclone } = vi.hoisted(() => ({
-	fsMock: { writeFileSync: vi.fn(), mkdirSync: vi.fn() },
+	fsMock: {
+		writeFileSync: vi.fn(),
+		mkdirSync: vi.fn(),
+		existsSync: vi.fn(() => true),
+		readFileSync: vi.fn(() => '<rss></rss>'),
+	},
 	cpMock: { execSync: vi.fn() },
 	rclone: { uploadObject: vi.fn(), uploadDir: vi.fn() },
 }));
@@ -31,27 +36,37 @@ describe('buildAndUploadSite', () => {
 		});
 	}
 
-	it('writes the data file, builds, uploads objects then the build dir', () => {
+	it('writes data, builds, uploads sidecars then build dir, and fixes the feed mime', () => {
 		const count = buildAndUploadSite([group()], 'https://download.versatiles.org/');
 
 		// 1. data file written
-		const wrote = fsMock.writeFileSync.mock.calls[0];
-		expect(String(wrote[0])).toMatch(/data\/fileGroups\.json$/);
-		expect(String(wrote[1])).toContain('"slug":"osm"');
+		expect(String(fsMock.writeFileSync.mock.calls[0][0])).toMatch(/data\/fileGroups\.json$/);
+		expect(String(fsMock.writeFileSync.mock.calls[0][1])).toContain('"slug":"osm"');
 
 		// 2. vite build invoked
 		expect(cpMock.execSync).toHaveBeenCalledWith(expect.stringContaining('vite build'), expect.anything());
 
-		// 3. checksum/url-list objects uploaded (md5, sha256, urllist for the latest file)
-		const urls = rclone.uploadObject.mock.calls.map((c) => c[0] as string);
-		expect(urls).toContain('/osm.versatiles.md5');
-		expect(urls).toContain('/osm.versatiles.sha256');
-		expect(urls).toContain('/urllist_osm.tsv');
-		expect(count).toBe(urls.length);
+		// index the uploadObject calls by url
+		const calls = rclone.uploadObject.mock.calls as [string, string, string][];
+		const byUrl = Object.fromEntries(calls.map((c) => [c[0], c]));
+		expect(byUrl['/osm.versatiles.md5']).toBeDefined();
+		expect(byUrl['/osm.versatiles.sha256']).toBeDefined();
+		expect(byUrl['/urllist_osm.tsv']).toBeDefined();
+		expect(count).toBe(3); // sidecars + url list (feeds not counted)
 
-		// 4. build dir uploaded, and AFTER the objects (atomic publish ordering)
-		expect(rclone.uploadDir).toHaveBeenCalledTimes(1);
-		const lastObjectOrder = Math.max(...rclone.uploadObject.mock.invocationCallOrder);
-		expect(rclone.uploadDir.mock.invocationCallOrder[0]).toBeGreaterThan(lastObjectOrder);
+		// 3. feed re-uploaded with the RSS content type
+		expect(byUrl['/feed-osm.xml']).toBeDefined();
+		expect(byUrl['/feed-osm.xml'][2]).toBe('application/rss+xml');
+
+		// 4. ordering: sidecars → build dir → feed mime fix
+		const orderOf = (url: string) => rclone.uploadObject.mock.invocationCallOrder[calls.findIndex((c) => c[0] === url)];
+		const sidecarMax = Math.max(
+			orderOf('/osm.versatiles.md5'),
+			orderOf('/osm.versatiles.sha256'),
+			orderOf('/urllist_osm.tsv'),
+		);
+		const dirOrder = rclone.uploadDir.mock.invocationCallOrder[0];
+		expect(sidecarMax).toBeLessThan(dirOrder);
+		expect(dirOrder).toBeLessThan(orderOf('/feed-osm.xml'));
 	});
 });

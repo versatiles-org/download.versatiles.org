@@ -64,9 +64,9 @@
 			<div class="small group-desc">
 				{@html group.desc}
 				<p class="group-links small">
-					<!-- rel="external": served as static files by nginx in production,
-					     so no SvelteKit route exists. Tells the prerender crawler
-					     not to follow them and emit spurious 404 logs. -->
+					<!-- rel="external": served straight from R2 (via the Worker) in
+					     production, so no SvelteKit route exists. Tells the prerender
+					     crawler not to follow them and emit spurious 404 logs. -->
 					<a rel="external" href="/urllist_{group.slug}.tsv">URL list</a>
 					<a href="/feed-{group.slug}.xml">RSS</a>
 				</p>
@@ -100,7 +100,7 @@
 </main>
 
 <footer>
-	<a href="https://github.com/versatiles-org/tiles.versatiles.org/blob/main/download/src/routes/+page.svelte"
+	<a href="https://github.com/versatiles-org/download.versatiles.org/blob/main/src/routes/+page.svelte"
 		>Improve this page on GitHub</a
 	>
 </footer>

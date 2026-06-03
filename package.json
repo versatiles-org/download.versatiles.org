@@ -33,6 +33,9 @@
   },
   "license": "MIT",
   "private": true,
+  "overrides": {
+    "cookie": "^0.7.0"
+  },
   "dependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.62.0",

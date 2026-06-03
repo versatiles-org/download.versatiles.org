@@ -56,7 +56,7 @@ export default {
 		if (request.method === 'HEAD') {
 			const head = await env.BUCKET.head(key);
 			if (head === null) return notFound();
-			const headers = baseHeaders(head);
+			const headers = baseHeaders(head, key);
 			headers.set('content-length', String(head.size));
 			return new Response(null, { headers });
 		}
@@ -69,7 +69,7 @@ export default {
 
 		if (object === null) return notFound();
 
-		const headers = baseHeaders(object);
+		const headers = baseHeaders(object, key);
 
 		// No body → conditional request matched (304 Not Modified).
 		if (!objectHasBody(object)) {
@@ -103,12 +103,27 @@ function resolveRange(range: R2Range, size: number): { offset: number; length: n
 }
 
 /** Builds the common response headers for an R2 object/metadata. */
-function baseHeaders(object: R2Object): Headers {
+function baseHeaders(object: R2Object, key: string): Headers {
 	const headers = new Headers(CORS);
 	object.writeHttpMetadata(headers);
 	headers.set('etag', object.httpEtag);
 	headers.set('accept-ranges', 'bytes');
+	headers.set('cache-control', cacheControlFor(key));
 	return headers;
+}
+
+/**
+ * Cache-Control by key. Content-addressed objects — dated dataset files and
+ * their sidecars (`*.YYYYMMDD.versatiles[.md5|.sha256]`) and hashed
+ * `_app/immutable/` assets — never change, so cache them forever. Everything
+ * else (stable `<slug>.versatiles`, its sidecars, index.html, feeds) gets a
+ * short TTL; clients still revalidate cheaply via the ETag / 304 we return.
+ */
+function cacheControlFor(key: string): string {
+	if (/\.\d{8}\.versatiles(\.(md5|sha256))?$/.test(key) || key.startsWith('_app/immutable/')) {
+		return 'public, max-age=31536000, immutable';
+	}
+	return 'public, max-age=300';
 }
 
 /** Type guard: a fetched R2 object that carries a body. */

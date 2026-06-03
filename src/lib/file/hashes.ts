@@ -4,9 +4,13 @@
  * For every file the updater needs the MD5 and SHA256 checksum. Each is obtained
  * by, in order of preference:
  *   1. downloading the existing `.<type>` sidecar from the Storage Box (the
- *      producing pipeline maintains these), or
+ *      producing pipeline maintains these) — **only if it is up to date**, or
  *   2. computing it remotely (`<type>sum`) and uploading the sidecar back so the
  *      next run can simply download it.
+ *
+ * A sidecar that is **older than its data file** is treated as stale (the file
+ * was overwritten without refreshing the sidecar) and recomputed, so a changed
+ * file is never mirrored with an outdated hash.
  *
  * Downloads are cheap and run with limited parallelism; remote computation is
  * heavy (reads the whole multi-GB file) and runs strictly one at a time.
@@ -92,12 +96,49 @@ export async function generateHashes(files: FileRef[]) {
 	}
 }
 
-/** Downloads and parses an existing `.<type>` sidecar. Returns the hash or null. */
+/**
+ * Reads an existing `.<type>` sidecar and returns its hash — but only if the
+ * sidecar is present, well-formed, and **not older than the data file**. Returns
+ * null (→ recompute) if it is missing, malformed, or stale.
+ */
 async function downloadSidecar(remotePath: string, type: HashType): Promise<string | null> {
-	const result = await sshExec(['cat', `${remotePath}.${type}`]);
+	const sidecar = `${remotePath}.${type}`;
+	const result = await sshExec(['cat', sidecar]);
 	if (!result.success || result.stdout.length === 0) return null;
 	const hash = result.stdout.split(/\s/)[0];
-	return hash && hash.length >= 32 ? hash : null;
+	if (!hash || hash.length < 32) return null;
+
+	if (await sidecarIsStale(remotePath, sidecar)) {
+		console.log(` - Sidecar ${basename(sidecar)} is older than its data file; recomputing.`);
+		return null;
+	}
+	return hash;
+}
+
+/**
+ * Best-effort staleness check: true if the sidecar's mtime is older than the
+ * data file's. Uses `ls --time-style=+%s` for epoch mtimes; if it can't be
+ * determined (e.g. the option is unsupported), assumes fresh so we never force a
+ * needless full recompute of every file.
+ */
+async function sidecarIsStale(dataPath: string, sidecarPath: string): Promise<boolean> {
+	const ls = await sshExec(['ls', '-l', '--time-style=+%s', dataPath, sidecarPath]);
+	if (!ls.success) return false;
+	const dataMtime = mtimeFromLs(ls.stdout, dataPath);
+	const sideMtime = mtimeFromLs(ls.stdout, sidecarPath);
+	if (dataMtime === null || sideMtime === null) return false;
+	return sideMtime < dataMtime;
+}
+
+/** Extracts the epoch mtime for `path` from `ls -l --time-style=+%s` output. */
+function mtimeFromLs(output: string, path: string): number | null {
+	for (const line of output.split('\n')) {
+		const parts = line.trim().split(/\s+/);
+		if (parts.length < 2 || parts[parts.length - 1] !== path) continue;
+		const mtime = Number(parts[parts.length - 2]);
+		return Number.isFinite(mtime) ? mtime : null;
+	}
+	return null;
 }
 
 /** Computes a hash remotely, uploads the sidecar back, and returns the hash. */

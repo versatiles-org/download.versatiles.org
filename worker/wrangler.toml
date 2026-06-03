@@ -17,3 +17,7 @@ compatibility_date = "2025-09-01"
 binding = "BUCKET"
 bucket_name = "download-versatiles-org"
 jurisdiction = "eu"
+
+# Worker logs + request analytics (free; helps watch request volume / errors).
+[observability]
+enabled = true

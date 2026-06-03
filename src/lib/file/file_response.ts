@@ -1,30 +1,24 @@
 /**
- * Represents a virtual file served by nginx.
+ * Represents a small generated object served from R2.
  *
- * This is not an HTTP response. Instead, it models small text payloads
- * generated at build time (e.g. metadata, redirect stubs, integrity info)
- * that nginx later embeds directly in the config.
+ * Models build-time text payloads — checksum sidecars (`.md5` / `.sha256`),
+ * TSV url lists, the HTML page and RSS feeds — that are uploaded to the bucket
+ * as real objects (raw content, no escaping).
  *
- * The content is escaped so it can be safely injected into the nginx template.
- * - `\n` becomes `\\n`
- * - `\t` becomes `\\t`
- *
- * The `url` must be an absolute path (starting with '/').
+ * The `url` is the object's HTTP path / R2 key and must start with '/'.
  */
 export class FileResponse {
 	readonly url: string;
 	readonly content: string;
+	readonly contentType: string;
 
-	constructor(url: string, content: string) {
+	constructor(url: string, content: string, contentType = 'text/plain') {
 		if (!url.startsWith('/')) {
 			throw new Error(`FileResponse.url must start with '/', got: ${url}`);
 		}
 
 		this.url = url;
-
-		// Escape for nginx config embedding
-		this.content = content
-			.replaceAll('\n', '\\n')
-			.replaceAll('\t', '\\t');
+		this.content = content;
+		this.contentType = contentType;
 	}
 }

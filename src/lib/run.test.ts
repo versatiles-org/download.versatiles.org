@@ -2,125 +2,102 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 import { FileRef } from './file/file_ref.js';
 import { FileGroup } from './file/file_group.js';
 
-vi.mock(import('./file/file_ref.js'), async originalImport => {
-	const originalModule = await originalImport();
-	return {
-		...originalModule,
-		getAllFilesRecursive: vi.fn(),
-	}
-});
+vi.mock('./source/scan.js', () => ({
+	getRemoteFiles: vi.fn(),
+}));
 
-vi.mock(import('./file/file_group.js'), async originalImport => {
+vi.mock(import('./file/file_group.js'), async (originalImport) => {
 	const originalModule = await originalImport();
 	return {
 		...originalModule,
-		collectFiles: vi.fn(),
 		groupFiles: vi.fn(),
-	}
+	};
 });
 
 vi.mock('./file/hashes.js', () => ({
 	generateHashes: vi.fn(),
-	generateLists: vi.fn(),
 }));
 
-vi.mock('./file/sync.js', () => ({
-	downloadLocalFiles: vi.fn(),
+vi.mock('./mirror/rclone.js', () => ({
+	mirrorToR2: vi.fn(),
 }));
 
-vi.mock('./template/template.js', () => ({
-	renderTemplate: vi.fn(),
-	generateHTML: vi.fn(),
-	generateRSSFeeds: vi.fn(),
-}));
-
-vi.mock('./nginx/nginx.js', () => ({
-	generateNginxConf: vi.fn(),
+vi.mock('./site/site.js', () => ({
+	buildAndUploadSite: vi.fn(),
 }));
 
 // Import the module under test after mocking modules
 const { run } = await import('./run.js');
-const { getAllFilesRecursive } = await import('./file/file_ref.js');
-const { collectFiles, groupFiles } = await import('./file/file_group.js');
+const { getRemoteFiles } = await import('./source/scan.js');
+const { groupFiles } = await import('./file/file_group.js');
 const { generateHashes } = await import('./file/hashes.js');
-const { downloadLocalFiles } = await import('./file/sync.js');
-const { generateHTML } = await import('./template/template.js');
-const { generateNginxConf } = await import('./nginx/nginx.js');
+const { mirrorToR2 } = await import('./mirror/rclone.js');
+const { buildAndUploadSite } = await import('./site/site.js');
 
 describe('run', () => {
 	const domain = 'example.com';
-	const volumeFolder = '/mock/volumes/';
-	const remoteFolder = '/mock/volumes/remote_files';
-	const localFolder = '/mock/volumes/local_files';
-	const nginxFolder = '/mock/volumes/nginx_conf';
-	const files: FileRef[] = [
-		new FileRef('file1', 100),
-		new FileRef('file2', 200)
+	const files: FileRef[] = [new FileRef('file1', 100), new FileRef('file2', 200)];
+	files.forEach((f) => (f.hashes = { md5: 'md5', sha256: 'sha256' }));
+	const fileGroups = [
+		new FileGroup({
+			slug: 'slug',
+			desc: 'desc',
+			title: 'title',
+			order: 123,
+			olderFiles: files,
+		}),
 	];
-	files.forEach(f => f.hashes = { md5: 'md5', sha256: 'sha256' });
-	const fileGroups = [new FileGroup({
-		slug: 'slug',
-		desc: 'desc',
-		title: 'title',
-		order: 123,
-		olderFiles: files,
-	})];
 
 	beforeEach(() => {
 		vi.clearAllMocks();
 
-		// Mock getAllFilesRecursive to return a list of files
-		vi.mocked(getAllFilesRecursive).mockReturnValue(files);
+		// Mock getRemoteFiles to return a list of files
+		vi.mocked(getRemoteFiles).mockReturnValue(files);
 
 		// Mock other functions to do nothing
 		vi.mocked(generateHashes).mockResolvedValue(undefined);
 		vi.mocked(groupFiles).mockReturnValue(fileGroups);
-		vi.mocked(downloadLocalFiles).mockResolvedValue(undefined);
-		vi.mocked(generateHTML).mockReturnValue({ filename: 'index.html' } as FileRef);
-		vi.mocked(collectFiles).mockReturnValue([{ cloneMoved: vi.fn().mockReturnValue('movedFile') }] as unknown as FileRef[]);
+		vi.mocked(mirrorToR2).mockReturnValue({ uploaded: 0, skipped: 0 });
+		vi.mocked(buildAndUploadSite).mockReturnValue(0);
 	});
 
 	it('should throw an error if $DOMAIN is not set and no domain is provided in options', async () => {
 		delete process.env['DOMAIN']; // Unset the domain
 
-		await expect(run({ volumeFolder })).rejects.toThrow('missing $DOMAIN');
+		await expect(run({})).rejects.toThrow('missing $DOMAIN');
 	});
 
 	it('should throw an error if no files are found in the remote folder', async () => {
 		// Return an empty list of files
-		vi.mocked(getAllFilesRecursive).mockReturnValue([]);
+		vi.mocked(getRemoteFiles).mockReturnValue([]);
 
 		await expect(run({ domain })).rejects.toThrow('no remote files found');
 	});
 
 	it('should call the necessary functions with correct arguments', async () => {
-		await run({ domain, volumeFolder });
+		await run({ domain });
 
-		// Verify getAllFilesRecursive is called with the remote folder
-		expect(getAllFilesRecursive).toHaveBeenCalledWith(remoteFolder);
+		// Verify getRemoteFiles is called
+		expect(getRemoteFiles).toHaveBeenCalled();
 
-		// Verify generateHashes is called with the correct arguments
-		expect(generateHashes).toHaveBeenCalledWith(files, remoteFolder);
+		// Verify generateHashes is called with the file list
+		expect(generateHashes).toHaveBeenCalledWith(files);
 
 		// Verify groupFiles is called with the correct file list
 		expect(groupFiles).toHaveBeenCalledWith(files);
 
-		// Verify downloadLocalFiles is called with the correct arguments
-		expect(downloadLocalFiles).toHaveBeenCalledWith(fileGroups, localFolder);
+		// Verify the data files are mirrored (collected from the groups).
+		expect(mirrorToR2).toHaveBeenCalledWith(files);
 
-		// Verify generateHTML is called with the correct arguments
-		expect(generateHTML).toHaveBeenCalledWith(fileGroups, `${localFolder}/index.html`);
+		// Verify the site is built and uploaded with the absolute base URL
+		expect(buildAndUploadSite).toHaveBeenCalledWith(fileGroups, 'https://example.com/');
+	});
 
-		// Verify collectFiles is called and the paths are "moved"
-		expect(collectFiles).toHaveBeenCalled();
-		const value = vi.mocked(collectFiles).mock.results[0].value as FileRef[];
-		expect(value[0].cloneMoved).toHaveBeenCalledWith(volumeFolder, '/volumes/');
+	it('should mirror the data before uploading the site (atomic publish)', async () => {
+		await run({ domain });
 
-		// Verify generateNginxConf is called with the moved files and the Nginx config path
-		expect(generateNginxConf).toHaveBeenCalledWith(
-			['movedFile'],
-			[1, 2].flatMap(i => ['md5', 'sha256'].flatMap(h => [{ content: `${h} file${i}\\n`, url: `/file${i}.${h}` }])),
-			`${nginxFolder}/site-confs/default.conf`
-		);
+		const mirrorOrder = vi.mocked(mirrorToR2).mock.invocationCallOrder[0];
+		const siteOrder = vi.mocked(buildAndUploadSite).mock.invocationCallOrder[0];
+		expect(mirrorOrder).toBeLessThan(siteOrder);
 	});
 });

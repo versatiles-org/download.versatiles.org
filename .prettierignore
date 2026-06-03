@@ -1,10 +1,10 @@
-
-.env
-.ssh
 .svelte-kit
-.wrangler
+*.code-workspace
+package*.json
 build
 coverage
 data
+dist
 node_modules
 volumes
+worker

@@ -7,15 +7,22 @@
     "url": "https://github.com/versatiles-org/download.versatiles.org.git"
   },
   "scripts": {
-    "check": "npm run lint && npm run test",
-    "dev": "tsx --env-file=.env src/dev.ts",
+    "build:site": "vite build",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test",
+    "dev": "tsx src/generate_testdata.ts && vite dev",
     "doc": "npm run doc-graph",
     "doc-graph": "vrt deps-graph | vrt doc-insert README.md '## Dependency Graph'",
-    "lint": "eslint . --color",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
     "once": "tsx --env-file=.env src/run_once.ts",
-    "server": "tsx --env-file=.env src/server.ts",
-    "test": "cross-env vitest run",
-    "test-coverage": "cross-env vitest run --coverage",
+    "prepare": "svelte-kit sync",
+    "preview:site": "vite preview",
+    "setup": "bash scripts/setup.sh",
+    "test": "vitest run",
+    "test-coverage": "vitest run --coverage",
+    "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc --noEmit",
     "upgrade": "vrt deps-upgrade"
   },
   "type": "module",
@@ -25,29 +32,26 @@
     "url": "https://github.com/MichaelKreil"
   },
   "license": "MIT",
-  "dependencies": {
-    "cookie": "^1.1.1",
-    "express": "^5.2.1",
-    "handlebars": "^4.7.8",
-    "tsx": "^4.21.0",
-    "typescript": "^5.9.3",
-    "work-faster": "^2.5.5"
-  },
   "private": true,
+  "dependencies": {
+    "@sveltejs/adapter-static": "^3.0.10",
+    "@sveltejs/kit": "^2.62.0",
+    "sass": "^1.100.0",
+    "svelte": "^5.56.1",
+    "tsx": "^4.22.4",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.16",
+    "vitest": "^4.1.8"
+  },
   "devDependencies": {
-    "@eslint/js": "^9.39.2",
-    "@types/eslint__js": "^8.42.3",
-    "@types/express": "^5.0.6",
-    "@types/node": "^25.2.0",
-    "@types/supertest": "^6.0.3",
-    "@versatiles/release-tool": "^2.6.0",
-    "@vitest/coverage-v8": "^4.0.18",
-    "cross-env": "^10.1.0",
-    "eslint": "^9.39.2",
-    "globals": "^17.3.0",
-    "npm-check-updates": "^19.3.2",
-    "supertest": "^7.2.2",
-    "typescript-eslint": "^8.54.0",
-    "vitest": "^4.0.18"
+    "@types/node": "^25.9.1",
+    "@typescript-eslint/eslint-plugin": "^8.60.1",
+    "@typescript-eslint/parser": "^8.60.1",
+    "@versatiles/release-tool": "^2.8.0",
+    "@vitest/coverage-v8": "^4.1.8",
+    "eslint": "^10.4.1",
+    "prettier": "^3.8.3",
+    "prettier-plugin-svelte": "^4.1.0",
+    "svelte-check": "^4.5.0"
   }
 }

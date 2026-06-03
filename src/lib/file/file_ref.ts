@@ -1,47 +1,40 @@
-import { readdirSync, statSync } from 'fs';
-import { basename, join, relative, resolve } from 'path';
+import { statSync } from 'fs';
+import { basename } from 'path';
 import { FileResponse } from './file_response.js';
 
 /**
  * Represents a single file that is part of the download.versatiles.org catalog.
  *
- * A `FileRef` has three perspectives on the same file:
- * - `fullname`: absolute path on the local filesystem
- * - `filename`: the basename or path relative to the "root" directory
- * - `url`: the path as it will be exposed via HTTP (typically relative to the web root)
+ * A `FileRef` has several perspectives on the same file:
+ * - `fullname`: a local path (for generated site assets) or, for remote files,
+ *   the path on the Storage Box
+ * - `filename`: the basename
+ * - `url`: the path/key under which the file is exposed (R2 key / HTTP path)
+ * - `remotePath`: the absolute path on the Storage Box (empty for local files)
  *
- * The class is intentionally lightweight and mostly behaves like a data container.
  * Construction is flexible to support the different call sites in the pipeline:
  *
  * - `new FileRef(fullname, url)`:
- *   Uses the given `fullname` and `url`, and determines the file size from the filesystem.
+ *   Local file; size is read from the filesystem via `statSync`.
  * - `new FileRef(fullname, size)`:
- *   Uses the given `fullname` and a known `size` in bytes. The `url` defaults to `basename(fullname)`.
+ *   Local file with a known size; `url` defaults to `/basename`.
+ * - `new FileRef(fullname, size, remotePath)`:
+ *   Remote file (on the Storage Box) with a known size and remote path.
  * - `new FileRef(fileRef)`:
  *   Copy constructor that clones an existing instance.
  *
- * The `sizeString` is a human-readable representation of the file size in GiB
- * (rounded to one decimal place, e.g. `"1.5 GB"`).
- *
  * Hashes (`hashes.md5` / `hashes.sha256`) are optional and are typically populated
  * by the hash generation step. Accessing `md5` or `sha256` before they are set
- * will throw an error to surface misconfigurations early.
+ * throws to surface misconfigurations early.
  */
 export class FileRef {
-	/** Absolute path of the file on disk. */
+	/** Local path (generated assets) or path on the Storage Box (remote files). */
 	public fullname: string;
 
-	/**
-	 * File name or path relative to a logical root directory.
-	 * Typically used for display and for constructing URLs.
-	 */
+	/** File name (basename of `fullname`). */
 	public filename: string;
 
-	/**
-	 * Path under which the file is exposed via HTTP.
-	 * This is usually relative to the web root (e.g. `"foo/bar.versatiles"`),
-	 * but may also be an absolute path starting with `/`.
-	 */
+	/** Path/key under which the file is exposed (R2 key / HTTP path). */
 	public url: string;
 
 	/** Raw file size in bytes. */
@@ -50,36 +43,52 @@ export class FileRef {
 	/** Human-readable size string (e.g. `"1.2 GB"`). */
 	public readonly sizeString: string;
 
+	/** Absolute path on the Storage Box (empty string for local files). */
+	public remotePath: string;
+
 	/** Optional precomputed hashes for integrity / checksum files. */
-	public hashes?: { md5: string, sha256: string };
+	public hashes?: { md5: string; sha256: string };
 
 	constructor(fullname: string, url: string);
 	constructor(fullname: string, size: number);
+	constructor(fullname: string, size: number, remotePath: string);
 	constructor(file: FileRef);
-	constructor(a: FileRef | string, b?: number | string) {
+	constructor(a: FileRef | string, b?: number | string, c?: string) {
 		if (typeof a === 'string') {
 			this.fullname = a;
 			this.filename = basename(a);
 			if (typeof b === 'string') {
+				// (fullname, url) — local file, size from the filesystem.
 				this.url = b;
 				this.size = statSync(a).size;
-			} else if (typeof b === 'number') {
+				this.remotePath = '';
+			} else if (typeof b === 'number' && typeof c === 'string') {
+				// (fullname, size, remotePath) — remote file on the Storage Box.
 				this.url = '/' + this.filename;
 				this.size = b;
+				this.remotePath = c;
+			} else if (typeof b === 'number') {
+				// (fullname, size) — local file with a known size.
+				this.url = '/' + this.filename;
+				this.size = b;
+				this.remotePath = '';
 			} else {
-				throw new Error('Invalid FileRef constructor arguments: expected (fullname, url:string) or (fullname, size:number).');
+				throw new Error(
+					'Invalid FileRef constructor arguments: expected (fullname, url:string), (fullname, size:number) or (fullname, size:number, remotePath:string).',
+				);
 			}
 		} else if (a instanceof FileRef) {
 			this.fullname = a.fullname;
 			this.filename = a.filename;
 			this.url = a.url;
 			this.size = a.size;
+			this.remotePath = a.remotePath;
 			this.hashes = a.hashes;
 		} else {
 			throw new Error('Invalid FileRef constructor arguments: expected a string path or an existing FileRef instance.');
 		}
 
-		this.sizeString = (this.size / (2 ** 30)).toFixed(1) + ' GB';
+		this.sizeString = (this.size / 2 ** 30).toFixed(1) + ' GB';
 
 		if (!/^\/[^/]/.test(this.url)) {
 			throw new Error(`FileRef.url must start with a single '/', got: ${this.url}`);
@@ -127,44 +136,5 @@ export class FileRef {
 	/** Creates a shallow copy of this FileRef, including hashes if present. */
 	clone(): FileRef {
 		return new FileRef(this);
-	}
-
-	/**
-	 * Creates a copy of this FileRef whose `fullname` has been moved from one
-	 * root directory to another, preserving `filename`, `url`, and hashes.
-	 *
-	 * Only the filesystem path (`fullname`) is updated; the URL remains unchanged.
-	 */
-	cloneMoved(from: string, to: string): FileRef {
-		const f = new FileRef(this);
-		f.fullname = join(to, relative(from, f.fullname));
-		return f;
-	}
-}
-
-/**
- * Recursively scans a directory for `.versatiles` files and returns a sorted
- * list of `FileRef` instances.
- *
- * - `fullname` is the absolute path on disk.
- * - `filename` and `url` are set to the path relative to the initial `folderPath`.
- *
- * The returned list is sorted by `fullname` for stable processing.
- */
-export function getAllFilesRecursive(folderPath: string): FileRef[] {
-	return rec(folderPath).sort((a, b) => a.fullname.localeCompare(b.fullname));
-
-	function rec(folderPath: string): FileRef[] {
-		const files: FileRef[] = [];
-		const filenames = readdirSync(folderPath);
-		for (const filename of filenames) {
-			const fullPath = resolve(folderPath, filename);
-			if (statSync(fullPath).isDirectory()) {
-				files.push(...rec(fullPath)); // Recursive call for subdirectory
-			} else if (filename.endsWith('.versatiles')) {
-				files.push(new FileRef(fullPath, '/' + filename));
-			}
-		}
-		return files;
 	}
 }

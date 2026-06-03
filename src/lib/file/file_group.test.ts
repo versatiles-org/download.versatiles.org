@@ -1,178 +1,187 @@
-import { collectFiles, groupFiles, FileGroup, hex2base64 } from './file_group.js';
+import { describe, it, expect, vi } from 'vitest';
+import { hex2base64, groupFiles, collectFiles, FileGroup } from './file_group.js';
 import { FileRef } from './file_ref.js';
-import { FileResponse } from './file_response.js';
-import { describe, it, expect, beforeEach } from 'vitest';
+
+describe('hex2base64', () => {
+	it('converts hex to standard base64 with padding', () => {
+		// "Hello" in hex is 48656c6c6f
+		expect(hex2base64('48656c6c6f')).toBe('SGVsbG8=');
+	});
+
+	it('handles empty string', () => {
+		expect(hex2base64('')).toBe('');
+	});
+
+	it('converts md5-like hex strings', () => {
+		// d41d8cd98f00b204e9800998ecf8427e is md5 of empty string
+		expect(hex2base64('d41d8cd98f00b204e9800998ecf8427e')).toBe('1B2M2Y8AsgTpgAmY7PhCfg==');
+	});
+});
+
+describe('FileGroup', () => {
+	describe('constructor', () => {
+		it('creates a group with required properties', () => {
+			const group = new FileGroup({ slug: 'test', title: 'Test Group', desc: 'A test group', order: 1 });
+
+			expect(group.slug).toBe('test');
+			expect(group.title).toBe('Test Group');
+			expect(group.desc).toBe('A test group');
+			expect(group.order).toBe(1);
+			expect(group.local).toBe(false);
+			expect(group.tileType).toBe('vector');
+			expect(group.latestFile).toBeUndefined();
+			expect(group.olderFiles).toEqual([]);
+		});
+
+		it('accepts optional local and tileType flags', () => {
+			const group = new FileGroup({
+				slug: 'test',
+				title: 'Test',
+				desc: 'Test',
+				order: 1,
+				local: true,
+				tileType: 'raster',
+			});
+			expect(group.local).toBe(true);
+			expect(group.tileType).toBe('raster');
+		});
+	});
+
+	describe('getResponseUrlList', () => {
+		it('throws when no latestFile is set', () => {
+			const group = new FileGroup({ slug: 'test', title: 'Test', desc: 'Test', order: 1 });
+			expect(() => group.getResponseUrlList('https://example.com')).toThrow();
+		});
+	});
+});
 
 describe('groupFiles', () => {
-	const files: FileRef[] = [
-		new FileRef('/path/hillshade-vectors.versatiles', 200),
-		new FileRef('/path/osm.2020.versatiles', 100),
-		new FileRef('/path/osm.2021.versatiles', 50),
-	];
+	function createMockFileRef(filename: string, size: number): FileRef {
+		const ref = Object.create(FileRef.prototype) as FileRef;
+		ref.fullname = `/data/${filename}`;
+		ref.filename = filename;
+		ref.url = `/${filename}`;
+		(ref as { size: number }).size = size;
+		(ref as { sizeString: string }).sizeString = (size / 2 ** 30).toFixed(1) + ' GB';
+		ref.remotePath = `/home/test/${filename}`;
+		ref.clone = function (this: FileRef) {
+			return createMockFileRef(this.filename, this.size);
+		};
+		return ref;
+	}
 
-	it('should correctly group files by basename', () => {
-		const result: FileGroup[] = groupFiles(files);
+	it('groups files by slug', () => {
+		const files = [
+			createMockFileRef('osm.20240101.versatiles', 1000),
+			createMockFileRef('osm.20240201.versatiles', 2000),
+		];
 
-		// Check overall grouping count
-		expect(result).toHaveLength(2);
+		const groups = groupFiles(files);
 
-		// Validate OSM Group
-		const osmGroup = result.find(group => group.title === 'OpenStreetMap as vector tiles');
-		expect(osmGroup).toBeDefined();
-		if (osmGroup) {
-			expect(osmGroup.latestFile).toEqual(files[2]);
-			expect(osmGroup.olderFiles).toEqual([files[1]]);
-			expect(osmGroup.order).toBe(0);
-		}
-
-		// Validate Hillshade Group
-		const hillshadeGroup = result.find(group => group.title === 'Hillshading as vector tiles');
-		expect(hillshadeGroup).toBeDefined();
-		if (hillshadeGroup) {
-			expect(hillshadeGroup.latestFile).toEqual(files[0]);
-			expect(hillshadeGroup.olderFiles).toEqual([]);
-			expect(hillshadeGroup.order).toBe(10);
-		}
+		expect(groups.length).toBe(1);
+		expect(groups[0].slug).toBe('osm');
+		expect(groups[0].olderFiles.length).toBe(2);
 	});
 
-	it('should return files sorted by order', () => {
-		const result: FileGroup[] = groupFiles(files);
-
-		// Ensure the groups are sorted by their order
-		expect(result[0].order).toBeLessThan(result[1].order);
+	it('assigns correct metadata to known groups', () => {
+		const groups = groupFiles([createMockFileRef('osm.20240101.versatiles', 1000)]);
+		expect(groups[0].title).toBe('OpenStreetMap');
+		expect(groups[0].local).toBe(true);
+		expect(groups[0].order).toBe(0);
+		expect(groups[0].tileType).toBe('vector');
 	});
 
-	it('should assign the latest file correctly', () => {
-		const result: FileGroup[] = groupFiles(files);
-
-		const osmGroup = result.find(group => group.title === 'OpenStreetMap as vector tiles');
-		expect(osmGroup?.latestFile).toEqual(files[2]);
-
-		const hillshadeGroup = result.find(group => group.title === 'Hillshading as vector tiles');
-		expect(hillshadeGroup?.latestFile).toEqual(files[0]);
+	it('marks raster datasets with tileType raster', () => {
+		const groups = groupFiles([createMockFileRef('satellite.versatiles', 1000)]);
+		expect(groups[0].slug).toBe('satellite');
+		expect(groups[0].tileType).toBe('raster');
 	});
 
-	it('should handle olderFiles correctly', () => {
-		const result: FileGroup[] = groupFiles(files);
+	it('sorts groups by order', () => {
+		const files = [
+			createMockFileRef('hillshade-vectors.20240101.versatiles', 1000),
+			createMockFileRef('osm.20240101.versatiles', 2000),
+			createMockFileRef('landcover-vectors.20240101.versatiles', 3000),
+		];
 
-		const osmGroup = result.find(group => group.title === 'OpenStreetMap as vector tiles');
-		expect(osmGroup?.olderFiles).toEqual([files[1]]);
+		const groups = groupFiles(files);
 
-		const hillshadeGroup = result.find(group => group.title === 'Hillshading as vector tiles');
-		expect(hillshadeGroup?.olderFiles).toHaveLength(0);
+		expect(groups.map((g) => g.slug)).toEqual(['osm', 'landcover-vectors', 'hillshade-vectors']);
+	});
+
+	it('sets latestFile from most recent file and normalizes the url', () => {
+		const files = [
+			createMockFileRef('osm.20240101.versatiles', 1000),
+			createMockFileRef('osm.20240301.versatiles', 3000),
+			createMockFileRef('osm.20240201.versatiles', 2000),
+		];
+
+		const groups = groupFiles(files);
+
+		expect(groups[0].latestFile).toBeDefined();
+		expect(groups[0].latestFile!.url).toBe('/osm.versatiles');
+	});
+
+	it('handles unknown groups with a warning', () => {
+		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		const groups = groupFiles([createMockFileRef('unknown-dataset.20240101.versatiles', 1000)]);
+
+		expect(groups.length).toBe(1);
+		expect(groups[0].slug).toBe('unknown-dataset');
+		expect(groups[0].title).toBe('???');
+		expect(consoleSpy).toHaveBeenCalledWith('Unknown group "unknown-dataset"');
+
+		consoleSpy.mockRestore();
 	});
 });
 
 describe('collectFiles', () => {
-	const file1 = new FileRef('/path/hillshade-vectors.versatiles', 200);
-	const file2 = new FileRef('/path/osm.2020.versatiles', 100);
-	const file3 = new FileRef('/path/osm.2021.versatiles', 50);
+	function createMockFileRef(url: string): FileRef {
+		const ref = Object.create(FileRef.prototype) as FileRef;
+		ref.url = url;
+		ref.fullname = url;
+		ref.filename = url.slice(1);
+		(ref as { size: number }).size = 1000;
+		(ref as { sizeString: string }).sizeString = '0.0 GB';
+		ref.remotePath = '';
+		return ref;
+	}
 
-	const fileGroup1 = new FileGroup({
-		slug: 'hillshade-vectors',
-		title: 'Hillshading as vector tiles',
-		desc: 'Hillshading description',
-		order: 10,
-		local: false,
-		latestFile: file1,
-		olderFiles: []
+	it('collects files from a FileRef array', () => {
+		const result = collectFiles([createMockFileRef('/file1.txt'), createMockFileRef('/file2.txt')]);
+		expect(result.length).toBe(2);
 	});
 
-	const fileGroup2 = new FileGroup({
-		slug: 'osm',
-		title: 'OpenStreetMap as vector tiles',
-		desc: 'OSM description',
-		order: 0,
-		local: true,
-		latestFile: file3,
-		olderFiles: [file2]
+	it('deduplicates files by url', () => {
+		const result = collectFiles([
+			createMockFileRef('/file1.txt'),
+			createMockFileRef('/file1.txt'),
+			createMockFileRef('/file2.txt'),
+		]);
+		expect(result.length).toBe(2);
 	});
 
-	it('should collect files from individual FileRef entries', () => {
-		const result = collectFiles(file1, file2, file3);
-		expect(result).toEqual([file1, file2, file3]);
-	});
-
-	it('should collect files from FileGroup entries', () => {
-		const result = collectFiles(fileGroup1, fileGroup2);
-		expect(result).toEqual([file1, file2, file3]);
-	});
-
-	it('should collect files from mixed FileGroup and FileRef entries', () => {
-		const result = collectFiles(fileGroup1, file2, fileGroup2);
-		expect(result).toEqual([file1, file2, file3]);
-	});
-
-	it('should handle empty arrays in input', () => {
-		const result = collectFiles([], fileGroup1, []);
-		expect(result).toEqual([file1]);
-	});
-
-	it('should remove duplicate FileRefs by URL', () => {
-		const duplicateFile2 = new FileRef('/path/osm.2020.versatiles', 100);
-		const result = collectFiles(fileGroup1, duplicateFile2, file2);
-		expect(result).toEqual([file1, file2]); // Duplicate removed
-	});
-});
-
-
-describe('generateLists', () => {
-	let fileGroup: FileGroup;
-
-	beforeEach(() => {
-		const file1 = new FileRef('/path/file1.versatiles', 1000);
-		const file2 = new FileRef('/path/file2.versatiles', 2000);
-		file1.hashes = { md5: 'abc', sha256: 'def' };
-		file2.hashes = { md5: '123', sha256: '456' };
-
-		fileGroup = new FileGroup({
-			slug: 'slug',
-			title: 'OpenStreetMap as vector tiles',
-			desc: 'Test description',
-			order: 0,
-			local: true,
-			latestFile: file1,
-			olderFiles: [file2],
+	it('collects files from a FileGroup', () => {
+		const group = new FileGroup({
+			slug: 'test',
+			title: 'Test',
+			desc: 'Test',
+			order: 1,
+			latestFile: createMockFileRef('/latest.txt'),
+			olderFiles: [createMockFileRef('/older.txt')],
 		});
+		expect(collectFiles(group).length).toBe(2);
 	});
 
-	it('should generate lists', () => {
-		const result = fileGroup.getResponseUrlList('https://example.com');
-
-		expect(result.url).toBe('/urllist_slug.tsv');
-		expect(result.content).toBe('TsvHttpData-1.0\\nhttps://example.com/file1.versatiles\\t1000\\tqw==\\n');
-	});
-
-	it('should generate responses', () => {
-		const result = fileGroup.getResponses('https://example.com');
-
-		expect(result.length).toBe(5);
-
-		expect(result[0]).toStrictEqual(new FileResponse('/file2.versatiles.md5', '123 file2.versatiles\n'))
-		expect(result[1]).toStrictEqual(new FileResponse('/file2.versatiles.sha256', '456 file2.versatiles\n'))
-		expect(result[2]).toStrictEqual(new FileResponse('/file1.versatiles.md5', 'abc file1.versatiles\n'))
-		expect(result[3]).toStrictEqual(new FileResponse('/file1.versatiles.sha256', 'def file1.versatiles\n'))
-		expect(result[4]).toStrictEqual(new FileResponse('/urllist_slug.tsv', 'TsvHttpData-1.0\nhttps://example.com/file1.versatiles\t1000\tqw==\n'))
-	});
-
-	it('should throw an error if hashes are missing', () => {
-		// Remove the hashes from the latestFile
-		fileGroup.latestFile!.hashes = undefined;
-
-		expect(() => fileGroup.getResponseUrlList('https://example.com')).toThrow();
-	});
-});
-
-describe('hex2base64', () => {
-	it('should correctly convert hex to base64url', () => {
-		const hex = 'deadbeef';
-		const base64 = hex2base64(hex);
-		expect(base64).toBe('3q2-7w=='); // Expected base64url-encoded value
-	});
-
-	it('should pad the base64 string to a multiple of 4', () => {
-		const hex = 'deadbe';
-		const base64 = hex2base64(hex);
-		expect(base64).toBe('3q2-'); // Base64url-encoded value with correct padding
+	it('handles mixed inputs', () => {
+		const group = new FileGroup({
+			slug: 'test',
+			title: 'Test',
+			desc: 'Test',
+			order: 1,
+			latestFile: createMockFileRef('/file1.txt'),
+		});
+		expect(collectFiles(group, [createMockFileRef('/file2.txt')]).length).toBe(2);
 	});
 });

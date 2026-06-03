@@ -1,84 +1,81 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
-import type { FileRef as FileRefType } from './file_ref.js';
-import { Stats } from 'fs';
 
 console.log = vi.fn();
 
+const ssh = {
+	sshExec: vi.fn(),
+	scpUpload: vi.fn(),
+};
+vi.mock('../source/ssh.js', () => ssh);
+
 vi.mock('fs', () => ({
-	createReadStream: vi.fn(),
-	existsSync: vi.fn(),
-	readdirSync: vi.fn(),
-	readFileSync: vi.fn(),
-	statSync: vi.fn(),
 	writeFileSync: vi.fn(),
+	unlinkSync: vi.fn(),
 }));
 
-const child_process = { spawnSync: vi.fn(), };
-vi.mock('child_process', () => ({ ...child_process, default: child_process }));
+vi.mock('os', () => ({ tmpdir: () => '/tmp' }));
 
-const { existsSync, readFileSync, writeFileSync, statSync } = await import('fs');
-const { spawnSync } = await import('child_process');
 const { FileRef } = await import('./file_ref.js');
 const { generateHashes } = await import('./hashes.js');
+const { writeFileSync, unlinkSync } = await import('fs');
+
+const MD5 = 'a'.repeat(32);
+const SHA = 'b'.repeat(64);
+
+function remoteFile(remotePath: string): InstanceType<typeof FileRef> {
+	return new FileRef(remotePath, 100, remotePath);
+}
 
 describe('generateHashes', () => {
-	let file1: FileRefType, file2: FileRefType;
-
 	beforeEach(() => {
-		file1 = new FileRef('/path/file1.versatiles', 1000);
-		file2 = new FileRef('/path/file2.versatiles', 2000);
-
-		vi.mocked(existsSync).mockReset().mockReturnValue(false);
-		vi.mocked(readFileSync).mockReset().mockImplementation(f => {
-			const parts = String(f).split('.');
-			const extension = parts.pop();
-			const filename = parts.join('.');
-			return `${extension}_c0ffee ${filename}\n`;
-		});
-		vi.mocked(writeFileSync).mockReset().mockImplementation(() => { });
-		vi.mocked(statSync).mockReset().mockReturnValue({ size: 100 } as Stats);
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
-		vi.mocked<any>(spawnSync).mockReset().mockImplementation((_: string, args: string[]) => {
-			const filename = args.pop();
-			const hash = args.pop()?.replace('sum', '');
-			return {
-				stdout: Buffer.from(`${hash}_c0ffee ${filename}`),
-				stderr: Buffer.alloc(0)
-			};
-		});
+		vi.clearAllMocks();
 	});
 
-	it('should generate and write missing hashes for files', async () => {
-		await generateHashes([file1, file2], '/path/');
+	it('uses existing sidecars when present', async () => {
+		ssh.sshExec.mockImplementation(async (args: string[]) => {
+			const hash = args[1].endsWith('.md5') ? MD5 : SHA;
+			return { success: true, stdout: `${hash}  file.versatiles\n` };
+		});
 
-		expect(file1.hashes?.md5).toBe('md5_c0ffee');
-		expect(file1.hashes?.sha256).toBe('sha256_c0ffee');
-		expect(file2.hashes?.md5).toBe('md5_c0ffee');
-		expect(file2.hashes?.sha256).toBe('sha256_c0ffee');
+		const file = remoteFile('/home/osm/osm.versatiles');
+		await generateHashes([file]);
 
-		expect(spawnSync).toHaveBeenCalledTimes(4);
-
-		expect(writeFileSync).toHaveBeenNthCalledWith(1, '/path/file1.versatiles.md5', 'md5_c0ffee file1.versatiles');
-		expect(writeFileSync).toHaveBeenNthCalledWith(2, '/path/file1.versatiles.sha256', 'sha256_c0ffee file1.versatiles');
-		expect(writeFileSync).toHaveBeenNthCalledWith(3, '/path/file2.versatiles.md5', 'md5_c0ffee file2.versatiles');
-		expect(writeFileSync).toHaveBeenNthCalledWith(4, '/path/file2.versatiles.sha256', 'sha256_c0ffee file2.versatiles');
-	});
-
-	it('should skip files if hashes already exist', async () => {
-		// Simulate that the hash files already exist
-		vi.mocked(existsSync).mockReturnValue(true);
-
-		await generateHashes([file1], '/path/');
-
-		expect(file1.hashes?.md5).toBe('md5_c0ffee');
-		expect(file1.hashes?.sha256).toBe('sha256_c0ffee');
-
-		expect(readFileSync).toHaveBeenCalledTimes(2);
-		expect(readFileSync).toHaveBeenNthCalledWith(1, '/path/file1.versatiles.md5', 'utf8');
-		expect(readFileSync).toHaveBeenNthCalledWith(2, '/path/file1.versatiles.sha256', 'utf8');
-
-		expect(spawnSync).toHaveBeenCalledTimes(0);
-
+		expect(file.hashes?.md5).toBe(MD5);
+		expect(file.hashes?.sha256).toBe(SHA);
+		// Existing sidecars: should fetch via `cat`, never compute or upload.
+		expect(ssh.sshExec).toHaveBeenCalledTimes(2);
+		expect(ssh.sshExec).toHaveBeenCalledWith(['cat', '/home/osm/osm.versatiles.md5']);
+		expect(ssh.sshExec).toHaveBeenCalledWith(['cat', '/home/osm/osm.versatiles.sha256']);
+		expect(ssh.scpUpload).not.toHaveBeenCalled();
 		expect(writeFileSync).not.toHaveBeenCalled();
+	});
+
+	it('computes and uploads sidecars when missing', async () => {
+		ssh.sshExec.mockImplementation(async (args: string[]) => {
+			if (args[0] === 'cat') return { success: false, stdout: '' };
+			const type = args[0].replace('sum', '');
+			const hash = type === 'md5' ? MD5 : SHA;
+			return { success: true, stdout: `${hash}  /home/osm/osm.versatiles\n` };
+		});
+		ssh.scpUpload.mockResolvedValue(true);
+
+		const file = remoteFile('/home/osm/osm.versatiles');
+		await generateHashes([file]);
+
+		expect(file.hashes?.md5).toBe(MD5);
+		expect(file.hashes?.sha256).toBe(SHA);
+		// 2 failed downloads + 2 computations.
+		expect(ssh.sshExec).toHaveBeenCalledWith(['md5sum', '/home/osm/osm.versatiles']);
+		expect(ssh.sshExec).toHaveBeenCalledWith(['sha256sum', '/home/osm/osm.versatiles']);
+		expect(ssh.scpUpload).toHaveBeenCalledTimes(2);
+		expect(writeFileSync).toHaveBeenCalledTimes(2);
+		expect(unlinkSync).toHaveBeenCalledTimes(2);
+	});
+
+	it('throws when a hash can neither be downloaded nor computed', async () => {
+		ssh.sshExec.mockResolvedValue({ success: false, stdout: '' });
+
+		const file = remoteFile('/home/osm/osm.versatiles');
+		await expect(generateHashes([file])).rejects.toThrow(/Failed to calculate/);
 	});
 });

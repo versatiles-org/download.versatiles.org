@@ -1,0 +1,23 @@
+name = "download-versatiles-org"
+main = "src/index.ts"
+compatibility_date = "2025-09-01"
+
+# Routing is configured in the Cloudflare dashboard (Plan B — Cloudflare for SaaS):
+#   - an originless fallback-origin record + a `*/*` Workers route on the
+#     versatiles.cloud zone send all traffic (incl. the SaaS custom hostname
+#     download.versatiles.org) to this Worker.
+# See worker/README.md. (No `routes`/`custom_domain` here: download.versatiles.org
+# is NOT a zone in this account, so it can't be a Worker custom domain.)
+
+# R2 bucket holding the data files, sidecars and generated site assets.
+# `bucket_name` must match the bucket the updater mirrors into (R2_BUCKET).
+# `jurisdiction = "eu"` is required because the bucket is EU-jurisdiction —
+# without it the binding cannot find the bucket.
+[[r2_buckets]]
+binding = "BUCKET"
+bucket_name = "download-versatiles-org"
+jurisdiction = "eu"
+
+# Worker logs + request analytics (free; helps watch request volume / errors).
+[observability]
+enabled = true

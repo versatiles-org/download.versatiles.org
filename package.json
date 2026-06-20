@@ -8,7 +8,7 @@
   },
   "scripts": {
     "build:site": "vite build",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && cd worker && npm run check",
     "dev": "tsx src/generate_testdata.ts && vite dev",
     "doc": "npm run doc-graph",
     "doc-graph": "vrt deps-graph | vrt doc-insert README.md '## Dependency Graph'",

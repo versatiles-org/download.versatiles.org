@@ -162,6 +162,15 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					order = 0;
 					local = true;
 					break;
+				case 'osm-landcover':
+					title = 'OpenStreetMap + Landcover';
+					desc = [
+						'Combined tileset of <a href="https://www.openstreetmap.org/">OpenStreetMap</a> in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a> and global landcover classification based on <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, merged into a single file.',
+						'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a>, © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a>',
+					];
+					order = 5;
+					local = true;
+					break;
 				case 'satellite':
 					title = 'Satellite Imagery (Beta)';
 					desc = [

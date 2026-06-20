@@ -23,7 +23,7 @@
     "test": "vitest run",
     "test-coverage": "vitest run --coverage",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc --noEmit",
-    "upgrade": "vrt deps-upgrade"
+    "upgrade": "vrt deps-upgrade && cd worker && vrt deps-upgrade && cd .."
   },
   "type": "module",
   "author": {
@@ -34,7 +34,7 @@
   "license": "MIT",
   "private": true,
   "overrides": {
-    "cookie": "^0.7.0"
+    "cookie": ">=0.7.0"
   },
   "dependencies": {
     "@sveltejs/adapter-static": "^3.0.10",

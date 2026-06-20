@@ -163,7 +163,7 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					local = true;
 					break;
 				case 'osm-landcover':
-					title = 'OpenStreetMap + Landcover';
+					title = 'OpenStreetMap + Landcover (Beta)';
 					desc = [
 						'Combined tileset of <a href="https://www.openstreetmap.org/">OpenStreetMap</a> in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a> and global landcover classification based on <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, merged into a single file.',
 						'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a>, © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a>',
@@ -172,7 +172,7 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					local = true;
 					break;
 				case 'satellite':
-					title = 'Satellite Imagery (Beta)';
+					title = 'Satellite Imagery (Alpha)';
 					desc = [
 						'Global satellite imagery composited from <a href="https://versatiles.org/sources/">open data sources</a>.',
 					];
@@ -191,7 +191,7 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					tileType = 'raster';
 					break;
 				case 'landcover-vectors':
-					title = 'Landcover';
+					title = 'Landcover (Beta)';
 					desc = [
 						'Global landcover classification based on <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>.',
 						'© <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021), available under <a href="http://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
@@ -200,7 +200,7 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					local = true;
 					break;
 				case 'hillshade-vectors':
-					title = 'Hillshading';
+					title = 'Hillshading (Alpha)';
 					desc = [
 						'Hillshade contours based on <a href="https://github.com/tilezen/joerd">Mapzen Terrain Tiles</a>.',
 						'© <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Mapzen Terrain Tiles, DEM Sources</a>',
@@ -209,7 +209,7 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					local = true;
 					break;
 				case 'bathymetry-vectors':
-					title = 'Bathymetry';
+					title = 'Bathymetry (Alpha)';
 					desc = [
 						'Ocean depth contours derived from the <a href="https://www.gebco.net/data_and_products/historical_data_sets/#gebco_2021">GEBCO 2021 Grid</a>, processed with <a href="https://www.naturalearthdata.com/">Natural Earth</a> by <a href="https://opendem.info">OpenDEM</a>.',
 					];

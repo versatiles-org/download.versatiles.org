@@ -17,17 +17,9 @@
  */
 import { Container } from '@versatiles/container';
 import type { Block, TileIndex } from '@versatiles/container';
+import type { QuadNode, SizeIndex } from './types.js';
 
-/**
- * A quadtree node: either a mean tile size in bytes (leaf), or four children in
- * NW, NE, SW, SE order.
- */
-export type QuadNode = number | [QuadNode, QuadNode, QuadNode, QuadNode];
-
-/** One quadtree per zoom level, keyed by the zoom level as a string. */
-export interface SizeIndex {
-	levels: Record<string, QuadNode>;
-}
+export type { QuadNode, SizeIndex } from './types.js';
 
 /** Side length (in tiles) at which the quadtree stops subdividing. */
 const MIN_NODE_SIZE = 16;

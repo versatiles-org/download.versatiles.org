@@ -1,18 +1,50 @@
 <script lang="ts">
 	import type { FileRefData } from './data.js';
+	import type { SizeIndex } from './size_index/types.js';
+	import BboxInput from './BboxInput.svelte';
+	import { estimateDownloadSize, formatBytes, loadSizeIndex, zoomLevels, type BBox } from './size_index/estimate.js';
 
 	let { file }: { file: FileRefData } = $props();
+
+	/** Fallback zoom ceiling before an index tells us the real one. */
+	const DEFAULT_MAX_ZOOM = 14;
 
 	let format: 'versatiles' | 'pmtiles' | 'mbtiles' | 'tar' = $state('pmtiles');
 	let tool: 'versatiles' | 'docker' = $state('versatiles');
 	let copied = $state(false);
+
+	let bbox: BBox | undefined = $state();
+	let minZoom = $state(0);
+	let maxZoom = $state(DEFAULT_MAX_ZOOM);
+	/** Null once we know the dataset has no index; undefined while unknown. */
+	let sizeIndex: SizeIndex | null | undefined = $state();
 
 	let dialog: HTMLDialogElement;
 
 	const baseName = $derived(file.filename.replace(/\.versatiles$/, ''));
 	const outputFile = $derived(`${baseName}.${format}`);
 	const fullUrl = $derived(`https://download.versatiles.org${file.url}`);
-	function buildCommand(t: typeof tool, source: string, output: string): string {
+
+	const availableZooms = $derived(sizeIndex ? zoomLevels(sizeIndex) : []);
+	const zoomCeiling = $derived(
+		availableZooms.length > 0 ? availableZooms[availableZooms.length - 1]! : DEFAULT_MAX_ZOOM,
+	);
+
+	/** Bytes the command will download, or undefined when no index is available. */
+	const estimate = $derived(sizeIndex ? estimateDownloadSize(sizeIndex, bbox, minZoom, maxZoom) : undefined);
+
+	/** True while the selection still covers everything the container holds. */
+	const isFullDownload = $derived(!bbox && minZoom <= 0 && maxZoom >= zoomCeiling);
+
+	function buildCommand(
+		t: typeof tool,
+		source: string,
+		output: string,
+		box: BBox | undefined,
+		zMin: number,
+		zMax: number,
+		zCeiling: number,
+	): string {
 		let parts: string[] = [];
 		switch (t) {
 			case 'versatiles':
@@ -22,14 +54,34 @@
 				parts.push('docker run -it --rm -v $(pwd):/data', 'versatiles/versatiles:latest convert');
 				break;
 		}
+		// Only emit flags that actually narrow the download, so an untouched
+		// dialog still shows the plain whole-file command.
+		if (box) parts.push(`--bbox ${box.join(',')}`);
+		if (zMin > 0) parts.push(`--min-zoom ${zMin}`);
+		if (zMax < zCeiling) parts.push(`--max-zoom ${zMax}`);
 		parts.push(`"${source}"`, `"${t == 'docker' ? '/data/' : ''}${output}"`);
 		return parts.join(' \\\n  ');
 	}
 
-	const command = $derived(buildCommand(tool, fullUrl, outputFile));
+	const command = $derived(buildCommand(tool, fullUrl, outputFile, bbox, minZoom, maxZoom, zoomCeiling));
+
+	// Keep the zoom range coherent as either end moves.
+	$effect(() => {
+		if (minZoom > maxZoom) minZoom = maxZoom;
+	});
 
 	function open() {
 		dialog.showModal();
+		// Fetched on open, never with the page: the osm index alone is ~490 KB gzip.
+		if (sizeIndex === undefined) {
+			loadSizeIndex(file.url).then((index) => {
+				sizeIndex = index;
+				if (index) {
+					const zooms = zoomLevels(index);
+					maxZoom = zooms[zooms.length - 1] ?? DEFAULT_MAX_ZOOM;
+				}
+			});
+		}
 	}
 
 	function close() {
@@ -79,6 +131,30 @@
 				<button class:active={tool === 'docker'} onclick={() => (tool = 'docker')}>docker</button>
 			</div>
 		</div>
+
+		<span class="label">Select an area:</span>
+		<BboxInput bind:bbox />
+
+		<div class="zoom-row">
+			<span class="label">Select zoom levels:</span>
+			<div class="sliders">
+				<label>
+					<span class="small">min {minZoom}</span>
+					<input type="range" min="0" max={zoomCeiling} bind:value={minZoom} />
+				</label>
+				<label>
+					<span class="small">max {maxZoom}</span>
+					<input type="range" min="0" max={zoomCeiling} bind:value={maxZoom} />
+				</label>
+			</div>
+		</div>
+
+		{#if estimate !== undefined}
+			<p class="estimate">
+				Estimated download: <strong>~ {formatBytes(estimate)}</strong>
+				{#if isFullDownload}<span class="small">(whole dataset)</span>{/if}
+			</p>
+		{/if}
 
 		<div class="command-row">
 			<span class="label">Run this command:</span>
@@ -173,7 +249,38 @@
 	}
 
 	.toggle-tool {
-		margin-bottom: 2em;
+		margin-bottom: 1.5em;
+	}
+
+	.zoom-row {
+		margin-top: 1em;
+
+		.sliders {
+			display: flex;
+			gap: 1.5em;
+		}
+
+		label {
+			flex: 1;
+			display: flex;
+			flex-direction: column;
+			gap: 0.2em;
+		}
+
+		input[type='range'] {
+			width: 100%;
+			accent-color: #4a9eff;
+		}
+	}
+
+	.estimate {
+		margin: 1em 0 1.5em;
+		text-align: center;
+
+		strong {
+			color: #fff;
+			font-variant-numeric: tabular-nums;
+		}
 	}
 
 	.label {

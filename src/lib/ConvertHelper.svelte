@@ -1,7 +1,6 @@
 <script lang="ts">
 	import type { FileRefData } from './data.js';
 	import type { SizeIndex } from './size_index/types.js';
-	import BboxInput from './BboxInput.svelte';
 	import { estimateDownloadSize, formatBytes, loadSizeIndex, zoomLevels, type BBox } from './size_index/estimate.js';
 
 	let { file }: { file: FileRefData } = $props();
@@ -18,6 +17,13 @@
 	let maxZoom = $state(DEFAULT_MAX_ZOOM);
 	/** Null once we know the dataset has no index; undefined while unknown. */
 	let sizeIndex: SizeIndex | null | undefined = $state();
+
+	/**
+	 * `BBoxMap` pulls in maplibre and a basemap style, so it is imported when the
+	 * dialog first opens rather than with the page. Keeping it out of the module
+	 * scope also keeps it out of the prerender, which runs in Node.
+	 */
+	let BBoxMap = $state<typeof import('@versatiles/svelte').BBoxMap | undefined>();
 
 	let dialog: HTMLDialogElement;
 
@@ -72,6 +78,7 @@
 
 	function open() {
 		dialog.showModal();
+
 		// Fetched on open, never with the page: the osm index alone is ~490 KB gzip.
 		if (sizeIndex === undefined) {
 			loadSizeIndex(file.url).then((index) => {
@@ -81,6 +88,10 @@
 					maxZoom = zooms[zooms.length - 1] ?? DEFAULT_MAX_ZOOM;
 				}
 			});
+		}
+
+		if (!BBoxMap) {
+			import('@versatiles/svelte').then((module) => (BBoxMap = module.BBoxMap));
 		}
 	}
 
@@ -133,7 +144,11 @@
 		</div>
 
 		<span class="label">Select an area:</span>
-		<BboxInput bind:bbox />
+		<div class="bbox-map">
+			{#if BBoxMap}
+				<BBoxMap bind:selectedBBox={bbox} />
+			{/if}
+		</div>
 
 		<div class="zoom-row">
 			<span class="label">Select zoom levels:</span>
@@ -250,6 +265,16 @@
 
 	.toggle-tool {
 		margin-bottom: 1.5em;
+	}
+
+	.bbox-map {
+		height: 18rem;
+		border-radius: 4px;
+		overflow: hidden;
+		background: #111;
+		/* BBoxMap styles its toolbar from these; the package ships no defaults. */
+		--bg-color: #1a1a1a;
+		--fg-color: #ccc;
 	}
 
 	.zoom-row {

@@ -38,24 +38,24 @@
   },
   "dependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
-    "@sveltejs/kit": "^2.69.2",
-    "sass": "^1.101.0",
-    "svelte": "^5.56.4",
-    "tsx": "^4.23.0",
+    "@sveltejs/kit": "^2.70.2",
+    "sass": "^1.102.0",
+    "svelte": "^5.56.8",
+    "tsx": "^4.23.5",
     "typescript": "^6.0.3",
-    "vite": "^8.1.3",
+    "vite": "^8.2.0",
     "vitest": "^4.1.10"
   },
   "devDependencies": {
-    "@types/node": "^26.1.1",
-    "@typescript-eslint/eslint-plugin": "^8.63.0",
-    "@typescript-eslint/parser": "^8.63.0",
-    "@versatiles/release-tool": "^2.8.1",
+    "@types/node": "^26.1.2",
+    "@typescript-eslint/eslint-plugin": "^8.65.0",
+    "@typescript-eslint/parser": "^8.65.0",
+    "@versatiles/release-tool": "^2.8.2",
     "@vitest/coverage-v8": "^4.1.10",
-    "eslint": "^10.6.0",
-    "npm-check-updates": "^22.2.9",
-    "prettier": "^3.9.4",
+    "eslint": "^10.8.0",
+    "npm-check-updates": "^23.0.1",
+    "prettier": "^3.9.6",
     "prettier-plugin-svelte": "^4.1.1",
-    "svelte-check": "^4.7.2"
+    "svelte-check": "^4.7.4"
   }
 }

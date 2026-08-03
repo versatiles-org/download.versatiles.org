@@ -8,7 +8,7 @@
 	/** Fallback zoom ceiling before an index tells us the real one. */
 	const DEFAULT_MAX_ZOOM = 14;
 
-	let format: 'versatiles' | 'pmtiles' | 'mbtiles' | 'tar' = $state('pmtiles');
+	let format: 'versatiles' | 'pmtiles' | 'mbtiles' | 'tar' = $state('versatiles');
 	let tool: 'versatiles' | 'docker' = $state('versatiles');
 	let copied = $state(false);
 

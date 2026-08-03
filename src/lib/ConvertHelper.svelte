@@ -71,10 +71,21 @@
 
 	const command = $derived(buildCommand(tool, fullUrl, outputFile, bbox, minZoom, maxZoom, zoomCeiling));
 
-	// Keep the zoom range coherent as either end moves.
-	$effect(() => {
-		if (minZoom > maxZoom) minZoom = maxZoom;
-	});
+	/** Position of a zoom level along the track, as a percentage. */
+	function trackPercent(zoom: number): number {
+		return zoomCeiling === 0 ? 0 : (zoom / zoomCeiling) * 100;
+	}
+
+	// The two thumbs share one track, so dragging one past the other pushes it
+	// rather than producing an inverted range. Handled on input rather than in an
+	// effect, so loading an index can move `maxZoom` without dragging `minZoom`.
+	function onMinInput() {
+		if (minZoom > maxZoom) maxZoom = minZoom;
+	}
+
+	function onMaxInput() {
+		if (maxZoom < minZoom) minZoom = maxZoom;
+	}
 
 	function open() {
 		dialog.showModal();

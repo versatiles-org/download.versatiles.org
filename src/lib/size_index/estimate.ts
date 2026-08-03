@@ -7,8 +7,12 @@
  * the container header, block/tile indices and the output format's own overhead
  * are not counted. It runs high because every quadtree leaf stores a *rounded*
  * mean, and that rounding accumulates over the many near-empty tiles of a sparse
- * level. Measured against `bathymetry-vectors`: 0.85x for a Berlin z0-8 extract
- * (278 KB estimated, 329 KB downloaded), 1.03x for the whole dataset.
+ * level. Measured against the published indices, it lands within roughly ±30%:
+ *
+ *   bathymetry-vectors, whole dataset   699 MB   vs 681 MB   1.03x
+ *   osm, whole dataset                  71.5 GB  vs 62.0 GB  1.15x
+ *   bathymetry-vectors, Berlin z0-8     278 KB   vs 329 KB   0.85x
+ *   osm, Berlin z0-11                   2.09 MB  vs 2.9 MB   0.72x
  *
  * Deliberately no bbox padding: `versatiles convert --bbox-border` defaults to 0,
  * and the estimate must describe the command shown next to it. (The equivalent

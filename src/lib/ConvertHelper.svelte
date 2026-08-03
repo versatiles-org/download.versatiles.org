@@ -80,8 +80,10 @@
 		dialog.showModal();
 
 		// Fetched on open, never with the page: the osm index alone is ~490 KB gzip.
+		// Absolute, like the command's source url, so the estimate also works when
+		// the site is served from somewhere else (`npm run dev`, a preview deploy).
 		if (sizeIndex === undefined) {
-			loadSizeIndex(file.url).then((index) => {
+			loadSizeIndex(fullUrl).then((index) => {
 				sizeIndex = index;
 				if (index) {
 					const zooms = zoomLevels(index);
@@ -166,7 +168,7 @@
 
 		{#if estimate !== undefined}
 			<p class="estimate">
-				Estimated download: <strong>~ {formatBytes(estimate)}</strong>
+				Estimated file size: <strong>~ {formatBytes(estimate)}</strong>
 				{#if isFullDownload}<span class="small">(whole dataset)</span>{/if}
 			</p>
 		{/if}

@@ -243,6 +243,17 @@
 		.row {
 			grid-template-columns: 1fr 5em auto;
 
+			/*
+			 * On phones the row breaks out of the page's reading column so its
+			 * highlight reaches the screen edges rather than stopping at the 5%
+			 * gutter; that gutter becomes padding instead. Wider screens keep the
+			 * centred column, where a full-bleed highlight would be far too wide.
+			 * `main` clips horizontally, so 100vw cannot introduce a scrollbar.
+			 */
+			width: 100vw;
+			margin-inline: calc(50% - 50vw);
+			padding-inline: 1em;
+
 			& > :nth-child(2),
 			& > :nth-child(3) {
 				display: none;

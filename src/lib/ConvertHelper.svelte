@@ -134,60 +134,93 @@
 			<button class="close-btn" onclick={close}>&#x2715;</button>
 		</div>
 
-		<span class="label">Select a format:</span>
-		<div class="toggle-format">
-			{#each formats as f}
-				<button class:active={format === f} onclick={() => (format = f)}>.{f}</button>
-			{/each}
-		</div>
+		<div class="dialog-body">
+			<div class="controls">
+				<section class="area">
+					<span class="label">Select an area:</span>
+					<div class="bbox-map">
+						{#if BBoxMap}
+							<BBoxMap bind:selectedBBox={bbox} />
+						{/if}
+					</div>
+				</section>
 
-		<div class="toggle-tool">
-			<span class="label">Select a tool:</span>
-			<div class="toggles">
-				<button class:active={tool === 'versatiles'} onclick={() => (tool = 'versatiles')}>versatiles binary</button>
-				<a
-					class="install-link"
-					href="https://docs.versatiles.org/guides/install_versatiles.html"
-					target="_blank"
-					rel="noopener noreferrer"
-					title="Installation instructions">&#x2197;</a
-				>
-				<button class:active={tool === 'docker'} onclick={() => (tool = 'docker')}>via docker</button>
+				<section class="options">
+					<span class="label">Select a format:</span>
+					<div class="toggle-format">
+						{#each formats as f}
+							<button class:active={format === f} onclick={() => (format = f)}>.{f}</button>
+						{/each}
+					</div>
+
+					<div class="toggle-tool">
+						<span class="label">Select a tool:</span>
+						<div class="toggles">
+							<button class:active={tool === 'versatiles'} onclick={() => (tool = 'versatiles')}
+								>versatiles binary</button
+							>
+							<a
+								class="install-link"
+								href="https://docs.versatiles.org/guides/install_versatiles.html"
+								target="_blank"
+								rel="noopener noreferrer"
+								title="Installation instructions">&#x2197;</a
+							>
+							<button class:active={tool === 'docker'} onclick={() => (tool = 'docker')}>via docker</button>
+						</div>
+					</div>
+				</section>
+			</div>
+
+			<div class="zoom-row">
+				<div class="zoom-head">
+					<span class="label">Select zoom levels:</span>
+					<span class="zoom-value">{minZoom} – {maxZoom}</span>
+				</div>
+				<div class="range">
+					<div class="range-track"></div>
+					<div
+						class="range-fill"
+						style="left: {trackPercent(minZoom)}%; width: {trackPercent(maxZoom) - trackPercent(minZoom)}%"
+					></div>
+					<input
+						type="range"
+						min="0"
+						max={zoomCeiling}
+						bind:value={minZoom}
+						oninput={onMinInput}
+						aria-label="Lowest zoom level"
+					/>
+					<input
+						type="range"
+						min="0"
+						max={zoomCeiling}
+						bind:value={maxZoom}
+						oninput={onMaxInput}
+						aria-label="Highest zoom level"
+					/>
+				</div>
+				<div class="range-scale small">
+					<span>0</span>
+					<span>{zoomCeiling}</span>
+				</div>
 			</div>
 		</div>
 
-		<span class="label">Select an area:</span>
-		<div class="bbox-map">
-			{#if BBoxMap}
-				<BBoxMap bind:selectedBBox={bbox} />
-			{/if}
-		</div>
-
-		<div class="zoom-row">
-			<span class="label">Select zoom levels:</span>
-			<div class="sliders">
-				<label>
-					<span class="small">min {minZoom}</span>
-					<input type="range" min="0" max={zoomCeiling} bind:value={minZoom} />
-				</label>
-				<label>
-					<span class="small">max {maxZoom}</span>
-					<input type="range" min="0" max={zoomCeiling} bind:value={maxZoom} />
-				</label>
+		<div class="result-bar">
+			<div class="result-head">
+				<span class="result-size">
+					{#if estimate === undefined}
+						<span class="label">Run this command</span>
+					{:else}
+						<span class="label">Estimated file size</span>
+						<strong>~ {formatBytes(estimate)}</strong>
+						{#if isFullDownload}<span class="small">whole dataset</span>{/if}
+					{/if}
+				</span>
+				<button class="copy-btn" onclick={copy}>{copied ? 'Copied!' : 'Copy'}</button>
 			</div>
-		</div>
-
-		{#if estimate !== undefined}
-			<p class="estimate">
-				Estimated file size: <strong>~ {formatBytes(estimate)}</strong>
-				{#if isFullDownload}<span class="small">(whole dataset)</span>{/if}
-			</p>
-		{/if}
-
-		<div class="command-row">
-			<span class="label">Run this command:</span>
 			<pre><code>{command}</code></pre>
-			<button class="copy-btn" onclick={copy}>{copied ? 'Copied!' : 'Copy'}</button>
 		</div>
 	</div>
 </dialog>
@@ -214,26 +247,62 @@
 		border-radius: 8px;
 		padding: 0;
 		max-width: 90vw;
-		width: 40rem;
+		width: 52rem;
+		max-height: 90vh;
+		overflow: hidden;
 
 		&::backdrop {
 			background: rgba(0, 0, 0, 0.7);
 		}
 	}
 
+	/*
+	 * Scoped to [open]: a closed dialog relies on the UA stylesheet's
+	 * `display: none`, so declaring `display` on `dialog` itself would show every
+	 * dialog on the page. The column layout keeps the result bar pinned while the
+	 * controls above it scroll.
+	 */
+	dialog[open] {
+		display: flex;
+		flex-direction: column;
+	}
+
 	.dialog-content {
-		padding: 1.2em;
+		display: flex;
+		flex-direction: column;
+		flex: 1;
+		min-height: 0;
+	}
+
+	.dialog-body {
+		flex: 1;
+		min-height: 0;
+		overflow-y: auto;
+		padding: 0 1.2em 1.2em;
 	}
 
 	.dialog-header {
 		display: flex;
 		justify-content: space-between;
 		align-items: center;
-		margin-bottom: 0.8em;
 		font-size: 1.1em;
+		padding: 1.2em 1.2em 0.8em;
 
 		strong {
 			color: #fff;
+		}
+	}
+
+	.controls {
+		display: grid;
+		grid-template-columns: 1fr 1fr;
+		gap: 1.2em;
+		align-items: start;
+	}
+
+	@media (max-width: 44rem) {
+		.controls {
+			grid-template-columns: 1fr;
 		}
 	}
 
@@ -277,7 +346,7 @@
 	}
 
 	.toggle-tool {
-		margin-bottom: 1.5em;
+		margin-top: 1em;
 	}
 
 	.bbox-map {
@@ -291,34 +360,98 @@
 	}
 
 	.zoom-row {
-		margin-top: 1em;
+		margin-top: 1.5em;
+	}
 
-		.sliders {
-			display: flex;
-			gap: 1.5em;
-		}
+	.zoom-head {
+		display: flex;
+		justify-content: space-between;
+		align-items: baseline;
+	}
 
-		label {
-			flex: 1;
-			display: flex;
-			flex-direction: column;
-			gap: 0.2em;
-		}
+	.zoom-value {
+		color: #fff;
+		font-variant-numeric: tabular-nums;
+	}
+
+	/*
+	 * One range, two thumbs: both inputs span the full track so their thumbs stay
+	 * aligned with the shared scale. The inputs themselves ignore pointer events
+	 * so the lower one is still reachable; only the thumbs accept them.
+	 */
+	.range {
+		position: relative;
+		height: 1.6em;
+		margin-top: 0.2em;
 
 		input[type='range'] {
+			position: absolute;
+			inset: 0;
 			width: 100%;
-			accent-color: #4a9eff;
+			height: 100%;
+			margin: 0;
+			appearance: none;
+			background: none;
+			pointer-events: none;
+
+			&::-webkit-slider-thumb {
+				appearance: none;
+				pointer-events: auto;
+				width: 1em;
+				height: 1em;
+				border: none;
+				border-radius: 50%;
+				background: #4a9eff;
+				cursor: grab;
+			}
+
+			&::-moz-range-thumb {
+				pointer-events: auto;
+				width: 1em;
+				height: 1em;
+				border: none;
+				border-radius: 50%;
+				background: #4a9eff;
+				cursor: grab;
+			}
+
+			&:focus-visible {
+				outline: none;
+
+				&::-webkit-slider-thumb {
+					box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.5);
+				}
+
+				&::-moz-range-thumb {
+					box-shadow: 0 0 0 3px rgba(74, 158, 255, 0.5);
+				}
+			}
 		}
 	}
 
-	.estimate {
-		margin: 1em 0 1.5em;
-		text-align: center;
+	.range-track,
+	.range-fill {
+		position: absolute;
+		top: 50%;
+		height: 0.25em;
+		border-radius: 0.125em;
+		transform: translateY(-50%);
+		pointer-events: none;
+	}
 
-		strong {
-			color: #fff;
-			font-variant-numeric: tabular-nums;
-		}
+	.range-track {
+		left: 0;
+		right: 0;
+		background: #333;
+	}
+
+	.range-fill {
+		background: #4a9eff;
+	}
+
+	.range-scale {
+		display: flex;
+		justify-content: space-between;
 	}
 
 	.label {
@@ -363,20 +496,50 @@
 		}
 	}
 
-	.command-row {
+	/*
+	 * The command and its size are the dialog's output, so they sit together in a
+	 * bar that stays visible while the controls above scroll.
+	 */
+	.result-bar {
+		flex-shrink: 0;
+		border-top: 1px solid #333;
+		background: #151515;
+		padding: 0.8em 1.2em 1em;
+	}
+
+	.result-head {
 		display: flex;
-		flex-direction: column;
-		gap: 0em;
+		justify-content: space-between;
+		align-items: baseline;
+		gap: 1em;
+		margin-bottom: 0.4em;
+	}
+
+	.result-size {
+		display: flex;
+		align-items: baseline;
+		gap: 0.5em;
+		min-width: 0;
+
+		.label {
+			margin-bottom: 0;
+		}
+
+		strong {
+			color: #fff;
+			font-variant-numeric: tabular-nums;
+		}
 	}
 
 	pre {
-		flex: 1;
 		background: #080808;
-		padding: 0.4em 0.6em;
+		padding: 0.6em 0.8em;
 		border-radius: 4px;
-		overflow-x: auto;
+		overflow: auto;
+		/* Long docker commands stay readable without pushing the controls away. */
+		max-height: 7.5em;
 		margin: 0;
-		font-size: 0.6em;
+		font-size: 0.72em;
 		line-height: 1.5em;
 	}
 
@@ -388,11 +551,12 @@
 		background: #333;
 		border: none;
 		color: #ccc;
-		padding: 0.5em 1em;
+		padding: 0.4em 1.1em;
 		cursor: pointer;
 		border-radius: 4px;
 		font-size: 0.85em;
 		white-space: nowrap;
+		flex-shrink: 0;
 
 		&:hover {
 			background: #444;

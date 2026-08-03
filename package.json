@@ -7,7 +7,7 @@
     "url": "https://github.com/versatiles-org/download.versatiles.org.git"
   },
   "scripts": {
-    "build:site": "vite build",
+    "build:site": "npm run prebuild:site && vite build",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && cd worker && npm run check",
     "dev": "tsx src/generate_testdata.ts && vite dev",
     "doc": "npm run doc-graph",
@@ -17,6 +17,7 @@
     "lint": "eslint src/",
     "lint:fix": "eslint src/ --fix",
     "once": "tsx --env-file=.env src/run_once.ts",
+    "prebuild:site": "test -f data/fileGroups.json || tsx src/generate_testdata.ts",
     "prepare": "svelte-kit sync",
     "preview:site": "vite preview",
     "setup": "bash scripts/setup.sh",

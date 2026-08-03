@@ -226,7 +226,7 @@
 								aria-label="Highest zoom level"
 							/>
 						</div>
-						<div class="range-scale small">
+						<div class="range-scale">
 							<span>0</span>
 							<span>{zoomCeiling}</span>
 						</div>
@@ -259,7 +259,6 @@
 		border: none;
 		color: #888;
 		cursor: pointer;
-		font-size: 0.85em;
 		padding: 0 0.2em;
 		line-height: 1;
 
@@ -308,6 +307,7 @@
 		flex-direction: column;
 		flex: 1;
 		min-height: 0;
+		font-size: 0.8rem;
 	}
 
 	.dialog-body {
@@ -410,7 +410,6 @@
 		label {
 			position: relative;
 			padding: 0.4em 0.75em;
-			font-size: 0.8em;
 			line-height: 1.3;
 			color: #aaa;
 			cursor: pointer;
@@ -481,8 +480,6 @@
 
 	.zoom-value {
 		color: #fff;
-		/* Matches the segmented option labels, so the column keeps one type scale. */
-		font-size: 0.8em;
 		font-variant-numeric: tabular-nums;
 	}
 
@@ -569,12 +566,10 @@
 	.label {
 		display: block;
 		margin-bottom: 0.4em;
-		opacity: 0.6;
-		font-size: 0.9em;
+		font-size: inherit;
 	}
 
 	.install-link {
-		font-size: 0.9em;
 		opacity: 0.4;
 
 		&:hover {
@@ -625,7 +620,7 @@
 		/* Long docker commands stay readable without pushing the controls away. */
 		max-height: 7.5em;
 		margin: 0;
-		font-size: 0.72em;
+		font-size: 0.7rem;
 		line-height: 1.5em;
 	}
 

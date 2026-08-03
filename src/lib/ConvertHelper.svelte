@@ -96,6 +96,9 @@
 
 	function open() {
 		dialog.showModal();
+		// `showModal()` makes the page inert but not unscrollable: on touch, a
+		// gesture that runs past the end of the dialog scrolls the page behind it.
+		document.body.style.overflow = 'hidden';
 
 		// Fetched on open, never with the page: the osm index alone is ~490 KB gzip.
 		// Absolute, like the command's source url, so the estimate also works when
@@ -119,6 +122,15 @@
 		dialog.close();
 	}
 
+	/**
+	 * Releasing the lock here rather than in `close()` covers every way the dialog
+	 * can go away — including Esc, which closes it without calling `close()` and
+	 * would otherwise leave the page permanently unscrollable.
+	 */
+	function onDialogClose() {
+		document.body.style.overflow = '';
+	}
+
 	function backdropClick(e: MouseEvent) {
 		if (e.target === dialog) close();
 	}
@@ -134,7 +146,7 @@
 
 <button class="convert-btn" onclick={open} title="Convert to other format">&hellip;</button>
 
-<dialog bind:this={dialog} onclick={backdropClick}>
+<dialog bind:this={dialog} onclick={backdropClick} onclose={onDialogClose}>
 	<div class="dialog-content">
 		<div class="dialog-header">
 			<span>Download <strong>{baseName}</strong></span>
@@ -264,7 +276,15 @@
 		padding: 0;
 		max-width: 90vw;
 		width: 52rem;
+		/*
+		 * `vh` resolves against the *large* viewport, i.e. with the mobile browser
+		 * toolbars retracted, so a 90vh dialog can be taller than the area actually
+		 * on screen and its result bar ends up out of reach. `dvh` tracks the
+		 * visible height. The `vh` line is a fallback for browsers without `dvh`;
+		 * lightningcss drops it when the configured targets all support `dvh`.
+		 */
 		max-height: 90vh;
+		max-height: 90dvh;
 		overflow: hidden;
 
 		&::backdrop {
@@ -294,6 +314,8 @@
 		flex: 1;
 		min-height: 0;
 		overflow-y: auto;
+		/* Stops a touch scroll that reaches the end here from scrolling the page. */
+		overscroll-behavior: contain;
 		padding: 0 1.2em 1.2em;
 	}
 
@@ -316,9 +338,45 @@
 		align-items: start;
 	}
 
+	/*
+	 * Below this width the dialog becomes a full-bleed sheet. A centred box that
+	 * merely fits leaves the map competing with the body for the little vertical
+	 * space there is — the map swallows drag gestures, so a short scroll area next
+	 * to it is nearly impossible to use.
+	 */
 	@media (max-width: 44rem) {
 		.controls {
 			grid-template-columns: 1fr;
+		}
+
+		dialog {
+			width: 100%;
+			max-width: 100%;
+			height: 100vh;
+			height: 100dvh;
+			max-height: 100vh;
+			max-height: 100dvh;
+			border: none;
+			border-radius: 0;
+		}
+
+		.bbox-map {
+			height: 14rem;
+		}
+
+		.result-bar pre {
+			max-height: 4.5em;
+		}
+	}
+
+	/* Landscape phones: keep the result bar from crowding out the controls. */
+	@media (max-height: 30rem) {
+		.bbox-map {
+			height: 12rem;
+		}
+
+		.result-bar pre {
+			max-height: 4.5em;
 		}
 	}
 

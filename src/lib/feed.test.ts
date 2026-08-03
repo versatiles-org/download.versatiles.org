@@ -19,7 +19,7 @@ function group(overrides: Partial<FileGroupData> = {}): FileGroupData {
 	return {
 		slug: 'osm',
 		title: 'OpenStreetMap',
-		desc: 'A plain description.',
+		desc: ['A plain description.'],
 		order: 0,
 		local: true,
 		tileType: 'vector',
@@ -75,21 +75,39 @@ describe('buildRssFeed', () => {
 
 describe('well-formedness', () => {
 	/**
-	 * Real group descriptions are HTML. Interpolated raw, the unclosed `<br>`
-	 * made four of the six published feeds invalid XML.
+	 * Real group descriptions are several lines, each of which may contain inline
+	 * HTML such as attribution links.
 	 */
-	const HTML_DESC = 'Tileset in <a href="https://shortbread-tiles.org/schema/">Shortbread</a>.<br>© contributors, A&B';
+	const HTML_DESC = [
+		'Tileset in <a href="https://shortbread-tiles.org/schema/">Shortbread</a>.',
+		'© contributors, A&B',
+	];
 
 	it('escapes markup in the channel description', () => {
 		const [description] = contentsOf(buildRssFeed(group({ desc: HTML_DESC })), 'description');
 
 		expect(description).not.toContain('<');
 		expect(description).toContain('&lt;a href=');
-		expect(description).toContain('&lt;br&gt;');
+	});
+
+	it('separates description lines with a newline, never a <br>', () => {
+		const feed = buildRssFeed(group({ desc: HTML_DESC }));
+		const [description] = contentsOf(feed, 'description');
+
+		// `<br>` has no closing tag, and XML has no void elements: joining the
+		// lines with one is what made four of the six published feeds malformed.
+		expect(feed).not.toContain('<br>');
+		expect(description).toBe(
+			'Tileset in &lt;a href="https://shortbread-tiles.org/schema/"&gt;Shortbread&lt;/a&gt;.\n© contributors, A&amp;B',
+		);
 	});
 
 	it('escapes ampersands so entities stay well-formed', () => {
-		expect(contentsOf(buildRssFeed(group({ desc: 'A&B' })), 'description')[0]).toBe('A&amp;B');
+		expect(contentsOf(buildRssFeed(group({ desc: ['A&B'] })), 'description')[0]).toBe('A&amp;B');
+	});
+
+	it('renders a single-line description without a separator', () => {
+		expect(contentsOf(buildRssFeed(group({ desc: ['Only one.'] })), 'description')[0]).toBe('Only one.');
 	});
 
 	it('leaves no raw markup in any element content', () => {

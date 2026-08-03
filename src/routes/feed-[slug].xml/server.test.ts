@@ -12,7 +12,7 @@ function group(slug: string): FileGroupData {
 	return {
 		slug,
 		title: slug,
-		desc: 'desc',
+		desc: ['desc'],
 		order: 0,
 		local: true,
 		tileType: 'vector',

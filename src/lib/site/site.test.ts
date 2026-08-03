@@ -29,7 +29,7 @@ describe('buildAndUploadSite', () => {
 		return new FileGroup({
 			slug: 'osm',
 			title: 'OpenStreetMap',
-			desc: 'd',
+			desc: ['d'],
 			order: 0,
 			latestFile: file,
 			olderFiles: [],

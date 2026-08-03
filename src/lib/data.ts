@@ -23,7 +23,8 @@ export interface FileRefData {
 export interface FileGroupData {
 	slug: string;
 	title: string;
-	desc: string;
+	/** Description paragraphs; each consumer joins them with its own separator. */
+	desc: string[];
 	order: number;
 	local: boolean;
 	tileType: 'raster' | 'vector';

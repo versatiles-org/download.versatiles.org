@@ -35,7 +35,7 @@ function group(
 	latestFile: InstanceType<typeof FileRef>,
 	olderFiles: InstanceType<typeof FileRef>[] = [],
 ): InstanceType<typeof FileGroup> {
-	return new FileGroup({ slug, title: slug, desc: '', order: 0, latestFile, olderFiles });
+	return new FileGroup({ slug, title: slug, desc: [], order: 0, latestFile, olderFiles });
 }
 
 /** Keys passed to uploadObject, in call order. */
@@ -128,7 +128,7 @@ describe('syncSizeIndices', () => {
 			[
 				group('osm', file('/osm.versatiles', 'a')),
 				group('satellite', file('/satellite.versatiles', 'b')),
-				new FileGroup({ slug: 'empty', title: 'empty', desc: '', order: 9 }),
+				new FileGroup({ slug: 'empty', title: 'empty', desc: [], order: 9 }),
 			],
 			BASE,
 		);

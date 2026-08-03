@@ -39,7 +39,7 @@ export function buildRssFeed(group: FileGroupData): string {
     <channel>
         <title>Versatiles data releases: ${escapeXml(group.slug)}</title>
         <link>${BASE_URL}/</link>
-        <description>${escapeXml(group.desc)}</description>
+        <description>${escapeXml(group.desc.join('\n'))}</description>
 ${items}
     </channel>
 </rss>

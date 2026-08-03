@@ -29,8 +29,17 @@ export class FileGroup {
 	/** Human-readable title shown in the download listing. */
 	title: string;
 
-	/** HTML-formatted description, including attribution and licence information. */
-	desc: string;
+	/**
+	 * Description paragraphs, including attribution and licence information.
+	 *
+	 * Kept as separate lines rather than one pre-joined string so each consumer
+	 * can use its own separator: the page joins them with `<br>`, the RSS feed
+	 * with a newline. Joining with `<br>` here once made the feeds invalid XML,
+	 * which has no void elements.
+	 *
+	 * The individual lines may still contain inline HTML such as links.
+	 */
+	desc: string[];
 
 	/**
 	 * Sort order of the group in the UI.
@@ -65,7 +74,7 @@ export class FileGroup {
 	constructor(options: {
 		slug: string;
 		title: string;
-		desc: string;
+		desc: string[];
 		order: number;
 		local?: boolean;
 		tileType?: 'raster' | 'vector';
@@ -220,7 +229,7 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 					console.error(`Unknown group "${slug}"`);
 			}
 
-			group = new FileGroup({ slug, title, desc: desc.join('<br>'), order, local, tileType });
+			group = new FileGroup({ slug, title, desc, order, local, tileType });
 			groupMap.set(slug, group);
 		}
 

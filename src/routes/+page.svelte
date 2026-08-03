@@ -62,7 +62,7 @@
 				<span class="tile-type {group.tileType}">{group.tileType}</span>
 			</h2>
 			<div class="small group-desc">
-				{@html group.desc}
+				{@html group.desc.join('<br>')}
 				<p class="group-links small">
 					<!-- rel="external": served straight from R2 (via the Worker) in
 					     production, so no SvelteKit route exists. Tells the prerender

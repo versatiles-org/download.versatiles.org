@@ -21,11 +21,11 @@ describe('hex2base64', () => {
 describe('FileGroup', () => {
 	describe('constructor', () => {
 		it('creates a group with required properties', () => {
-			const group = new FileGroup({ slug: 'test', title: 'Test Group', desc: 'A test group', order: 1 });
+			const group = new FileGroup({ slug: 'test', title: 'Test Group', desc: ['A test group'], order: 1 });
 
 			expect(group.slug).toBe('test');
 			expect(group.title).toBe('Test Group');
-			expect(group.desc).toBe('A test group');
+			expect(group.desc).toEqual(['A test group']);
 			expect(group.order).toBe(1);
 			expect(group.local).toBe(false);
 			expect(group.tileType).toBe('vector');
@@ -37,7 +37,7 @@ describe('FileGroup', () => {
 			const group = new FileGroup({
 				slug: 'test',
 				title: 'Test',
-				desc: 'Test',
+				desc: ['Test'],
 				order: 1,
 				local: true,
 				tileType: 'raster',
@@ -49,13 +49,31 @@ describe('FileGroup', () => {
 
 	describe('getResponseUrlList', () => {
 		it('throws when no latestFile is set', () => {
-			const group = new FileGroup({ slug: 'test', title: 'Test', desc: 'Test', order: 1 });
+			const group = new FileGroup({ slug: 'test', title: 'Test', desc: ['Test'], order: 1 });
 			expect(() => group.getResponseUrlList('https://example.com')).toThrow();
 		});
 	});
 });
 
 describe('groupFiles', () => {
+	describe('description', () => {
+		it('keeps the lines separate instead of pre-joining them', () => {
+			const [group] = groupFiles([createMockFileRef('osm.20260105.versatiles', 2 ** 30)]);
+
+			// Joining here with `<br>` once made four of the six RSS feeds invalid
+			// XML. Each consumer picks its own separator instead.
+			expect(Array.isArray(group!.desc)).toBe(true);
+			expect(group!.desc.length).toBeGreaterThan(1);
+			for (const line of group!.desc) expect(line).not.toContain('<br>');
+		});
+
+		it('leaves a single-line description as a one-element array', () => {
+			const [group] = groupFiles([createMockFileRef('satellite.versatiles', 2 ** 30)]);
+
+			expect(group!.desc).toHaveLength(1);
+		});
+	});
+
 	function createMockFileRef(filename: string, size: number): FileRef {
 		const ref = Object.create(FileRef.prototype) as FileRef;
 		ref.fullname = `/data/${filename}`;
@@ -166,7 +184,7 @@ describe('collectFiles', () => {
 		const group = new FileGroup({
 			slug: 'test',
 			title: 'Test',
-			desc: 'Test',
+			desc: ['Test'],
 			order: 1,
 			latestFile: createMockFileRef('/latest.txt'),
 			olderFiles: [createMockFileRef('/older.txt')],
@@ -178,7 +196,7 @@ describe('collectFiles', () => {
 		const group = new FileGroup({
 			slug: 'test',
 			title: 'Test',
-			desc: 'Test',
+			desc: ['Test'],
 			order: 1,
 			latestFile: createMockFileRef('/file1.txt'),
 		});

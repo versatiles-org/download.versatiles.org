@@ -41,7 +41,7 @@ describe('run', () => {
 	const fileGroups = [
 		new FileGroup({
 			slug: 'slug',
-			desc: 'desc',
+			desc: ['desc'],
 			title: 'title',
 			order: 123,
 			olderFiles: files,

@@ -195,25 +195,26 @@
 
 					<div class="toggle-tool">
 						<span class="label">Select a tool:</span>
-						<div class="tool-row">
-							<div class="segmented">
-								<label class:active={tool === 'versatiles'}>
-									<input type="radio" name="{uid}-tool" value="versatiles" bind:group={tool} />
-									versatiles binary
-								</label>
-								<label class:active={tool === 'docker'}>
-									<input type="radio" name="{uid}-tool" value="docker" bind:group={tool} />
-									via docker
-								</label>
-							</div>
+						<div class="segmented">
+							<label class:active={tool === 'versatiles'}>
+								<input type="radio" name="{uid}-tool" value="versatiles" bind:group={tool} />
+								versatiles binary
+							</label>
+							<label class:active={tool === 'docker'}>
+								<input type="radio" name="{uid}-tool" value="docker" bind:group={tool} />
+								via docker
+							</label>
+						</div>
+						{#if tool === 'versatiles'}
 							<a
 								class="install-link"
 								href="https://docs.versatiles.org/guides/install_versatiles.html"
 								target="_blank"
-								rel="noopener noreferrer"
-								title="Installation instructions">&#x2197;</a
+								rel="noopener noreferrer">How to install the versatiles binary &#x2197;</a
 							>
-						</div>
+						{:else}
+							<span class="install-note">Nothing to install — docker pulls the image on first run.</span>
+						{/if}
 					</div>
 
 					<div class="zoom-row">
@@ -470,10 +471,15 @@
 		margin-top: 1em;
 	}
 
-	.tool-row {
-		display: flex;
-		align-items: center;
-		gap: 0.6em;
+	/*
+	 * Both variants occupy the same slot under the tool control, so switching
+	 * tools does not shift the rest of the column.
+	 */
+	.install-link,
+	.install-note {
+		display: block;
+		margin-top: 0.5em;
+		font-size: 0.8em;
 	}
 
 	.hint {
@@ -595,11 +601,16 @@
 	}
 
 	.install-link {
-		opacity: 0.4;
+		opacity: 0.7;
+		text-decoration: underline;
 
 		&:hover {
-			opacity: 0.8;
+			opacity: 1;
 		}
+	}
+
+	.install-note {
+		opacity: 0.5;
 	}
 
 	/*

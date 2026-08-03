@@ -243,7 +243,7 @@
 					{:else}
 						<span class="label">Estimated file size</span>
 						<strong>~ {formatBytes(estimate)}</strong>
-						{#if isFullDownload}<span class="small">whole dataset</span>{/if}
+						{#if isFullDownload}<span>whole dataset</span>{/if}
 					{/if}
 				</span>
 				<button class="copy-btn" onclick={copy}>{copied ? 'Copied!' : 'Copy'}</button>

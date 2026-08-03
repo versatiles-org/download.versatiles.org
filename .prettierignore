@@ -8,3 +8,4 @@ dist
 node_modules
 volumes
 worker
+src/lib/size_index/fixtures/

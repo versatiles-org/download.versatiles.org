@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { FileRefData } from './data.js';
 	import type { SizeIndex } from './size_index/types.js';
+	import { buildCommand, type Format, type Tool } from './command.js';
 	import { estimateDownloadSize, formatBytes, loadSizeIndex, zoomLevels, type BBox } from './size_index/estimate.js';
 
 	let { file }: { file: FileRefData } = $props();
@@ -15,8 +16,8 @@
 	/** Fallback zoom ceiling before an index tells us the real one. */
 	const DEFAULT_MAX_ZOOM = 14;
 
-	let format: 'versatiles' | 'pmtiles' | 'mbtiles' | 'tar' = $state('versatiles');
-	let tool: 'versatiles' | 'docker' = $state('versatiles');
+	let format: Format = $state('versatiles');
+	let tool: Tool = $state('versatiles');
 	let copied = $state(false);
 
 	let bbox: BBox | undefined = $state();
@@ -49,34 +50,9 @@
 	/** True while the selection still covers everything the container holds. */
 	const isFullDownload = $derived(!bbox && minZoom <= 0 && maxZoom >= zoomCeiling);
 
-	function buildCommand(
-		t: typeof tool,
-		source: string,
-		output: string,
-		box: BBox | undefined,
-		zMin: number,
-		zMax: number,
-		zCeiling: number,
-	): string {
-		let parts: string[] = [];
-		switch (t) {
-			case 'versatiles':
-				parts.push('versatiles convert');
-				break;
-			case 'docker':
-				parts.push('docker run -it --rm -v $(pwd):/data', 'versatiles/versatiles:latest convert');
-				break;
-		}
-		// Only emit flags that actually narrow the download, so an untouched
-		// dialog still shows the plain whole-file command.
-		if (box) parts.push(`--bbox ${box.join(',')}`);
-		if (zMin > 0) parts.push(`--min-zoom ${zMin}`);
-		if (zMax < zCeiling) parts.push(`--max-zoom ${zMax}`);
-		parts.push(`"${source}"`, `"${t == 'docker' ? '/data/' : ''}${output}"`);
-		return parts.join(' \\\n  ');
-	}
-
-	const command = $derived(buildCommand(tool, fullUrl, outputFile, bbox, minZoom, maxZoom, zoomCeiling));
+	const command = $derived(
+		buildCommand({ tool, source: fullUrl, output: outputFile, bbox, minZoom, maxZoom, zoomCeiling }),
+	);
 
 	/** Position of a zoom level along the track, as a percentage. */
 	function trackPercent(zoom: number): number {

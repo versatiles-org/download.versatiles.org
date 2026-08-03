@@ -6,10 +6,12 @@ export default defineConfig({
 	test: {
 		globals: true,
 		environment: 'node',
-		include: ['src/**/*.test.ts'],
+		// The worker is a separate package but has no test runner of its own, so its
+		// tests run here rather than adding a second vitest install.
+		include: ['src/**/*.test.ts', 'worker/src/**/*.test.ts'],
 		coverage: {
-			include: ['src/**/*.ts'],
-			exclude: ['src/**/*.test.ts'],
+			include: ['src/**/*.ts', 'worker/src/**/*.ts'],
+			exclude: ['**/*.test.ts'],
 		},
 	},
 });

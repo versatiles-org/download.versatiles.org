@@ -46,14 +46,20 @@ interface Stats {
 	sumOfSquares: number;
 }
 
-/** A block paired with the tile byte lengths it contains. */
-interface BlockData {
+/**
+ * A block paired with the tile byte lengths it contains.
+ *
+ * Exported so tests can drive {@link buildNode} with synthetic data: a real
+ * container small enough to commit collapses to a single leaf, which never
+ * exercises the recursive path.
+ */
+export interface BlockData {
 	block: Block;
 	lengths: Float64Array;
 }
 
 /** A built subtree together with the stats it was derived from. */
-interface BuildResult {
+export interface BuildResult {
 	node: QuadNode;
 	stats: Stats;
 }
@@ -160,7 +166,7 @@ async function fetchAllTileIndices(
  * tiles, or when its tile sizes are uniform enough (coefficient of variation
  * below `CV_THRESHOLD`) that per-quadrant detail would not improve the estimate.
  */
-function buildNode(blockDataMap: Map<string, BlockData>, xMin: number, yMin: number, size: number): BuildResult {
+export function buildNode(blockDataMap: Map<string, BlockData>, xMin: number, yMin: number, size: number): BuildResult {
 	if (size <= MIN_NODE_SIZE) {
 		const stats = collectStats(blockDataMap, xMin, yMin, size);
 		// Mean over the whole square, not just the tiles present: absent tiles

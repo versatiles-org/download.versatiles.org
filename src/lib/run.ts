@@ -6,6 +6,7 @@
  * - downloads or computes MD5/SHA256 sidecars for each file
  * - groups files into logical `FileGroup`s with metadata
  * - mirrors the data files to Cloudflare R2
+ * - refreshes the `*.index.json` size indices for changed data files
  * - builds the static site (HTML, RSS, sidecars, url lists) and uploads it to R2
  *
  * Atomic publish: the data files are mirrored **before** the site is uploaded,
@@ -17,6 +18,7 @@ import { getRemoteFiles } from './source/scan.js';
 import { collectFiles, groupFiles } from './file/file_group.js';
 import { generateHashes } from './file/hashes.js';
 import { mirrorToR2 } from './mirror/rclone.js';
+import { syncSizeIndices } from './size_index/sync.js';
 import { buildAndUploadSite } from './site/site.js';
 
 /**
@@ -38,7 +40,8 @@ export interface Options {
  * 3. Download or compute MD5/SHA256 sidecars for each file.
  * 4. Group files into `FileGroup`s and derive metadata.
  * 5. Mirror the data files to R2.
- * 6. Build the static site and upload it to R2 (last).
+ * 6. Build and upload size indices for data files that changed.
+ * 7. Build the static site and upload it to R2 (last).
  *
  * Throws:
  * - If `domain` is missing (no `DOMAIN` env and no `options.domain` provided).
@@ -66,6 +69,10 @@ export async function run(options: Options = {}) {
 	// Mirror the data files to R2 *before* publishing the site (atomic publish).
 	const dataFiles = collectFiles(fileGroups);
 	mirrorToR2(dataFiles);
+
+	// Refresh the size indices used for download estimates. Reads the containers
+	// back over HTTP, so it must run after the mirror; only rebuilds what changed.
+	await syncSizeIndices(fileGroups, baseURL);
 
 	// Build the static site (index.html, RSS, sidecars, url lists) and upload last.
 	buildAndUploadSite(fileGroups, baseURL);

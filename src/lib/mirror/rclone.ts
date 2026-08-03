@@ -97,12 +97,25 @@ export function runRclone(
  * Uploads generated content to an R2 object via `rclone rcat`, setting the given
  * Content-Type. `url` is the object's path/key (with or without a leading slash).
  *
+ * `metadata` adds further object metadata entries. The size indices use it to
+ * record the md5 of the data file they describe, so a later run can tell whether
+ * a cached index is still current (see `../size_index/sync.ts`).
+ *
  * Throws if the upload fails.
  */
-export function uploadObject(url: string, content: string, contentType: string): void {
+export function uploadObject(
+	url: string,
+	content: string,
+	contentType: string,
+	metadata: Record<string, string> = {},
+): void {
 	const cfg = config();
 	const key = url.replace(/^\//, '');
-	const result = runRclone(['rcat', '--metadata', '--metadata-set', `content-type=${contentType}`, r2Dest(cfg, key)], {
+	const metadataArgs = Object.entries({ 'content-type': contentType, ...metadata }).flatMap(([k, v]) => [
+		'--metadata-set',
+		`${k}=${v}`,
+	]);
+	const result = runRclone(['rcat', '--metadata', ...metadataArgs, r2Dest(cfg, key)], {
 		input: content,
 	});
 	if (result.status !== 0) {
@@ -127,9 +140,17 @@ export function uploadDir(localDir: string, destPrefix = ''): void {
 	}
 }
 
-/** Returns the md5 stored in an R2 object's metadata, or null if absent/missing. */
-function remoteMd5(cfg: RcloneConfig, key: string): string | null {
-	const result = runRclone(['lsjson', '--metadata', r2Dest(cfg, key)]);
+/**
+ * Returns the md5 stored in an R2 object's metadata, or null if the object or
+ * the metadata entry is absent.
+ *
+ * This is the change-detection primitive for everything the pipeline uploads:
+ * data files carry the md5 of their own content, generated size indices carry
+ * the md5 of the data file they describe.
+ */
+export function remoteMd5(key: string): string | null {
+	const cfg = config();
+	const result = runRclone(['lsjson', '--metadata', r2Dest(cfg, key.replace(/^\//, ''))]);
 	if (result.status !== 0) return null;
 	try {
 		const entries = JSON.parse(result.stdout) as { Metadata?: Record<string, string> }[];
@@ -162,7 +183,7 @@ export function mirrorToR2(files: FileRef[]): MirrorStats {
 	for (const file of files) {
 		const key = keyOf(file);
 
-		if (remoteMd5(cfg, key) === file.md5) {
+		if (remoteMd5(key) === file.md5) {
 			stats.skipped++;
 			continue;
 		}

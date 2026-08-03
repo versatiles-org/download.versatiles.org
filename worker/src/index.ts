@@ -114,13 +114,17 @@ function baseHeaders(object: R2Object, key: string): Headers {
 
 /**
  * Cache-Control by key. Content-addressed objects — dated dataset files and
- * their sidecars (`*.YYYYMMDD.versatiles[.md5|.sha256]`) and hashed
+ * their sidecars (`*.YYYYMMDD.versatiles[.md5|.sha256|.index.json]`) and hashed
  * `_app/immutable/` assets — never change, so cache them forever. Everything
  * else (stable `<slug>.versatiles`, its sidecars, index.html, feeds) gets a
  * short TTL; clients still revalidate cheaply via the ETag / 304 we return.
+ *
+ * Note the stable size indices (`<slug>.versatiles.index.json`) deliberately fall
+ * through to the short TTL: like the data file they describe, they are rewritten
+ * in place whenever the dataset is updated.
  */
 function cacheControlFor(key: string): string {
-	if (/\.\d{8}\.versatiles(\.(md5|sha256))?$/.test(key) || key.startsWith('_app/immutable/')) {
+	if (/\.\d{8}\.versatiles(\.(md5|sha256|index\.json))?$/.test(key) || key.startsWith('_app/immutable/')) {
 		return 'public, max-age=31536000, immutable';
 	}
 	return 'public, max-age=300';

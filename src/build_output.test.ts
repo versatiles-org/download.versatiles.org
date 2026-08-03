@@ -30,6 +30,18 @@ function eagerAssets(extension: 'js' | 'css'): string[] {
 	return [...new Set(html.match(pattern) ?? [])];
 }
 
+/** The markup of each dialog, split apart so groups can be compared per dialog. */
+function dialogChunks(): string[] {
+	return html.split('<dialog').slice(1);
+}
+
+/** Radio `name` values inside one dialog's markup. */
+function radioNames(chunk: string): string[] {
+	return (chunk.match(/<input[^>]*>/g) ?? [])
+		.filter((tag) => tag.includes('type="radio"'))
+		.map((tag) => /name="([^"]+)"/.exec(tag)?.[1] ?? '');
+}
+
 /** Stylesheets that exist in the build but are not linked from the page. */
 function lazyStylesheets(): string[] {
 	const eager = new Set(eagerAssets('css'));
@@ -49,21 +61,30 @@ describe('prerendered markup', () => {
 		expect(dialogs.filter((tag) => /\bopen\b/.test(tag))).toEqual([]);
 	});
 
-	it('gives every dialog its own radio groups', () => {
-		const dialogs = (html.match(/<dialog[^>]*>/g) ?? []).length;
-		const radios = (html.match(/<input[^>]*>/g) ?? []).filter((tag) => tag.includes('type="radio"'));
-		const groups = new Set(radios.map((tag) => /name="([^"]+)"/.exec(tag)?.[1]));
+	it('never shares a radio group between two dialogs', () => {
+		const seen = new Set<string>();
 
-		// Radio groups key off `name`; a shared name would make choosing a format
-		// in one dialog silently clear it in all the others.
-		expect(groups.size).toBe(dialogs * 2); // one format group + one tool group
+		for (const chunk of dialogChunks()) {
+			for (const name of new Set(radioNames(chunk))) {
+				// Radio groups key off `name`; a shared name would make choosing a
+				// format in one dialog silently clear it in all the others.
+				expect(seen.has(name), `radio group "${name}" is reused across dialogs`).toBe(false);
+				seen.add(name);
+			}
+		}
+
+		expect(seen.size).toBeGreaterThan(0);
 	});
 
-	it('preselects exactly one option in each group', () => {
-		const checked = html.match(/<input[^>]*type="radio"[^>]*checked[^>]*>/g) ?? [];
-		const dialogs = (html.match(/<dialog[^>]*>/g) ?? []).length;
+	it('preselects exactly one option in every group', () => {
+		for (const chunk of dialogChunks()) {
+			const radios = (chunk.match(/<input[^>]*>/g) ?? []).filter((tag) => tag.includes('type="radio"'));
 
-		expect(checked.length).toBe(dialogs * 2);
+			for (const name of new Set(radioNames(chunk))) {
+				const checked = radios.filter((tag) => tag.includes(`name="${name}"`) && /\bchecked\b/.test(tag));
+				expect(checked, `group "${name}" must preselect exactly one option`).toHaveLength(1);
+			}
+		}
 	});
 });
 

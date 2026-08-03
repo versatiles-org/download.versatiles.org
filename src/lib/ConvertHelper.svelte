@@ -20,6 +20,13 @@
 	let tool: Tool = $state('versatiles');
 	let copied = $state(false);
 
+	/**
+	 * Restricting the area is opt-in: the default is the whole planet, which is
+	 * what the plain command downloads. Keeping this as explicit state — rather
+	 * than inferring it from `bbox` being set — gives the user a way back after
+	 * drawing a box, which the map itself does not offer.
+	 */
+	let area: 'planet' | 'bbox' = $state('planet');
 	let bbox: BBox | undefined = $state();
 	let minZoom = $state(0);
 	let maxZoom = $state(DEFAULT_MAX_ZOOM);
@@ -27,11 +34,22 @@
 	let sizeIndex: SizeIndex | null | undefined = $state();
 
 	/**
-	 * `BBoxMap` pulls in maplibre and a basemap style, so it is imported when the
-	 * dialog first opens rather than with the page. Keeping it out of the module
-	 * scope also keeps it out of the prerender, which runs in Node.
+	 * `BBoxMap` pulls in maplibre and a basemap style, so it is imported only once
+	 * the user asks for an area — most downloads are of the whole planet and never
+	 * need it. Keeping it out of module scope also keeps it out of the prerender,
+	 * which runs in Node.
 	 */
 	let BBoxMap = $state<typeof import('@versatiles/svelte').BBoxMap | undefined>();
+
+	/** Switches between the whole planet and a drawn area, loading the map on demand. */
+	function selectArea(next: 'planet' | 'bbox') {
+		area = next;
+		if (next === 'planet') {
+			bbox = undefined;
+		} else if (!BBoxMap) {
+			import('@versatiles/svelte').then((module) => (BBoxMap = module.BBoxMap));
+		}
+	}
 
 	let dialog: HTMLDialogElement;
 
@@ -88,10 +106,6 @@
 				}
 			});
 		}
-
-		if (!BBoxMap) {
-			import('@versatiles/svelte').then((module) => (BBoxMap = module.BBoxMap));
-		}
 	}
 
 	function close() {
@@ -133,11 +147,39 @@
 			<div class="controls">
 				<section class="area">
 					<span class="label">Select an area:</span>
-					<div class="bbox-map">
-						{#if BBoxMap}
-							<BBoxMap bind:selectedBBox={bbox} />
-						{/if}
+					<div class="segmented">
+						<label class:active={area === 'planet'}>
+							<input
+								type="radio"
+								name="{uid}-area"
+								value="planet"
+								checked={area === 'planet'}
+								onchange={() => selectArea('planet')}
+							/>
+							whole planet
+						</label>
+						<label class:active={area === 'bbox'}>
+							<input
+								type="radio"
+								name="{uid}-area"
+								value="bbox"
+								checked={area === 'bbox'}
+								onchange={() => selectArea('bbox')}
+							/>
+							bounding box
+						</label>
 					</div>
+
+					{#if area === 'bbox'}
+						<div class="bbox-map">
+							{#if BBoxMap}
+								<BBoxMap bind:selectedBBox={bbox} />
+							{/if}
+						</div>
+						{#if !bbox}
+							<p class="hint">Drag a box on the map, or search for a place.</p>
+						{/if}
+					{/if}
 				</section>
 
 				<section class="options">
@@ -434,7 +476,14 @@
 		gap: 0.6em;
 	}
 
+	.hint {
+		margin: 0.4em 0 0;
+		opacity: 0.5;
+		font-size: 0.8em;
+	}
+
 	.bbox-map {
+		margin-top: 0.6em;
 		height: 18rem;
 		border-radius: 4px;
 		overflow: hidden;

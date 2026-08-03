@@ -185,41 +185,41 @@
 							>
 						</div>
 					</div>
-				</section>
-			</div>
 
-			<div class="zoom-row">
-				<div class="zoom-head">
-					<span class="label">Select zoom levels:</span>
-					<span class="zoom-value">{minZoom} – {maxZoom}</span>
-				</div>
-				<div class="range">
-					<div class="range-track"></div>
-					<div
-						class="range-fill"
-						style="left: {trackPercent(minZoom)}%; width: {trackPercent(maxZoom) - trackPercent(minZoom)}%"
-					></div>
-					<input
-						type="range"
-						min="0"
-						max={zoomCeiling}
-						bind:value={minZoom}
-						oninput={onMinInput}
-						aria-label="Lowest zoom level"
-					/>
-					<input
-						type="range"
-						min="0"
-						max={zoomCeiling}
-						bind:value={maxZoom}
-						oninput={onMaxInput}
-						aria-label="Highest zoom level"
-					/>
-				</div>
-				<div class="range-scale small">
-					<span>0</span>
-					<span>{zoomCeiling}</span>
-				</div>
+					<div class="zoom-row">
+						<div class="zoom-head">
+							<span class="label">Select zoom levels:</span>
+							<span class="zoom-value">{minZoom} – {maxZoom}</span>
+						</div>
+						<div class="range">
+							<div class="range-track"></div>
+							<div
+								class="range-fill"
+								style="left: {trackPercent(minZoom)}%; width: {trackPercent(maxZoom) - trackPercent(minZoom)}%"
+							></div>
+							<input
+								type="range"
+								min="0"
+								max={zoomCeiling}
+								bind:value={minZoom}
+								oninput={onMinInput}
+								aria-label="Lowest zoom level"
+							/>
+							<input
+								type="range"
+								min="0"
+								max={zoomCeiling}
+								bind:value={maxZoom}
+								oninput={onMaxInput}
+								aria-label="Highest zoom level"
+							/>
+						</div>
+						<div class="range-scale small">
+							<span>0</span>
+							<span>{zoomCeiling}</span>
+						</div>
+					</div>
+				</section>
 			</div>
 		</div>
 
@@ -423,6 +423,8 @@
 
 	.zoom-value {
 		color: #fff;
+		/* Matches the segmented option labels, so the column keeps one type scale. */
+		font-size: 0.8em;
 		font-variant-numeric: tabular-nums;
 	}
 

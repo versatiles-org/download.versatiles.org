@@ -5,6 +5,13 @@
 
 	let { file }: { file: FileRefData } = $props();
 
+	/**
+	 * Radio groups are keyed by `name`, and the page renders one dialog per file,
+	 * so the name has to be unique per instance or every dialog would share one
+	 * format selection.
+	 */
+	const uid = $props.id();
+
 	/** Fallback zoom ceiling before an index tells us the real one. */
 	const DEFAULT_MAX_ZOOM = 14;
 
@@ -147,18 +154,28 @@
 
 				<section class="options">
 					<span class="label">Select a format:</span>
-					<div class="toggle-format">
+					<div class="segmented">
 						{#each formats as f}
-							<button class:active={format === f} onclick={() => (format = f)}>.{f}</button>
+							<label class:active={format === f}>
+								<input type="radio" name="{uid}-format" value={f} bind:group={format} />
+								.{f}
+							</label>
 						{/each}
 					</div>
 
 					<div class="toggle-tool">
 						<span class="label">Select a tool:</span>
-						<div class="toggles">
-							<button class:active={tool === 'versatiles'} onclick={() => (tool = 'versatiles')}
-								>versatiles binary</button
-							>
+						<div class="tool-row">
+							<div class="segmented">
+								<label class:active={tool === 'versatiles'}>
+									<input type="radio" name="{uid}-tool" value="versatiles" bind:group={tool} />
+									versatiles binary
+								</label>
+								<label class:active={tool === 'docker'}>
+									<input type="radio" name="{uid}-tool" value="docker" bind:group={tool} />
+									via docker
+								</label>
+							</div>
 							<a
 								class="install-link"
 								href="https://docs.versatiles.org/guides/install_versatiles.html"
@@ -166,7 +183,6 @@
 								rel="noopener noreferrer"
 								title="Installation instructions">&#x2197;</a
 							>
-							<button class:active={tool === 'docker'} onclick={() => (tool = 'docker')}>via docker</button>
 						</div>
 					</div>
 				</section>
@@ -319,34 +335,70 @@
 		}
 	}
 
-	.toggle-format {
-		display: flex;
-		gap: 0.4em;
-		flex-wrap: wrap;
-		margin-bottom: 1em;
+	/*
+	 * Segmented control: the options are joined inside one outlined track rather
+	 * than floating as separate pills, so they read as "pick one of these" instead
+	 * of as independent buttons. Backed by real radio inputs, which also gives
+	 * arrow-key navigation and the right announcement to screen readers.
+	 */
+	.segmented {
+		display: inline-flex;
+		border: 1px solid #3a3a3a;
+		border-radius: 5px;
+		overflow: hidden;
+		background: #222;
+		max-width: 100%;
 
-		button {
-			background: #333;
-			border: none;
-			color: #ccc;
-			padding: 0.4em 0.9em;
+		label {
+			position: relative;
+			padding: 0.4em 0.75em;
+			font-size: 0.8em;
+			line-height: 1.3;
+			color: #aaa;
 			cursor: pointer;
-			border-radius: 4px;
-			font-size: 0.95em;
+			white-space: nowrap;
+			user-select: none;
+
+			& + label {
+				border-left: 1px solid #3a3a3a;
+			}
 
 			&:hover {
-				background: #444;
+				background: #2c2c2c;
+				color: #eee;
 			}
 
 			&.active {
-				background: #555;
-				color: #fff;
+				background: #4a9eff;
+				color: #08151f;
+				font-weight: 600;
 			}
+
+			/* The input is visually hidden, so mirror its focus ring onto the label. */
+			&:has(input:focus-visible) {
+				outline: 2px solid #4a9eff;
+				outline-offset: -2px;
+			}
+		}
+
+		input {
+			position: absolute;
+			width: 1px;
+			height: 1px;
+			opacity: 0;
+			pointer-events: none;
+			margin: 0;
 		}
 	}
 
 	.toggle-tool {
 		margin-top: 1em;
+	}
+
+	.tool-row {
+		display: flex;
+		align-items: center;
+		gap: 0.6em;
 	}
 
 	.bbox-map {
@@ -461,35 +513,9 @@
 		font-size: 0.9em;
 	}
 
-	.toggles {
-		display: flex;
-		gap: 0.4em;
-		align-items: center;
-
-		button {
-			background: #333;
-			border: none;
-			color: #ccc;
-			padding: 0.3em 0.8em;
-			cursor: pointer;
-			border-radius: 4px;
-			font-size: 0.9em;
-
-			&:hover {
-				background: #444;
-			}
-
-			&.active {
-				background: #555;
-				color: #fff;
-			}
-		}
-	}
-
 	.install-link {
 		font-size: 0.9em;
 		opacity: 0.4;
-		margin-right: 1em;
 
 		&:hover {
 			opacity: 0.8;

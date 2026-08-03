@@ -139,7 +139,7 @@
 					rel="noopener noreferrer"
 					title="Installation instructions">&#x2197;</a
 				>
-				<button class:active={tool === 'docker'} onclick={() => (tool = 'docker')}>docker</button>
+				<button class:active={tool === 'docker'} onclick={() => (tool = 'docker')}>via docker</button>
 			</div>
 		</div>
 

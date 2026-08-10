@@ -212,7 +212,11 @@ npm run build:site && npm run preview:site
 - [ ] the `…` button opens the dialog, and the command and Copy button are visible
 - [ ] resizing the window keeps the result bar on screen
 - [ ] dragging a zoom thumb past the dialog's edge does **not** close it
-- [ ] choosing "bounding box" loads the map; drawing a box updates `--bbox`
+- [ ] choosing "bounding box" loads the map, **and a box outline is drawn on it**
+- [ ] dragging that outline updates `--bbox` in the command
+- [ ] the web console is clean — the map sets itself up from the map's `init` callback, so an
+      exception there leaves a map that renders but does not respond, with the command still
+      showing a `--bbox` the user cannot see or change
 - [ ] Copy puts the command on the clipboard
 - [ ] tabbing/arrowing through the format options shows a visible focus ring
 

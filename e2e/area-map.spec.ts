@@ -71,8 +71,15 @@ test.describe('area selection', { tag: '@map' }, () => {
 
 		await option(dialog, 'area', 'bbox').click();
 
-		// The place search pre-fills itself from the locale and immediately selects
-		// that country, so an area is chosen before the user touches the map.
+		/*
+		 * The place search pre-fills itself from the locale and immediately selects
+		 * that country, so an area is always chosen before the user touches the map.
+		 *
+		 * The dialog depends on this: it deliberately shows no "drag a box" hint,
+		 * because there is no moment at which the map is up and no area is picked.
+		 * If this ever stops holding, that empty state comes back with nothing to
+		 * explain it — which is what this assertion is guarding.
+		 */
 		await expect(dialog.locator('.bbox-map input[type="text"]')).toHaveValue('United Kingdom');
 		expect(await commandText(dialog)).toContain(`--bbox ${UNITED_KINGDOM}`);
 	});

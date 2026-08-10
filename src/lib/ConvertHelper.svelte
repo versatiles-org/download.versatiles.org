@@ -215,15 +215,17 @@
 						</label>
 					</div>
 
+					<!--
+						No "drag a box" hint here: the map's place search pre-fills itself
+						from the viewer's locale and selects that country as soon as it
+						mounts, so a bbox already exists by the time anyone could read one.
+					-->
 					{#if area === 'bbox'}
 						<div class="bbox-map">
 							{#if BBoxMap}
 								<BBoxMap bind:selectedBBox={bbox} />
 							{/if}
 						</div>
-						{#if !bbox}
-							<p class="hint">Drag a box on the map, or search for a place.</p>
-						{/if}
 					{/if}
 				</section>
 
@@ -560,12 +562,6 @@
 	.install-note {
 		display: block;
 		margin-top: 0.5em;
-		font-size: 0.8em;
-	}
-
-	.hint {
-		margin: 0.4em 0 0;
-		opacity: 0.5;
 		font-size: 0.8em;
 	}
 

@@ -31,6 +31,16 @@ test('opens a dialog large enough to use', async ({ page }) => {
 	expect(box.width, 'dialog is too narrow to show its controls').toBeGreaterThanOrEqual(MIN_WIDTH);
 	expect(box.height, 'dialog collapsed to less than its content').toBeGreaterThanOrEqual(MIN_HEIGHT);
 
+	// Tighter than the fixed floor above, and the shape that actually breaks: the
+	// dialog's height is auto, so an engine that sizes it from the flex base size
+	// rather than the content collapses it onto its own borders while the header
+	// and the result bar still report their full height.
+	const header = (await dialog.locator('.dialog-header').boundingBox())!;
+	const resultBar = (await dialog.locator('.result-bar').boundingBox())!;
+	expect(box.height, 'dialog is shorter than the content it contains').toBeGreaterThanOrEqual(
+		header.height + resultBar.height,
+	);
+
 	// A dialog hanging off the edge is as unusable as a collapsed one, and the
 	// page's `overflow-x: hidden` would clip it rather than let you scroll to it.
 	await expectInViewport(page, dialog);

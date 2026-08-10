@@ -126,6 +126,30 @@ export async function commandText(dialog: Locator): Promise<string> {
 }
 
 /**
+ * One option of a segmented control, located by the radio it wraps.
+ *
+ * By `name` suffix and `value` rather than by label text, because the two are
+ * not unique on their own: the format and tool groups both have a `versatiles`
+ * option, and `.versatiles` also appears in the command below them. The `name`
+ * carries a per-instance prefix (`$props.id()`), hence the suffix match.
+ */
+export function option(dialog: Locator, group: 'area' | 'format' | 'tool', value: string): Locator {
+	return dialog.locator(`label:has(input[name$="-${group}"][value="${value}"])`);
+}
+
+/**
+ * Waits for the size index to arrive.
+ *
+ * Worth waiting for before touching the zoom controls: until it lands the dialog
+ * is showing a placeholder ceiling of 14, and the moment it lands the ceiling
+ * jumps to whatever the container actually holds — which would move the sliders
+ * out from under a test that started early.
+ */
+export async function waitForSizeIndex(dialog: Locator): Promise<void> {
+	await expect(dialog.getByText('Estimated file size')).toBeVisible();
+}
+
+/**
  * Asserts that an element lies completely inside the viewport.
  *
  * Preferred over `toBeInViewport({ ratio: 1 })`, which is derived from an

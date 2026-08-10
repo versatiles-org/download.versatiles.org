@@ -105,7 +105,7 @@
 	>
 </footer>
 
-<style lang="scss">
+<style>
 	:global(body) {
 		background: #080808;
 		color: #ccc;

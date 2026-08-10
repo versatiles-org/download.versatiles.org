@@ -319,7 +319,7 @@
 	</div>
 </dialog>
 
-<style lang="scss">
+<style>
 	.convert-btn {
 		background: none;
 		border: none;

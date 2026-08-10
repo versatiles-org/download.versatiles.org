@@ -502,6 +502,25 @@
 				outline: 2px solid #4a9eff;
 				outline-offset: -2px;
 			}
+
+			/*
+			 * WebKit never matches `:focus-visible` on a radio — `:focus` does, but
+			 * `:focus-visible` stays false however the focus got there — so the rule
+			 * above leaves Safari with no focus indicator at all on a control whose
+			 * only input is 1px and transparent.
+			 *
+			 * Falling back to plain `:focus` is safe *here*: macOS does not focus a
+			 * radio when it is clicked, so a focused radio in WebKit already means
+			 * the keyboard put it there, which is exactly what `:focus-visible` is
+			 * for. Scoped to the usual WebKit-only feature query, since applying it
+			 * everywhere would put a ring on every mouse click in the other engines.
+			 */
+			@supports (-webkit-hyphens: none) {
+				&:has(input:focus) {
+					outline: 2px solid #4a9eff;
+					outline-offset: -2px;
+				}
+			}
 		}
 
 		input {

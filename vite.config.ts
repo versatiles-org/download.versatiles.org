@@ -3,6 +3,21 @@ import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
 	plugins: [sveltekit()],
+	optimizeDeps: {
+		/*
+		 * `@versatiles/svelte` imports maplibre's worker as
+		 * `maplibre-gl/dist/maplibre-gl-worker.mjs?worker&url`. `?worker&url` is a
+		 * Vite plugin query, but dependency pre-bundling runs rolldown ahead of that
+		 * pipeline, so it takes the whole string as a filename and fails with
+		 * `UNLOADABLE_DEPENDENCY … No such file or directory`.
+		 *
+		 * Excluding the package leaves it to be served through the normal transform
+		 * pipeline, where the query is understood. Dev-server only: `vite build`
+		 * never pre-bundles, which is why the production build and the browser tests
+		 * were unaffected.
+		 */
+		exclude: ['@versatiles/svelte'],
+	},
 	build: {
 		/*
 		 * Pinned rather than left to Vite's default.

@@ -153,16 +153,68 @@ After a deploy / cutover, confirm:
 - **`npm run lint`** / **`npm run format`**: ESLint / Prettier.
 - **`npm run typecheck`**: `svelte-check` + `tsc`.
 - **`npm run test`** / **`npm run test-coverage`**: Vitest.
+- **`npm run test:e2e`** / **`npm run test:e2e:ui`**: Playwright browser tests.
 - **`npm run upgrade`**: Updates dependencies.
 
 ## Running Tests
 
-The project uses **Vitest** for unit tests.
+The project uses **Vitest** for unit tests and **Playwright** for browser tests.
 
 ```bash
-npm test            # run the suite
-npm run test-coverage   # with coverage
+npm test                # unit tests
+npm run test-coverage   # unit tests with coverage
+npm run test:e2e        # browser tests, all engines
+npm run test:e2e:ui     # browser tests, interactive
 ```
+
+### Browser tests
+
+`e2e/` drives the real UI in Chromium, Firefox and WebKit plus two mobile device
+emulations. They cover what neither the unit tests nor
+[`src/build_output.test.ts`](src/build_output.test.ts) can see: a dialog that
+opens but is unusable, a control that only responds in one engine, a focus ring
+that never appears.
+
+Browsers are **not** installed by `npm ci` — `.npmrc` sets `ignore-scripts=true`
+— so run this once:
+
+```bash
+npx playwright install chromium firefox webkit
+```
+
+`npm run test:e2e` builds the site and serves it on port 4173 by itself; there is
+no dev server to start first. It tests the production build deliberately, since
+the CSS the browser receives has been through lightningcss.
+
+Useful flags:
+
+```bash
+npx playwright test --project=webkit          # one engine
+npx playwright test dialog                    # one spec
+npx playwright test --grep @map               # only the map tests
+npx playwright test --headed --debug          # watch it happen
+```
+
+The suite is offline: the size index, the map tiles and the logo are all served
+from [`e2e/fixtures.ts`](e2e/fixtures.ts), so no test touches production. Map
+tests skip themselves where the browser has no WebGL2.
+
+### Checking real Safari
+
+Playwright's WebKit shares Safari's engine but not its UI layer, and it always
+tracks recent WebKit — so a Safari-only or older-Safari problem can still slip
+through. After changing the download dialog, build and open it in Safari:
+
+```bash
+npm run build:site && npm run preview:site
+```
+
+- [ ] the `…` button opens the dialog, and the command and Copy button are visible
+- [ ] resizing the window keeps the result bar on screen
+- [ ] dragging a zoom thumb past the dialog's edge does **not** close it
+- [ ] choosing "bounding box" loads the map; drawing a box updates `--bbox`
+- [ ] Copy puts the command on the clipboard
+- [ ] tabbing/arrowing through the format options shows a visible focus ring
 
 ## Code Structure Overview
 

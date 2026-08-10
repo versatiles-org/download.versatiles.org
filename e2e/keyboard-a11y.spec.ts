@@ -94,6 +94,32 @@ test('moves between tools with the arrow keys', async ({ page }) => {
 	expect(await commandText(dialog)).toContain('docker run');
 });
 
+test('keeps the visually hidden options focusable', async ({ page }) => {
+	const dialog = await openDialog(page, FILE);
+
+	/*
+	 * The segmented controls are real radios shrunk to 1px and made transparent,
+	 * which is what buys arrow-key navigation and a correct screen-reader
+	 * announcement. That only holds while they stay focusable — `display: none`,
+	 * `visibility: hidden` or a stray `tabindex="-1"` would each keep the control
+	 * looking identical while removing it from the keyboard entirely.
+	 *
+	 * Asserted via focus rather than via Tab on purpose: whether Tab *visits* a
+	 * radio is a platform setting (macOS only tabs to form fields unless Full
+	 * Keyboard Access is on), so tabbing would test the browser's configuration
+	 * rather than this markup.
+	 */
+	for (const group of ['area', 'format', 'tool']) {
+		const input = dialog.locator(`input[name$="-${group}"]`).first();
+		await input.focus();
+
+		expect(await focused(page), `the ${group} options cannot take focus`).toMatchObject({
+			tag: 'INPUT',
+			inDialog: true,
+		});
+	}
+});
+
 test('gives the zoom sliders accessible names', async ({ page }) => {
 	const dialog = await openDialog(page, FILE);
 

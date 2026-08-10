@@ -218,6 +218,9 @@ npm run build:site && npm run preview:site
       exception there leaves a map that renders but does not respond, with the command still
       showing a `--bbox` the user cannot see or change
 - [ ] Copy puts the command on the clipboard
+- [ ] with macOS **Full Keyboard Access** on (System Settings → Accessibility → Keyboard),
+      Tab reaches the format options and the focused one shows a visible ring — with it off,
+      Safari tabs to nothing in the dialog, which is the platform default rather than a bug
 - [ ] tabbing/arrowing through the format options shows a visible focus ring
 
 ## Code Structure Overview

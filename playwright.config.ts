@@ -21,7 +21,9 @@ export default defineConfig({
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
-	reporter: process.env.CI ? [['html'], ['github']] : [['list']],
+	// `open: 'never'` so a failing CI run uploads the report instead of trying to
+	// serve it and hanging the job.
+	reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : [['list']],
 
 	webServer: {
 		command: `npm run build:site && npm run preview:site -- --port ${PORT} --strictPort`,

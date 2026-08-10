@@ -342,13 +342,16 @@
 		max-width: 90vw;
 		width: 52rem;
 		/*
-		 * `vh` resolves against the *large* viewport, i.e. with the mobile browser
-		 * toolbars retracted, so a 90vh dialog can be taller than the area actually
-		 * on screen and its result bar ends up out of reach. `dvh` tracks the
-		 * visible height. The `vh` line is a fallback for browsers without `dvh`;
-		 * lightningcss drops it when the configured targets all support `dvh`.
+		 * `dvh`, not `vh`: `vh` resolves against the *large* viewport — the one with
+		 * the mobile browser toolbars retracted — so a `90vh` dialog can be taller
+		 * than the area actually on screen and its result bar ends up out of reach.
+		 * `dvh` tracks the visible height.
+		 *
+		 * There is deliberately no `vh` fallback: every browser in `build.target`
+		 * (see `vite.config.ts`) supports `dvh`, so lightningcss stripped the
+		 * fallback from the output anyway — it was dead weight that read as though
+		 * older browsers were covered.
 		 */
-		max-height: 90vh;
 		max-height: 90dvh;
 		overflow: hidden;
 
@@ -432,9 +435,7 @@
 		dialog {
 			width: 100%;
 			max-width: 100%;
-			height: 100vh;
 			height: 100dvh;
-			max-height: 100vh;
 			max-height: 100dvh;
 			border: none;
 			border-radius: 0;

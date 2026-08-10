@@ -18,7 +18,9 @@
 
 	let format: Format = $state('versatiles');
 	let tool: Tool = $state('versatiles');
-	let copied = $state(false);
+
+	/** What the copy button reports back after being pressed. */
+	let copyState: 'idle' | 'copied' | 'failed' = $state('idle');
 
 	/**
 	 * Restricting the area is opt-in: the default is the whole planet, which is
@@ -143,10 +145,35 @@
 		if (pressedOnBackdrop && e.target === dialog) close();
 	}
 
+	let commandBlock: HTMLElement;
+	let resetCopyState: ReturnType<typeof setTimeout> | undefined;
+
+	/** Selects the command, so ⌘C/Ctrl+C does what the button could not. */
+	function selectCommand() {
+		const selection = window.getSelection();
+		if (!selection) return;
+
+		const range = document.createRange();
+		range.selectNodeContents(commandBlock);
+		selection.removeAllRanges();
+		selection.addRange(range);
+	}
+
 	async function copy() {
-		await navigator.clipboard.writeText(command);
-		copied = true;
-		setTimeout(() => (copied = false), 1500);
+		try {
+			// Not guaranteed to exist: the API is only exposed in a secure context,
+			// so a preview build opened over plain http on a LAN address has no
+			// `navigator.clipboard` at all. Unguarded, that leaves the button
+			// looking broken and an unhandled rejection in the console.
+			await navigator.clipboard.writeText(command);
+			copyState = 'copied';
+		} catch {
+			selectCommand();
+			copyState = 'failed';
+		}
+
+		clearTimeout(resetCopyState);
+		resetCopyState = setTimeout(() => (copyState = 'idle'), 1500);
 	}
 
 	const formats = ['versatiles', 'pmtiles', 'mbtiles', 'tar'] as const;
@@ -283,9 +310,11 @@
 						{#if isFullDownload}<span>whole dataset</span>{/if}
 					{/if}
 				</span>
-				<button class="copy-btn" onclick={copy}>{copied ? 'Copied!' : 'Copy'}</button>
+				<button class="copy-btn" onclick={copy}>
+					{copyState === 'copied' ? 'Copied!' : copyState === 'failed' ? 'Copy failed' : 'Copy'}
+				</button>
 			</div>
-			<pre><code>{command}</code></pre>
+			<pre bind:this={commandBlock}><code>{command}</code></pre>
 		</div>
 	</div>
 </dialog>

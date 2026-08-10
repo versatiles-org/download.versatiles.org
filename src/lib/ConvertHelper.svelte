@@ -368,16 +368,30 @@
 		flex-direction: column;
 	}
 
+	/*
+	 * `flex: 1 1 auto`, not `flex: 1`.
+	 *
+	 * `flex: 1` is `flex-basis: 0`, and the dialog's height is *auto* — only
+	 * capped by `max-height`. Sizing an auto-height flex container is supposed to
+	 * use each item's content height, but WebKit uses the flex base size instead,
+	 * which is 0 here: the dialog then collapses to its 1px borders and Safari
+	 * shows a darkened page with a horizontal line where the dialog should be.
+	 *
+	 * An `auto` basis makes the intrinsic contribution the content height in every
+	 * engine, and `min-height: 0` still lets the body shrink and scroll once
+	 * `max-height` bites. (The phone rule below sets a definite `height`, which is
+	 * why the full-bleed sheet was never affected.)
+	 */
 	.dialog-content {
 		display: flex;
 		flex-direction: column;
-		flex: 1;
+		flex: 1 1 auto;
 		min-height: 0;
 		font-size: 0.8rem;
 	}
 
 	.dialog-body {
-		flex: 1;
+		flex: 1 1 auto;
 		min-height: 0;
 		overflow-y: auto;
 		/* Stops a touch scroll that reaches the end here from scrolling the page. */

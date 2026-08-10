@@ -97,6 +97,28 @@ describe('dialog visibility', () => {
 			.map((match) => ({ selector: match[1]!.trim(), body: match[2]! }));
 	}
 
+	it('sizes the dialog’s growing children from their content', () => {
+		const growing = cssRules().filter((rule) => /\.dialog-(content|body)\b/.test(rule.selector));
+
+		expect(growing.length).toBeGreaterThan(0);
+
+		for (const rule of growing) {
+			if (!/flex\s*:/.test(rule.body)) continue;
+
+			// `flex: 1` means `flex-basis: 0`. The dialog's height is auto, and
+			// WebKit sizes an auto-height flex container from the flex base size
+			// rather than from the content — so a `0` basis collapses the whole
+			// dialog onto its borders and Safari renders a 1px line. The browser
+			// tests cannot catch this: the WebKit build they drive gets it right.
+			//
+			// Both spellings are accepted because they are the same value, and
+			// lightningcss rewrites the longer one: `flex: auto` *is* `1 1 auto`.
+			expect(rule.body, `"${rule.selector}" must set an explicit auto flex-basis`).toMatch(
+				/flex\s*:\s*(auto|1 1 auto)\s*[;}]/,
+			);
+		}
+	});
+
 	it('never declares `display` on a dialog selector that is not [open]', () => {
 		const offenders = cssRules()
 			.filter((rule) => /display\s*:/.test(rule.body))

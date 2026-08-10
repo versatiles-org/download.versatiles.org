@@ -125,6 +125,26 @@ export async function commandText(dialog: Locator): Promise<string> {
 	return (await dialog.locator('.result-bar pre code').textContent()) ?? '';
 }
 
+/**
+ * Asserts that an element lies completely inside the viewport.
+ *
+ * Preferred over `toBeInViewport({ ratio: 1 })`, which is derived from an
+ * IntersectionObserver ratio: an element sitting flush against the bottom edge
+ * reports something like 0.997 purely from sub-pixel rounding, and the engines
+ * round the same layout to different sides of the pixel. A one-pixel tolerance
+ * over the real geometry says what is actually meant.
+ */
+export async function expectInViewport(page: Page, locator: Locator, tolerance = 1): Promise<void> {
+	const box = await locator.boundingBox();
+	expect(box, 'element has no box, so it cannot be in the viewport').not.toBeNull();
+
+	const viewport = page.viewportSize()!;
+	expect(box!.x).toBeGreaterThanOrEqual(-tolerance);
+	expect(box!.y).toBeGreaterThanOrEqual(-tolerance);
+	expect(box!.x + box!.width, 'element runs past the right edge').toBeLessThanOrEqual(viewport.width + tolerance);
+	expect(box!.y + box!.height, 'element runs past the bottom edge').toBeLessThanOrEqual(viewport.height + tolerance);
+}
+
 /** What the page has written to the clipboard so far. */
 export function clipboardHistory(page: Page): Promise<string[]> {
 	return page.evaluate(() => (window as unknown as { __clipboard: string[] }).__clipboard);

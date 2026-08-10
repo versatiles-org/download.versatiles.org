@@ -106,12 +106,16 @@ test('restores page scrolling however it is closed', async ({ page }) => {
 		async () => page.keyboard.press('Escape'),
 	]) {
 		const dialog = await openDialog(page, FILE);
+		expect(await overflow()).toBe('hidden');
+
 		await close();
 		await expect(dialog).toBeHidden();
 
 		// Esc closes the dialog without going through the close button, so the
 		// lock has to be released from the `close` event rather than the handler.
-		expect(await overflow()).toBe('');
+		// Polled rather than read once: the handler runs on that event, which can
+		// land after the dialog has already stopped being visible.
+		await expect.poll(overflow, { message: 'page scrolling was never restored' }).toBe('');
 	}
 });
 

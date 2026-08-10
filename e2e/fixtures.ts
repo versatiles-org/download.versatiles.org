@@ -13,7 +13,8 @@
 import { test as base, expect, type Locator, type Page } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
-const SIZE_INDEX = readFileSync(new URL('./fixtures/size-index.json', import.meta.url), 'utf-8');
+/** The stand-in `*.index.json` body. Exported so a test can serve it on its own terms. */
+export const SIZE_INDEX = readFileSync(new URL('./fixtures/size-index.json', import.meta.url), 'utf-8');
 
 /** Total bytes of the fixture index, all levels, whole planet. See the fixture's comment. */
 export const FIXTURE_FULL_SIZE = 5_592_064;

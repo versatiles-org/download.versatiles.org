@@ -45,6 +45,11 @@ jobs:
       - name: Check vulnerabilities
         run: npm audit --audit-level=high
 
+      # Together with the `e2e` job below, the steps from here down are exactly
+      # what `npm run check` runs locally, in the same order.
+      - name: Check formatting
+        run: npm run format:check
+
       - name: Lint
         run: npm run lint
 
@@ -64,6 +69,25 @@ jobs:
         uses: codecov/codecov-action@v7
         env:
           CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+      # The worker is a separate package with its own lockfile, so it needs its
+      # own install. Without this it is only ever typechecked on a laptop, while
+      # being the thing that actually serves the site.
+      - name: Cache Worker Node Modules
+        id: cache-worker-node-modules
+        uses: actions/cache@v6
+        with:
+          path: worker/node_modules
+          key: worker-node-modules-${{ runner.os }}-${{ hashFiles('worker/package-lock.json') }}
+
+      - name: Install worker dependencies
+        if: steps.cache-worker-node-modules.outputs.cache-hit != 'true'
+        run: npm ci
+        working-directory: worker
+
+      - name: Check worker
+        run: npm run check
+        working-directory: worker
 
   # Kept separate from `release` so the lint/typecheck/unit feedback is not held
   # up by a browser download, and so a UI regression is reported as its own

@@ -1,0 +1,12 @@
+{
+	"_comment": "Hand-written SizeIndex (src/lib/size_index/types.ts) for the browser tests. Every level is a uniform leaf of 1024 bytes per tile, so a full download is sum(4^z for z in 0..6) * 1024 = 5592064 bytes = '5.33 MB' and any narrower selection is exactly computable in a test. Zoom ceiling is 6, well below the component's DEFAULT_MAX_ZOOM of 14, so tests can tell the two apart.",
+	"levels": {
+		"0": 1024,
+		"1": 1024,
+		"2": 1024,
+		"3": 1024,
+		"4": 1024,
+		"5": 1024,
+		"6": 1024
+	}
+}

@@ -1,11 +1,14 @@
 .svelte-kit
 *.code-workspace
 package*.json
+blob-report
 build
 coverage
 data
 dist
 node_modules
+playwright-report
+test-results
 volumes
 worker
 src/lib/size_index/fixtures/

@@ -8,14 +8,14 @@
   },
   "scripts": {
     "build:site": "npm run prebuild:site && vite build",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && cd worker && npm run check",
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm run test && npm run test:e2e && cd worker && npm run check",
     "dev": "tsx src/generate_testdata.ts && vite dev",
     "doc": "npm run doc-graph",
     "doc-graph": "vrt deps-graph | vrt doc-insert README.md '## Dependency Graph'",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint src/",
-    "lint:fix": "eslint src/ --fix",
+    "lint": "eslint src/ e2e/",
+    "lint:fix": "eslint src/ e2e/ --fix",
     "once": "tsx --env-file=.env src/run_once.ts",
     "prebuild:site": "test -f data/fileGroups.json || tsx src/generate_testdata.ts",
     "prepare": "svelte-kit sync",
@@ -23,6 +23,8 @@
     "setup": "bash scripts/setup.sh",
     "test": "vitest run",
     "test-coverage": "vitest run --coverage",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc --noEmit",
     "upgrade": "ncu -u && npm install && cd worker && ncu -u && npm install && cd .."
   },
@@ -50,6 +52,7 @@
     "vitest": "^4.1.10"
   },
   "devDependencies": {
+    "@playwright/test": "1.62.1",
     "@types/node": "^26.1.2",
     "@typescript-eslint/eslint-plugin": "^8.65.0",
     "@typescript-eslint/parser": "^8.65.0",

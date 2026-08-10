@@ -9,6 +9,18 @@ updates:
         patterns: ['*']
     versioning-strategy: increase-if-necessary
 
+  # The worker has its own package.json and lockfile, so the entry above does not
+  # reach it — without this it never gets updates or advisories, while being the
+  # thing that actually serves the site.
+  - package-ecosystem: npm
+    directory: /worker
+    schedule:
+      interval: monthly
+    groups:
+      worker:
+        patterns: ['*']
+    versioning-strategy: increase-if-necessary
+
   - package-ecosystem: github-actions
     directory: /
     schedule:

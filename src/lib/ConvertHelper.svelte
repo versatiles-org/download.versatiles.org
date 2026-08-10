@@ -89,6 +89,7 @@
 	}
 
 	function open() {
+		pressedOnBackdrop = false;
 		dialog.showModal();
 		// `showModal()` makes the page inert but not unscrollable: on touch, a
 		// gesture that runs past the end of the dialog scrolls the page behind it.
@@ -121,8 +122,25 @@
 		document.body.style.overflow = '';
 	}
 
+	/**
+	 * Whether the press that is currently in flight started on the backdrop.
+	 *
+	 * A `click` is dispatched on the nearest common ancestor of press and
+	 * release, and since the dialog has no padding, the only element that *is*
+	 * the dialog is its backdrop. So a drag that starts on a zoom thumb or on the
+	 * map and ends past the dialog's edge — which is most of them — arrives here
+	 * indistinguishable from a click on the backdrop, and would throw the user's
+	 * selection away mid-gesture. Requiring the press to have started on the
+	 * backdrop too tells the two apart.
+	 */
+	let pressedOnBackdrop = false;
+
+	function backdropPointerDown(e: PointerEvent) {
+		pressedOnBackdrop = e.target === dialog;
+	}
+
 	function backdropClick(e: MouseEvent) {
-		if (e.target === dialog) close();
+		if (pressedOnBackdrop && e.target === dialog) close();
 	}
 
 	async function copy() {
@@ -136,7 +154,7 @@
 
 <button class="convert-btn" onclick={open} title="Convert to other format">&hellip;</button>
 
-<dialog bind:this={dialog} onclick={backdropClick} onclose={onDialogClose}>
+<dialog bind:this={dialog} onpointerdown={backdropPointerDown} onclick={backdropClick} onclose={onDialogClose}>
 	<div class="dialog-content">
 		<div class="dialog-header">
 			<span>Download <strong>{baseName}</strong></span>

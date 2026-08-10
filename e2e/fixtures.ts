@@ -111,13 +111,41 @@ export function rowFor(page: Page, filename: string): Locator {
 	return page.locator('.row').filter({ has: page.getByRole('link', { name: filename, exact: true }) });
 }
 
-/** Opens a file's convert dialog and returns it. */
+/**
+ * Opens a file's convert dialog and returns it.
+ *
+ * The trigger is retried rather than pressed once. The page is prerendered, so
+ * the button is on screen and clickable before Svelte has hydrated and attached
+ * its handler; an interaction that lands in that window is accepted and silently
+ * dropped, which shows up later as a rare, unreproducible failure somewhere else
+ * entirely.
+ */
 export async function openDialog(page: Page, filename: string): Promise<Locator> {
-	const row = rowFor(page, filename);
-	await row.getByTitle('Convert to other format').click();
+	return openDialogWith(page, filename, (trigger) => trigger.click());
+}
 
+/** Opens a file's convert dialog from the keyboard and returns it. */
+export async function openDialogByKeyboard(page: Page, filename: string): Promise<Locator> {
+	return openDialogWith(page, filename, async (trigger) => {
+		await trigger.focus();
+		await page.keyboard.press('Enter');
+	});
+}
+
+async function openDialogWith(
+	page: Page,
+	filename: string,
+	activate: (trigger: Locator) => Promise<void>,
+): Promise<Locator> {
+	const row = rowFor(page, filename);
+	const trigger = row.getByTitle('Convert to other format');
 	const dialog = row.locator('dialog');
-	await expect(dialog).toBeVisible();
+
+	await expect(async () => {
+		await activate(trigger);
+		await expect(dialog).toBeVisible({ timeout: 1000 });
+	}).toPass({ timeout: 15_000 });
+
 	return dialog;
 }
 

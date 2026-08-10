@@ -1,10 +1,24 @@
 <script lang="ts">
 	import type { FileRefData } from './data.js';
 	import type { SizeIndex } from './size_index/types.js';
+	import { onMount } from 'svelte';
 	import { buildCommand, type Format, type Tool } from './command.js';
 	import { estimateDownloadSize, formatBytes, loadSizeIndex, zoomLevels, type BBox } from './size_index/estimate.js';
 
 	let { file }: { file: FileRefData } = $props();
+
+	/**
+	 * Whether this component has hydrated.
+	 *
+	 * The page is prerendered, so the trigger below is painted — and clickable —
+	 * before Svelte has attached its handler. A click that lands in that window is
+	 * accepted by the browser and quietly dropped, which reads as a dead button.
+	 * Marking it disabled until then makes the state real rather than invisible:
+	 * the browser refuses the click outright, assistive tech announces it, and
+	 * anything waiting on the control (a test, a script) has something to wait for.
+	 */
+	let hydrated = $state(false);
+	onMount(() => (hydrated = true));
 
 	/**
 	 * Radio groups are keyed by `name`, and the page renders one dialog per file,
@@ -179,7 +193,7 @@
 	const formats = ['versatiles', 'pmtiles', 'mbtiles', 'tar'] as const;
 </script>
 
-<button class="convert-btn" onclick={open} title="Convert to other format">&hellip;</button>
+<button class="convert-btn" onclick={open} disabled={!hydrated} title="Convert to other format">&hellip;</button>
 
 <dialog bind:this={dialog} onpointerdown={backdropPointerDown} onclick={backdropClick} onclose={onDialogClose}>
 	<div class="dialog-content">
@@ -330,8 +344,19 @@
 		padding: 0 0.2em;
 		line-height: 1;
 
-		&:hover {
+		&:hover:enabled {
 			color: #fff;
+		}
+
+		/*
+		 * Deliberately looks unchanged while disabled. The gap it covers is the
+		 * hydration window — usually a few hundred milliseconds on every page load
+		 * — and dimming the button for that long would be a flicker on every visit,
+		 * drawing the eye to a control that is about to be fine. The cursor is the
+		 * one honest tell, and it only shows on hover.
+		 */
+		&:disabled {
+			cursor: default;
 		}
 	}
 

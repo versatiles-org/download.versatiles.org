@@ -61,6 +61,20 @@ describe('prerendered markup', () => {
 		expect(dialogs.filter((tag) => /\bopen\b/.test(tag))).toEqual([]);
 	});
 
+	it('ships the convert trigger disabled', () => {
+		const triggers = html.match(/<button[^>]*title="Convert to other format"[^>]*>/g) ?? [];
+
+		expect(triggers.length).toBeGreaterThan(0);
+
+		// The prerendered page paints this button before Svelte has hydrated and
+		// attached its handler, so a click in that window is accepted and dropped.
+		// Only the built HTML shows this state — by the time a browser test looks,
+		// hydration has already re-enabled it.
+		for (const trigger of triggers) {
+			expect(trigger, 'trigger must be disabled until hydration re-enables it').toMatch(/\bdisabled\b/);
+		}
+	});
+
 	it('never shares a radio group between two dialogs', () => {
 		const seen = new Set<string>();
 

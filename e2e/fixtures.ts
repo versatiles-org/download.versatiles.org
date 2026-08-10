@@ -111,15 +111,7 @@ export function rowFor(page: Page, filename: string): Locator {
 	return page.locator('.row').filter({ has: page.getByRole('link', { name: filename, exact: true }) });
 }
 
-/**
- * Opens a file's convert dialog and returns it.
- *
- * The trigger is retried rather than pressed once. The page is prerendered, so
- * the button is on screen and clickable before Svelte has hydrated and attached
- * its handler; an interaction that lands in that window is accepted and silently
- * dropped, which shows up later as a rare, unreproducible failure somewhere else
- * entirely.
- */
+/** Opens a file's convert dialog and returns it. */
 export async function openDialog(page: Page, filename: string): Promise<Locator> {
 	return openDialogWith(page, filename, (trigger) => trigger.click());
 }
@@ -141,10 +133,14 @@ async function openDialogWith(
 	const trigger = row.getByTitle('Convert to other format');
 	const dialog = row.locator('dialog');
 
-	await expect(async () => {
-		await activate(trigger);
-		await expect(dialog).toBeVisible({ timeout: 1000 });
-	}).toPass({ timeout: 15_000 });
+	// The trigger stays disabled until the component hydrates, so this is the
+	// point at which it can actually be operated. Waiting for it beats retrying
+	// the interaction: a retry loop would equally have hidden a trigger that was
+	// broken rather than merely not ready.
+	await expect(trigger).toBeEnabled();
+
+	await activate(trigger);
+	await expect(dialog).toBeVisible();
 
 	return dialog;
 }

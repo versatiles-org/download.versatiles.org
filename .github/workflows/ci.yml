@@ -85,6 +85,13 @@ jobs:
         run: npm ci
         working-directory: worker
 
+      # The root audit above does not reach here: the worker has its own lockfile,
+      # and its dependencies (wrangler and everything under it) are invisible to
+      # it. A high-severity advisory sat in this tree while CI stayed green.
+      - name: Check worker vulnerabilities
+        run: npm audit --audit-level=high
+        working-directory: worker
+
       - name: Check worker
         run: npm run check
         working-directory: worker

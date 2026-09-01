@@ -42,12 +42,12 @@
   "dependencies": {
     "@sveltejs/adapter-static": "^3.0.10",
     "@sveltejs/kit": "^2.70.2",
-    "@versatiles/container": "^1.5.0",
+    "@versatiles/container": "^2.0.0",
     "@versatiles/svelte": "^2.3.1",
     "sass": "^1.102.0",
     "svelte": "^5.56.9",
     "tsx": "^4.23.12",
-    "typescript": "^6.0.3",
+    "typescript": "^7.0.2",
     "vite": "^8.2.1",
     "vitest": "^4.1.10"
   },

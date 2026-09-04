@@ -3,21 +3,33 @@ name: CI
 on:
   push:
     branches:
-      - '**'
-    tags:
-      - '!**' # Don't run twice on commits with tags
+      - main
+  # Branches are covered by `pull_request`, not by `push`. Listing both for every
+  # branch ran the whole workflow — including the 10x-billed macOS job — twice on
+  # each push to a branch with an open PR.
   pull_request:
+  # Kept so CI can be run by hand against a branch that has no PR open yet.
   workflow_dispatch:
+
+# A new push supersedes whatever is still running for the same ref. `main` is
+# exempt: those runs are the record of what landed, so they finish.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 permissions:
   contents: read
 
 env:
   FORCE_COLOR: 1
+  # Referenced by the cache keys below as well as by setup-node: a bump has to
+  # invalidate the cached `node_modules`, or CI restores a tree built against the
+  # old ABI and then skips `npm ci` entirely.
+  NODE_VERSION: 22
 
 jobs:
-  release:
-    name: Lint, test and deploy
+  check:
+    name: Lint and test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -26,14 +38,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Cache Node Modules
         id: cache-node-modules
         uses: actions/cache@v6
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
@@ -45,8 +57,9 @@ jobs:
       - name: Check vulnerabilities
         run: npm audit --audit-level=high
 
-      # Together with the `e2e` job below, the steps from here down are exactly
-      # what `npm run check` runs locally, in the same order.
+      # Together with the `e2e` job below, these cover everything `npm run check`
+      # runs locally, in the same relative order — plus the build, coverage and
+      # audit steps that only make sense in CI.
       - name: Check formatting
         run: npm run format:check
 
@@ -56,13 +69,18 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
-      - name: Tests
-        run: npm run test
-
+      # `prebuild:site` generates the test data if `data/` is absent, which it
+      # always is on a fresh checkout.
+      #
+      # Before the tests, not after: `src/build_output.test.ts` asserts against
+      # the built site and shells out to this same command in `beforeAll` when
+      # `build/` is missing. Building here means that happens once, not twice.
       - name: Build site
-        run: npx tsx src/generate_testdata.ts && npm run build:site
+        run: npm run build:site
 
-      - name: Generate test coverage
+      # `vitest run --coverage`, which is a superset of `npm run test` — running
+      # both meant the whole suite executed twice per job.
+      - name: Tests
         run: npm run test-coverage
 
       - name: Upload test coverage
@@ -78,7 +96,7 @@ jobs:
         uses: actions/cache@v6
         with:
           path: worker/node_modules
-          key: worker-node-modules-${{ runner.os }}-${{ hashFiles('worker/package-lock.json') }}
+          key: worker-node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('worker/package-lock.json') }}
 
       - name: Install worker dependencies
         if: steps.cache-worker-node-modules.outputs.cache-hit != 'true'
@@ -96,7 +114,7 @@ jobs:
         run: npm run check
         working-directory: worker
 
-  # Kept separate from `release` so the lint/typecheck/unit feedback is not held
+  # Kept separate from `check` so the lint/typecheck/unit feedback is not held
   # up by a browser download, and so a UI regression is reported as its own
   # failure rather than as "tests failed".
   e2e:
@@ -112,14 +130,14 @@ jobs:
       - name: Setup Node
         uses: actions/setup-node@v7
         with:
-          node-version: 22
+          node-version: ${{ env.NODE_VERSION }}
 
       - name: Cache Node Modules
         id: cache-node-modules
         uses: actions/cache@v6
         with:
           path: node_modules
-          key: node-modules-${{ runner.os }}-${{ hashFiles('package-lock.json') }}
+          key: node-modules-${{ runner.os }}-${{ env.NODE_VERSION }}-${{ hashFiles('package-lock.json') }}
 
       - name: Install dependencies
         if: steps.cache-node-modules.outputs.cache-hit != 'true'
@@ -140,10 +158,8 @@ jobs:
       - name: Install browsers
         run: npx playwright install chromium firefox webkit
 
-      - name: Generate test data
-        run: npx tsx src/generate_testdata.ts
-
       # Builds the site and serves it; see `webServer` in playwright.config.ts.
+      # That build runs `prebuild:site`, which generates the test data.
       - name: Browser tests
         run: npm run test:e2e
 

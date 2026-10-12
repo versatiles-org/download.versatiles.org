@@ -14,6 +14,10 @@ vi.mock(import('./file/file_group.js'), async (originalImport) => {
 	};
 });
 
+vi.mock('./preflight.js', () => ({
+	preflight: vi.fn(),
+}));
+
 vi.mock('./file/hashes.js', () => ({
 	generateHashes: vi.fn(),
 }));
@@ -28,6 +32,7 @@ vi.mock('./site/site.js', () => ({
 
 // Import the module under test after mocking modules
 const { run } = await import('./run.js');
+const { preflight } = await import('./preflight.js');
 const { getRemoteFiles } = await import('./source/scan.js');
 const { groupFiles } = await import('./file/file_group.js');
 const { generateHashes } = await import('./file/hashes.js');
@@ -76,6 +81,13 @@ describe('run', () => {
 		vi.stubEnv('R2_BUCKET', undefined);
 
 		await expect(run()).rejects.toThrow(/DOMAIN is not set[\s\S]*R2_BUCKET is not set/);
+		expect(getRemoteFiles).not.toHaveBeenCalled();
+	});
+
+	it('should stop before scanning if the preflight fails', async () => {
+		vi.mocked(preflight).mockRejectedValueOnce(new Error('Preflight failed'));
+
+		await expect(run()).rejects.toThrow('Preflight failed');
 		expect(getRemoteFiles).not.toHaveBeenCalled();
 	});
 

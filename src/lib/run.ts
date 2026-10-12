@@ -15,6 +15,7 @@
  * This module is the single entry point for one-shot updates (`run_once.ts`).
  */
 import { loadConfig } from './config.js';
+import { preflight } from './preflight.js';
 import { getRemoteFiles } from './source/scan.js';
 import { collectFiles, groupFiles } from './file/file_group.js';
 import { generateHashes } from './file/hashes.js';
@@ -27,23 +28,28 @@ import { buildAndUploadSite } from './site/site.js';
  *
  * Steps:
  * 1. Read and validate the configuration from the environment.
- * 2. Discover all `.versatiles` files on the Storage Box via SSH.
- * 3. Download or compute MD5/SHA256 sidecars for each file.
- * 4. Group files into `FileGroup`s and derive metadata.
- * 5. Mirror the data files to R2.
- * 6. Build and upload size indices for data files that changed.
- * 7. Build the static site and upload it to R2 (last).
+ * 2. Check that the Storage Box and both rclone remotes are reachable.
+ * 3. Discover all `.versatiles` files on the Storage Box via SSH.
+ * 4. Download or compute MD5/SHA256 sidecars for each file.
+ * 5. Group files into `FileGroup`s and derive metadata.
+ * 6. Mirror the data files to R2.
+ * 7. Build and upload size indices for data files that changed.
+ * 8. Build the static site and upload it to R2 (last).
  *
  * Throws:
- * - If the configuration is incomplete or invalid — before anything else runs.
+ * - If the configuration is incomplete or invalid, or a connection check fails —
+ *   before anything else runs.
  * - If no remote files are found.
  * - If any downstream step fails (hashing, grouping, mirroring, templating, upload).
  */
 export async function run() {
 	// Validate everything up front: a missing R2 setting should not surface only
 	// after the Storage Box has been scanned and hashed.
-	const { domain } = loadConfig();
-	const baseURL = `https://${domain}/`;
+	const config = loadConfig();
+	const baseURL = `https://${config.domain}/`;
+
+	// Likewise for connectivity: check the Storage Box and both rclone remotes now.
+	await preflight(config);
 
 	// Discover all .versatiles files on the Storage Box.
 	const files = getRemoteFiles();

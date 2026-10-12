@@ -2,6 +2,12 @@ name = "download-versatiles-org"
 main = "src/index.ts"
 compatibility_date = "2025-09-01"
 
+# Name the Worker's own TypeScript config. Left to find one by itself, the
+# bundler also parses the tsconfig.json of every parent folder, and the one at
+# the repository root extends a file that only exists after `svelte-kit sync` —
+# which made each deployment warn about a missing "$app/tsconfig".
+tsconfig = "tsconfig.json"
+
 # Routing is configured in the Cloudflare dashboard (Plan B — Cloudflare for SaaS):
 #   - an originless fallback-origin record + a `*/*` Workers route on the
 #     versatiles.cloud zone send all traffic (incl. the SaaS custom hostname

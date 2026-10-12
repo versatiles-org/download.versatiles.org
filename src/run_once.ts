@@ -2,8 +2,9 @@
  * One-shot entry point for the update pipeline.
  *
  * Run manually on the persistent host (`npm run once`) or by the scheduled
- * workflow. A lock file keeps a second run on the same host from starting
- * meanwhile.
+ * workflow.
+ *
+ * `npm run once -- --dry-run` (or `DRY_RUN=1`) only reports what a run would do.
  *
  * Exit status:
  * - `0` — everything is up to date.
@@ -11,28 +12,19 @@
  * - `2` — everything was updated except uploads above `MAX_UPLOAD_GB`, which
  *   still have to be run on a host without that limit.
  */
-import { acquireLock } from './lib/lock.js';
 import { DeferredUploadsError } from './lib/mirror/plan.js';
 import { run } from './lib/run.js';
 
-let status = 0;
+// Without the flag, the DRY_RUN environment variable decides.
+const dryRun = process.argv.includes('--dry-run') ? true : undefined;
 
 try {
-	const release = acquireLock();
-	try {
-		await run();
-	} finally {
-		release();
-	}
+	await run({ dryRun });
 } catch (error) {
 	if (error instanceof DeferredUploadsError) {
 		console.error(error.message);
-		status = 2;
-	} else {
-		console.error('Update failed:', error);
-		status = 1;
+		process.exit(2);
 	}
+	console.error('Update failed:', error);
+	process.exit(1);
 }
-
-// After the lock is released: `process.exit()` does not run pending `finally` blocks.
-if (status !== 0) process.exit(status);

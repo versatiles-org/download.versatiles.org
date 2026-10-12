@@ -58,6 +58,8 @@ export interface Config {
 	 * Larger uploads are deferred to a run without a limit. Undefined: no limit.
 	 */
 	maxUploadBytes?: number;
+	/** Only report what a run would do, without changing anything (`DRY_RUN`). */
+	dryRun: boolean;
 	ssh: SshConfig;
 	rclone: RcloneConfig;
 }
@@ -100,6 +102,16 @@ class Reader {
 			return undefined;
 		}
 		return Math.round(gigabytes * 2 ** 30);
+	}
+
+	/** An optional switch: `1`, `true` or `yes` turn it on; unset, empty, `0`, `false` or `no` leave it off. */
+	flag(name: string): boolean {
+		const value = (this.env[name] ?? '').toLowerCase();
+		if (['1', 'true', 'yes'].includes(value)) return true;
+		if (!['', '0', 'false', 'no'].includes(value)) {
+			this.problems.push(`${name} must be 1 or 0, got "${this.env[name]}"`);
+		}
+		return false;
 	}
 
 	/** Throws if any variable was missing or invalid. */
@@ -167,6 +179,7 @@ export function loadConfig(env: Env = process.env): Config {
 	const config: Config = {
 		domain: reader.required('DOMAIN'),
 		maxUploadBytes: reader.gigabytes('MAX_UPLOAD_GB'),
+		dryRun: reader.flag('DRY_RUN'),
 		ssh: readSsh(reader),
 		rclone: readRclone(reader),
 	};

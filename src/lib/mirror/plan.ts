@@ -153,8 +153,11 @@ export function releaseOf(group: FileGroup): FileRef | null {
 	return release;
 }
 
-/** A short, human-readable account of what a plan will do. */
-export function describePlan(plan: MirrorPlan, copies: StableCopy[] = []): string {
+/**
+ * A short, human-readable account of what a plan will do. `indices` are the
+ * files whose size index will be built, if the caller has worked that out.
+ */
+export function describePlan(plan: MirrorPlan, copies: StableCopy[] = [], indices: FileRef[] = []): string {
 	const lines: string[] = [];
 	let unchanged = 0;
 
@@ -164,6 +167,9 @@ export function describePlan(plan: MirrorPlan, copies: StableCopy[] = []): strin
 		else if (action.type === 'upload') lines.push(` - upload ${label}`);
 		else if (action.published) lines.push(` - defer  ${label} — too large; the version on R2 stays published`);
 		else lines.push(` - defer  ${label} — too large; not on R2 yet, so not published`);
+	}
+	for (const file of indices) {
+		lines.push(` - index  ${file.filename} — build the size index`);
 	}
 	for (const { from, to } of copies) {
 		lines.push(` - copy   ${from.filename} -> ${to.filename} within R2`);

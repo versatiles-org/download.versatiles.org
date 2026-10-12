@@ -33,8 +33,12 @@ const SHA = 'b'.repeat(64);
 const PATH = '/home/osm/osm.versatiles';
 
 /** A scanned data file modified at `mtime`, with sidecars modified at the given times. */
-function scanned(mtime: number | null, sidecars: { md5?: number | null; sha256?: number | null } = {}): ScannedFile {
-	const result: ScannedFile = { file: new FileRef(PATH, 100, PATH), mtime, sidecars: {} };
+function scanned(
+	mtime: number | null,
+	sidecars: { md5?: number | null; sha256?: number | null } = {},
+	path = PATH,
+): ScannedFile {
+	const result: ScannedFile = { file: new FileRef(path, 100, path), mtime, sidecars: {} };
 	if (sidecars.md5 !== undefined) result.sidecars.md5 = { mtime: sidecars.md5 };
 	if (sidecars.sha256 !== undefined) result.sidecars.sha256 = { mtime: sidecars.sha256 };
 	return result;
@@ -164,6 +168,33 @@ describe('generateHashes', () => {
 
 		await expect(generateHashes([scanned(1000)])).rejects.toThrow(/Failed to calculate/);
 		expect(ssh.scpUpload).not.toHaveBeenCalled();
+	});
+
+	it('returns no unhashed files when computing is allowed', async () => {
+		remote();
+
+		expect(await generateHashes([scanned(1000)])).toEqual([]);
+	});
+
+	describe('without computing (dry run)', () => {
+		it('reads existing sidecars but computes and writes nothing', async () => {
+			remote();
+			const complete = scanned(1000, { md5: 2000, sha256: 2000 });
+			const partial = scanned(1000, { md5: 2000 }, '/home/b/partial.versatiles');
+			const stale = scanned(3000, { md5: 2000, sha256: 2000 }, '/home/c/stale.versatiles');
+
+			const unhashed = await generateHashes([complete, partial, stale], { compute: false });
+
+			expect(complete.file.hashes).toEqual({ md5: MD5, sha256: SHA });
+			// Left without hashes rather than with half of them.
+			expect(partial.file.hashes).toBeUndefined();
+			expect(stale.file.hashes).toBeUndefined();
+			expect(unhashed).toEqual([partial.file, stale.file]);
+
+			expect(commands().every((command) => command === 'cat')).toBe(true);
+			expect(ssh.scpUpload).not.toHaveBeenCalled();
+			expect(writeFileSync).not.toHaveBeenCalled();
+		});
 	});
 
 	it('gives reading a sidecar a timeout but not the hash computation', async () => {

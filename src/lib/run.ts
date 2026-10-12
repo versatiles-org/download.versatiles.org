@@ -17,15 +17,35 @@
  *
  * This module is the single entry point for one-shot updates (`run_once.ts`).
  */
-import { loadConfig } from './config.js';
+import { loadConfig, type Config } from './config.js';
+import { acquireLock } from './lock.js';
 import { preflight } from './preflight.js';
 import { getRemoteFiles } from './source/scan.js';
-import { groupFiles } from './file/file_group.js';
+import { groupFiles, type FileGroup } from './file/file_group.js';
+import type { FileRef } from './file/file_ref.js';
 import { generateHashes } from './file/hashes.js';
-import { DeferredUploadsError, deferredFiles, describePlan, planMirror, planStableCopies } from './mirror/plan.js';
+import {
+	DeferredUploadsError,
+	deferredFiles,
+	describePlan,
+	planMirror,
+	planStableCopies,
+	releaseOf,
+	type MirrorPlan,
+} from './mirror/plan.js';
 import { executeMirror } from './mirror/execute.js';
 import { listRemoteDataFiles } from './mirror/rclone.js';
+import { isCurrent } from './size_index/sync.js';
 import { buildAndUploadSite } from './site/site.js';
+
+/** Options for {@link run}. */
+export interface RunOptions {
+	/**
+	 * Report what an update would do and stop: nothing is written to the Storage
+	 * Box, to R2 or to disk. Defaults to the `DRY_RUN` environment variable.
+	 */
+	dryRun?: boolean;
+}
 
 /**
  * Executes the update pipeline.
@@ -41,6 +61,8 @@ import { buildAndUploadSite } from './site/site.js';
  *    index of the latest release, then copy that release to its stable key.
  * 8. Build the static site and upload it to R2 (last).
  *
+ * A dry run stops after step 6 and prints the plan instead.
+ *
  * Throws:
  * - If the configuration is incomplete or invalid, or a connection check fails —
  *   before anything else runs.
@@ -49,10 +71,26 @@ import { buildAndUploadSite } from './site/site.js';
  * - `DeferredUploadsError`, after everything else has been published, if
  *   uploads were skipped because of the size limit.
  */
-export async function run() {
+export async function run(options: RunOptions = {}): Promise<void> {
 	// Validate everything up front: a missing R2 setting should not surface only
 	// after the Storage Box has been scanned and hashed.
 	const config = loadConfig();
+	const dryRun = options.dryRun ?? config.dryRun;
+
+	// A dry run changes nothing, so it needs no lock and may run beside a real one.
+	if (dryRun) return update(config, true);
+
+	// Keep a second run on this host out: it would hash and upload the same files.
+	const release = acquireLock();
+	try {
+		await update(config, false);
+	} finally {
+		release();
+	}
+}
+
+/** The pipeline itself; see {@link run}. */
+async function update(config: Config, dryRun: boolean): Promise<void> {
 	const baseURL = `https://${config.domain}/`;
 
 	// Likewise for connectivity: check the Storage Box and both rclone remotes now.
@@ -64,9 +102,10 @@ export async function run() {
 	// If no remote files are found, throw an error.
 	if (scanned.length === 0) throw Error('no remote files found');
 
-	// Download or compute MD5/SHA256 sidecars for each file.
-	await generateHashes(scanned);
-	const files = scanned.map(({ file }) => file);
+	// Download or compute MD5/SHA256 sidecars for each file. A dry run only reads
+	// the sidecars that exist; files without them cannot be planned yet.
+	const unhashed = await generateHashes(scanned, { compute: !dryRun });
+	const files = scanned.map(({ file }) => file).filter((file) => file.hashes);
 
 	// Decide what to do with each file before transferring anything.
 	const remote = listRemoteDataFiles();
@@ -74,9 +113,23 @@ export async function run() {
 
 	// Group what will be on R2 — not what was scanned: a deferred file is
 	// represented by the version R2 still serves, or not at all.
-	if (plan.published.length === 0) throw Error('none of the remote files can be published');
 	const fileGroups = groupFiles(plan.published);
 	const copies = planStableCopies(fileGroups, remote);
+
+	if (dryRun) {
+		console.log('Dry run — this is what an update would do:');
+		console.log(describePlan(plan, copies, pendingIndices(fileGroups, plan)));
+		for (const file of unhashed) {
+			console.log(
+				` - hash   ${file.filename} (${file.sizeString}) — compute its checksums first; what follows is not known yet`,
+			);
+		}
+		console.log(' - build and upload the site');
+		console.log('Nothing was changed.');
+		return;
+	}
+
+	if (fileGroups.length === 0) throw Error('none of the remote files can be published');
 
 	console.log('Mirroring data files to R2...');
 	console.log(describePlan(plan, copies));
@@ -95,4 +148,18 @@ export async function run() {
 	}
 
 	console.log('Update complete.');
+}
+
+/**
+ * The files whose size index an update would build: the latest release of each
+ * group, if it is about to be uploaded or its index on R2 describes other data.
+ */
+function pendingIndices(groups: FileGroup[], plan: MirrorPlan): FileRef[] {
+	const uploads = new Set(plan.actions.filter((action) => action.type === 'upload').map((action) => action.file.url));
+
+	return groups.flatMap((group) => {
+		const release = releaseOf(group) ?? group.latestFile;
+		if (!release) return [];
+		return uploads.has(release.url) || !isCurrent(release) ? [release] : [];
+	});
 }

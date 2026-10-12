@@ -16,6 +16,7 @@ describe('loadConfig', () => {
 		expect(loadConfig(complete)).toEqual({
 			domain: 'example.org',
 			maxUploadBytes: undefined,
+			dryRun: false,
 			ssh: {
 				storageUrl: 'user@host',
 				storageRoot: '/home',
@@ -84,6 +85,20 @@ describe('MAX_UPLOAD_GB', () => {
 
 	it.each(['0', '-1', 'eighty', '80GB'])('rejects %s', (value) => {
 		expect(() => loadConfig({ ...complete, MAX_UPLOAD_GB: value })).toThrow(/MAX_UPLOAD_GB must be a positive number/);
+	});
+});
+
+describe('DRY_RUN', () => {
+	it.each(['1', 'true', 'TRUE', 'yes'])('is on for %s', (value) => {
+		expect(loadConfig({ ...complete, DRY_RUN: value }).dryRun).toBe(true);
+	});
+
+	it.each(['', '0', 'false', 'no'])('is off for "%s"', (value) => {
+		expect(loadConfig({ ...complete, DRY_RUN: value }).dryRun).toBe(false);
+	});
+
+	it('rejects anything else rather than guessing', () => {
+		expect(() => loadConfig({ ...complete, DRY_RUN: 'maybe' })).toThrow(/DRY_RUN must be 1 or 0/);
 	});
 });
 

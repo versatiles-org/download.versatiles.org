@@ -6,6 +6,8 @@ import type { RemoteObject } from './mirror/rclone.js';
 console.log = vi.fn();
 
 vi.mock('./preflight.js', () => ({ preflight: vi.fn() }));
+vi.mock('./lock.js', () => ({ acquireLock: vi.fn() }));
+vi.mock('./size_index/sync.js', () => ({ isCurrent: vi.fn() }));
 vi.mock('./source/scan.js', () => ({ getRemoteFiles: vi.fn() }));
 vi.mock('./file/hashes.js', () => ({ generateHashes: vi.fn() }));
 vi.mock('./mirror/rclone.js', () => ({ listRemoteDataFiles: vi.fn() }));
@@ -15,6 +17,8 @@ vi.mock('./site/site.js', () => ({ buildAndUploadSite: vi.fn() }));
 // Planning and grouping are not mocked: what the run publishes is the point.
 const { run } = await import('./run.js');
 const { preflight } = await import('./preflight.js');
+const { acquireLock } = await import('./lock.js');
+const { isCurrent } = await import('./size_index/sync.js');
 const { getRemoteFiles } = await import('./source/scan.js');
 const { generateHashes } = await import('./file/hashes.js');
 const { listRemoteDataFiles } = await import('./mirror/rclone.js');
@@ -51,9 +55,15 @@ function executed(): { uploads: string[]; copies: string[] } {
 }
 
 describe('run', () => {
+	const release = vi.fn();
+
 	beforeEach(() => {
 		vi.clearAllMocks();
+		vi.mocked(acquireLock).mockReturnValue(release);
+		vi.mocked(generateHashes).mockResolvedValue([]);
+		vi.mocked(isCurrent).mockReturnValue(true);
 
+		vi.stubEnv('DRY_RUN', undefined);
 		vi.stubEnv('DOMAIN', 'example.com');
 		vi.stubEnv('STORAGE_URL', 'user@host');
 		vi.stubEnv('RCLONE_SFTP_REMOTE', 'hetzner');
@@ -152,6 +162,116 @@ describe('run', () => {
 		await run();
 
 		expect(executed().uploads).toEqual(['/satellite.versatiles']);
+	});
+
+	describe('lock', () => {
+		it('holds the lock from before the scan until the site is published', async () => {
+			given([file('osm.20260608.versatiles', 62 * GB)]);
+
+			await run();
+
+			const at = (mock: unknown) => vi.mocked(mock as () => void).mock.invocationCallOrder[0];
+			expect(at(acquireLock)).toBeLessThan(at(getRemoteFiles));
+			expect(at(buildAndUploadSite)).toBeLessThan(at(release));
+		});
+
+		it('does nothing while another run holds the lock', async () => {
+			vi.mocked(acquireLock).mockImplementation(() => {
+				throw new Error('Another update is already running');
+			});
+
+			await expect(run()).rejects.toThrow('Another update is already running');
+			expect(preflight).not.toHaveBeenCalled();
+			expect(release).not.toHaveBeenCalled();
+		});
+
+		it('releases the lock when the run fails', async () => {
+			given([file('osm.20260608.versatiles', 62 * GB)]);
+			vi.mocked(executeMirror).mockRejectedValueOnce(new Error('rclone failed'));
+
+			await expect(run()).rejects.toThrow('rclone failed');
+			expect(release).toHaveBeenCalled();
+		});
+	});
+
+	describe('dry run', () => {
+		const output = () =>
+			vi
+				.mocked(console.log)
+				.mock.calls.map((call) => String(call[0]))
+				.join('\n');
+
+		it('prints the plan and changes nothing', async () => {
+			const previous = file('osm.20260413.versatiles', 60 * GB);
+			const release = file('osm.20260608.versatiles', 62 * GB);
+			given([previous, release], {
+				'/osm.20260413.versatiles': uploaded(previous),
+				'/osm.versatiles': uploaded(previous),
+			});
+
+			await run({ dryRun: true });
+
+			expect(generateHashes).toHaveBeenCalledWith(expect.anything(), { compute: false });
+			expect(executeMirror).not.toHaveBeenCalled();
+			expect(buildAndUploadSite).not.toHaveBeenCalled();
+			expect(acquireLock).not.toHaveBeenCalled();
+			expect(output()).toContain(
+				[
+					'Dry run — this is what an update would do:',
+					' - upload osm.20260608.versatiles (62.0 GB)',
+					' - index  osm.20260608.versatiles — build the size index',
+					' - copy   osm.20260608.versatiles -> osm.versatiles within R2',
+					' - 1 data file unchanged',
+					' - build and upload the site',
+					'Nothing was changed.',
+				].join('\n'),
+			);
+		});
+
+		it('is switched on by DRY_RUN', async () => {
+			vi.stubEnv('DRY_RUN', '1');
+			given([file('osm.20260608.versatiles', 62 * GB)]);
+
+			await run();
+
+			expect(executeMirror).not.toHaveBeenCalled();
+		});
+
+		it('reports an outdated size index of data that is otherwise up to date', async () => {
+			const satellite = file('satellite.versatiles', 1600 * GB);
+			given([satellite], { '/satellite.versatiles': uploaded(satellite) });
+			vi.mocked(isCurrent).mockReturnValue(false);
+
+			await run({ dryRun: true });
+
+			expect(output()).toContain(' - index  satellite.versatiles — build the size index');
+		});
+
+		it('names files whose checksums would have to be computed first', async () => {
+			const release = file('osm.20260608.versatiles', 62 * GB);
+			const unhashed = new FileRef(
+				'/home/download/elevation.versatiles',
+				400 * GB,
+				'/home/download/elevation.versatiles',
+			);
+			given([release, unhashed]);
+			vi.mocked(generateHashes).mockResolvedValue([unhashed]);
+
+			await run({ dryRun: true });
+
+			expect(output()).toContain(' - upload osm.20260608.versatiles');
+			expect(output()).toContain(' - hash   elevation.versatiles (400.0 GB) — compute its checksums first');
+			// It took no part in the plan.
+			expect(output()).not.toContain('upload elevation.versatiles');
+		});
+
+		it('reports deferred uploads without failing', async () => {
+			vi.stubEnv('MAX_UPLOAD_GB', '80');
+			given([file('elevation.versatiles', 400 * GB)]);
+
+			await expect(run({ dryRun: true })).resolves.toBeUndefined();
+			expect(output()).toContain(' - defer  elevation.versatiles (400.0 GB)');
+		});
 	});
 
 	describe('with MAX_UPLOAD_GB', () => {

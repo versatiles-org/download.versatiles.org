@@ -13,6 +13,7 @@ const { preflight } = await import('./preflight.js');
 
 const config: Config = {
 	domain: 'example.org',
+	dryRun: false,
 	ssh: { storageUrl: 'user@host', storageRoot: '/home/download', key: '/keys/id', port: '23' },
 	rclone: { bin: 'rclone', sftpRemote: 'hetzner', r2Remote: 'r2', bucket: 'downloads', sftpStripPrefix: '/home/' },
 };

@@ -35,7 +35,7 @@ export function indexUrl(fileUrl: string): string {
 }
 
 /** True if the index stored for `file` describes exactly this version of it. */
-function isCurrent(file: FileRef): boolean {
+export function isCurrent(file: FileRef): boolean {
 	return remoteMd5(indexUrl(file.url)) === file.md5;
 }
 

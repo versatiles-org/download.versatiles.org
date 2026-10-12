@@ -30,6 +30,7 @@
 import { basename, join } from 'path';
 import { tmpdir } from 'os';
 import { writeFileSync, unlinkSync } from 'fs';
+import type { FileRef } from './file_ref.js';
 import { sshExec, scpUpload, connectionFailed, type SshResult } from '../source/ssh.js';
 import { HASH_TYPES, type HashType, type ScannedFile } from '../source/scan.js';
 
@@ -69,14 +70,28 @@ function assertReachable(result: SshResult, what: string): void {
 	}
 }
 
+/** Options for {@link generateHashes}. */
+export interface HashOptions {
+	/**
+	 * Compute hashes that cannot be read from a sidecar, and store them as
+	 * sidecars on the Storage Box. Default true. A dry run turns this off: it
+	 * would read whole files for hours and write to the Storage Box.
+	 */
+	compute?: boolean;
+}
+
 /**
  * Populates `file.hashes = { md5, sha256 }` for every scanned file, downloading
  * existing sidecars where possible and computing (then uploading) the rest.
  *
+ * Returns the files that are left without hashes — always none, unless
+ * `compute` is off.
+ *
  * Throws if a hash can neither be downloaded nor computed, or if the Storage
  * Box cannot be reached.
  */
-export async function generateHashes(files: ScannedFile[]) {
+export async function generateHashes(files: ScannedFile[], options: HashOptions = {}): Promise<FileRef[]> {
+	const compute = options.compute ?? true;
 	console.log('Fetching hashes from remote storage...');
 
 	const stats = { downloaded: 0, calculated: 0 };
@@ -105,28 +120,32 @@ export async function generateHashes(files: ScannedFile[]) {
 	);
 
 	// Phase 2: compute missing hashes remotely, one at a time (heavy).
-	await runWithConcurrency(
-		needsCompute.map((t) => async () => {
-			hashes.set(key(t), await computeSidecar(t.scanned.file.remotePath, t.type));
-			stats.calculated++;
-		}),
-		COMPUTE_CONCURRENCY,
-	);
+	if (compute) {
+		await runWithConcurrency(
+			needsCompute.map((t) => async () => {
+				hashes.set(key(t), await computeSidecar(t.scanned.file.remotePath, t.type));
+				stats.calculated++;
+			}),
+			COMPUTE_CONCURRENCY,
+		);
+	}
 
-	console.log(` - ${stats.downloaded} downloaded, ${stats.calculated} calculated`);
+	const pending = compute ? '' : `, ${needsCompute.length} not calculated`;
+	console.log(` - ${stats.downloaded} downloaded, ${stats.calculated} calculated${pending}`);
 
+	const unhashed: FileRef[] = [];
 	for (const { file } of files) {
-		file.hashes = {
-			md5: get(file.remotePath, file.filename, 'md5'),
-			sha256: get(file.remotePath, file.filename, 'sha256'),
-		};
+		const md5 = hashes.get(`${file.remotePath}.md5`);
+		const sha256 = hashes.get(`${file.remotePath}.sha256`);
+		if (md5 && sha256) {
+			file.hashes = { md5, sha256 };
+		} else if (compute) {
+			throw new Error(`Missing ${md5 ? 'sha256' : 'md5'} hash for "${file.filename}"`);
+		} else {
+			unhashed.push(file);
+		}
 	}
-
-	function get(remotePath: string, filename: string, type: HashType): string {
-		const hash = hashes.get(`${remotePath}.${type}`);
-		if (!hash) throw new Error(`Missing ${type} hash for "${filename}"`);
-		return hash;
-	}
+	return unhashed;
 }
 
 /**

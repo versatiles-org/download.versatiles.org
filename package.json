@@ -14,8 +14,8 @@
     "doc-graph": "vrt deps-graph | vrt doc-insert README.md '## Dependency Graph'",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "lint": "eslint src/ e2e/",
-    "lint:fix": "eslint src/ e2e/ --fix",
+    "lint": "svelte-kit sync && eslint src/ e2e/",
+    "lint:fix": "svelte-kit sync && eslint src/ e2e/ --fix",
     "once": "tsx --env-file=.env src/run_once.ts",
     "prebuild:site": "test -f data/fileGroups.json || tsx src/generate_testdata.ts",
     "prepare": "svelte-kit sync",
@@ -29,6 +29,10 @@
     "upgrade": "vrt deps-upgrade && cd worker && ncu -u --peer && npm install && npm audit fix && cd .."
   },
   "type": "module",
+  "imports": {
+    "#lib": "./src/lib",
+    "#lib/*": "./src/lib/*"
+  },
   "author": {
     "name": "Michael Kreil",
     "email": "github@michael-kreil.de",
@@ -36,9 +40,6 @@
   },
   "license": "MIT",
   "private": true,
-  "overrides": {
-    "cookie": "^0.7.0"
-  },
   "dependencies": {
     "@sveltejs/adapter-static": "^4.0.0",
     "@sveltejs/kit": "^3.0.1",

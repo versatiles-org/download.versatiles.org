@@ -1,8 +1,8 @@
 import { describe, it, expect, vi } from 'vitest';
-import type { FileGroupData } from '$lib/data.js';
+import type { FileGroupData } from '#lib/data.js';
 
 const { data } = vi.hoisted(() => ({ data: { loadFileGroups: vi.fn() } }));
-vi.mock('$lib/data.js', () => data);
+vi.mock('#lib/data.js', () => data);
 
 // Not named `+server.test.ts`: SvelteKit reserves `+`-prefixed files in route
 // directories and refuses to build when it finds one it does not recognise.

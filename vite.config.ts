@@ -1,8 +1,26 @@
+import adapter from '@sveltejs/adapter-static';
 import { sveltekit } from '@sveltejs/kit/vite';
 import { defineConfig } from 'vitest/config';
 
 export default defineConfig({
-	plugins: [sveltekit()],
+	plugins: [
+		sveltekit({
+			adapter: adapter({
+				pages: 'build',
+				assets: 'build',
+				fallback: undefined,
+				precompress: false,
+				strict: true,
+			}),
+			prerender: {
+				entries: ['*'],
+				// Data files (.versatiles, .md5, .tsv, …) are served straight from R2 and
+				// have no SvelteKit route; their <a> tags use rel="external" so the
+				// prerender crawler skips them. Don't fail the build if one slips through.
+				handleHttpError: () => {},
+			},
+		}),
+	],
 	build: {
 		/*
 		 * Pinned rather than left to Vite's default.

@@ -1,5 +1,5 @@
-import { loadFileGroups } from '$lib/data.js';
-import { buildRssFeed } from '$lib/feed.js';
+import { loadFileGroups } from '#lib/data.js';
+import { buildRssFeed } from '#lib/feed.js';
 import type { EntryGenerator, RequestHandler } from './$types.js';
 
 export const prerender = true;

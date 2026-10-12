@@ -21,6 +21,13 @@ export default defineConfig({
 	fullyParallel: true,
 	forbidOnly: !!process.env.CI,
 	retries: process.env.CI ? 2 : 0,
+	/*
+	 * Playwright uses half the logical cores by default. On the 3-core macOS
+	 * runner that rounds down to a single worker, so all 340 tests ran one after
+	 * the other: 5.2 minutes for what takes half a minute on a laptop. The tests
+	 * are independent (`fullyParallel`), so use every core there.
+	 */
+	workers: process.env.CI ? '100%' : undefined,
 	// `open: 'never'` so a failing CI run uploads the report instead of trying to
 	// serve it and hanging the job.
 	reporter: process.env.CI ? [['html', { open: 'never' }], ['github']] : [['list']],

@@ -72,6 +72,9 @@ jobs:
       # of hours that is a log of several hundred thousand lines.
       RCLONE_STATS: 60s
       RCLONE_STATS_ONE_LINE: 'true'
+      # Both remotes are configured through RCLONE_CONFIG_* variables. Without
+      # this, every rclone call notes that it found no rclone.conf.
+      RCLONE_CONFIG: /dev/null
     steps:
       # Without its settings this job reports why it did nothing instead of
       # failing on the 20th of every month until the environment is set up.

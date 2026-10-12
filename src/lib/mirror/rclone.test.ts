@@ -6,7 +6,7 @@ const cp = { spawnSync: vi.fn() };
 vi.mock('child_process', () => cp);
 
 const { FileRef } = await import('../file/file_ref.js');
-const { mirrorToR2, uploadObject, uploadDir } = await import('./rclone.js');
+const { mirrorToR2, uploadObject, uploadDir, listRemoteDataFiles } = await import('./rclone.js');
 
 /** Builds a remote data FileRef with a given destination url and md5. */
 function dataFile(remotePath: string, url: string, md5: string): InstanceType<typeof FileRef> {
@@ -92,6 +92,46 @@ describe('mirrorToR2', () => {
 	it('throws when required configuration is missing', () => {
 		delete process.env['R2_BUCKET'];
 		expect(() => mirrorToR2([dataFile('/home/osm/osm.versatiles', '/osm.versatiles', 'abc')])).toThrow(/R2_BUCKET/);
+	});
+});
+
+describe('listRemoteDataFiles', () => {
+	it('lists the data files of the bucket in one call, keyed by url', () => {
+		cp.spawnSync.mockReturnValue({
+			status: 0,
+			stdout: JSON.stringify([
+				{ Path: 'osm.versatiles', Size: 100, Metadata: { md5: 'abc', sha256: 'def', mtime: 'x' } },
+				{ Path: 'satellite.versatiles', Size: 200, Metadata: { 'content-type': 'application/octet-stream' } },
+				{ Path: 'elevation.versatiles', Size: 300 },
+			]),
+		});
+
+		expect(listRemoteDataFiles()).toEqual(
+			new Map([
+				['/osm.versatiles', { size: 100, md5: 'abc', sha256: 'def' }],
+				['/satellite.versatiles', { size: 200, md5: null, sha256: null }],
+				['/elevation.versatiles', { size: 300, md5: null, sha256: null }],
+			]),
+		);
+		expect(cp.spawnSync).toHaveBeenCalledTimes(1);
+		expect(cp.spawnSync.mock.calls[0][1]).toEqual([
+			'lsjson',
+			'--files-only',
+			'--metadata',
+			'--include',
+			'*.versatiles',
+			'r2:downloads',
+		]);
+	});
+
+	it('returns an empty map for an empty bucket', () => {
+		cp.spawnSync.mockReturnValue({ status: 0, stdout: '[]' });
+		expect(listRemoteDataFiles().size).toBe(0);
+	});
+
+	it('throws when the bucket cannot be listed, rather than reporting it empty', () => {
+		cp.spawnSync.mockReturnValue({ status: 1, stdout: '', stderr: 'NOTICE: x\n401 Unauthorized' });
+		expect(() => listRemoteDataFiles()).toThrow(/failed to list the bucket \(exit 1\): 401 Unauthorized/);
 	});
 });
 

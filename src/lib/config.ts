@@ -53,6 +53,11 @@ export interface RcloneConfig {
 export interface Config {
 	/** Public domain used to build absolute URLs. */
 	domain: string;
+	/**
+	 * Largest data file, in bytes, that this run may upload from the Storage Box.
+	 * Larger uploads are deferred to a run without a limit. Undefined: no limit.
+	 */
+	maxUploadBytes?: number;
 	ssh: SshConfig;
 	rclone: RcloneConfig;
 }
@@ -83,6 +88,18 @@ class Reader {
 			this.problems.push(`${name} must be a port number, got "${value}"`);
 		}
 		return value;
+	}
+
+	/** An optional size given in GB (2^30 bytes, as sizes are displayed), returned in bytes. */
+	gigabytes(name: string): number | undefined {
+		const value = this.env[name];
+		if (!value) return undefined;
+		const gigabytes = Number(value);
+		if (!Number.isFinite(gigabytes) || gigabytes <= 0) {
+			this.problems.push(`${name} must be a positive number of GB, got "${value}"`);
+			return undefined;
+		}
+		return Math.round(gigabytes * 2 ** 30);
 	}
 
 	/** Throws if any variable was missing or invalid. */
@@ -149,6 +166,7 @@ export function loadConfig(env: Env = process.env): Config {
 	const reader = new Reader(env);
 	const config: Config = {
 		domain: reader.required('DOMAIN'),
+		maxUploadBytes: reader.gigabytes('MAX_UPLOAD_GB'),
 		ssh: readSsh(reader),
 		rclone: readRclone(reader),
 	};

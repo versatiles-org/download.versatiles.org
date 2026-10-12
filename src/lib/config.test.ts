@@ -15,6 +15,7 @@ describe('loadConfig', () => {
 	it('applies the defaults for everything optional', () => {
 		expect(loadConfig(complete)).toEqual({
 			domain: 'example.org',
+			maxUploadBytes: undefined,
 			ssh: {
 				storageUrl: 'user@host',
 				storageRoot: '/home',
@@ -68,6 +69,21 @@ describe('loadConfig', () => {
 
 	it.each(['0', '65536', '23a', '2.5'])('rejects SSH_PORT=%s', (port) => {
 		expect(() => loadConfig({ ...complete, SSH_PORT: port })).toThrow(/SSH_PORT must be a port number/);
+	});
+});
+
+describe('MAX_UPLOAD_GB', () => {
+	it('is converted to bytes', () => {
+		expect(loadConfig({ ...complete, MAX_UPLOAD_GB: '80' }).maxUploadBytes).toBe(80 * 2 ** 30);
+		expect(loadConfig({ ...complete, MAX_UPLOAD_GB: '0.5' }).maxUploadBytes).toBe(2 ** 29);
+	});
+
+	it('means no limit when empty', () => {
+		expect(loadConfig({ ...complete, MAX_UPLOAD_GB: '' }).maxUploadBytes).toBeUndefined();
+	});
+
+	it.each(['0', '-1', 'eighty', '80GB'])('rejects %s', (value) => {
+		expect(() => loadConfig({ ...complete, MAX_UPLOAD_GB: value })).toThrow(/MAX_UPLOAD_GB must be a positive number/);
 	});
 });
 

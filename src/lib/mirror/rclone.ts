@@ -135,6 +135,51 @@ export function remoteMd5(key: string): string | null {
 	}
 }
 
+/** What is known about an object on R2. */
+export interface RemoteObject {
+	/** Size in bytes. */
+	size: number;
+	/** The `md5` recorded in the object's metadata when it was uploaded, if any. */
+	md5: string | null;
+	/** The `sha256` recorded in the object's metadata when it was uploaded, if any. */
+	sha256: string | null;
+}
+
+/**
+ * Lists the `.versatiles` data files in the bucket with their size and the
+ * checksums recorded in their metadata, keyed by url (`/osm.versatiles`).
+ *
+ * One listing for the whole bucket, rather than one request per file, so that
+ * "not on R2" is a fact read from a complete answer. Asking per file cannot
+ * tell a missing object from a failed request — and the planner drops a
+ * dataset from the site when it believes the former.
+ *
+ * Throws if the bucket cannot be listed.
+ */
+export function listRemoteDataFiles(): Map<string, RemoteObject> {
+	const cfg = config();
+	const result = runRclone([
+		'lsjson',
+		'--files-only',
+		'--metadata',
+		'--include',
+		'*.versatiles',
+		`${cfg.r2Remote}:${cfg.bucket}`,
+	]);
+	if (result.status !== 0) {
+		const reason = result.stderr.trim().split('\n').pop();
+		throw new Error(`rclone failed to list the bucket (exit ${result.status})${reason ? `: ${reason}` : ''}`);
+	}
+
+	const entries = JSON.parse(result.stdout) as { Path: string; Size: number; Metadata?: Record<string, string> }[];
+	return new Map(
+		entries.map((entry) => [
+			`/${entry.Path}`,
+			{ size: entry.Size, md5: entry.Metadata?.md5 ?? null, sha256: entry.Metadata?.sha256 ?? null },
+		]),
+	);
+}
+
 /** Result of a mirror run. */
 export interface MirrorStats {
 	/** Number of files transferred. */

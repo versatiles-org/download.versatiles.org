@@ -12,6 +12,11 @@
  * was overwritten without refreshing the sidecar) and recomputed, so a changed
  * file is never mirrored with an outdated hash.
  *
+ * Only an answer from the Storage Box counts: "no such sidecar" leads to a
+ * recompute, but a failed connection aborts the run. Otherwise a network blip
+ * would start hashing — and then overwrite the sidecar of — a file of up to
+ * 1.7 TB.
+ *
  * Downloads are cheap and run with limited parallelism; remote computation is
  * heavy (reads the whole multi-GB file) and runs strictly one at a time.
  *
@@ -22,7 +27,7 @@ import { basename, join } from 'path';
 import { tmpdir } from 'os';
 import { writeFileSync, unlinkSync } from 'fs';
 import { FileRef } from './file_ref.js';
-import { sshExec, scpUpload } from '../source/ssh.js';
+import { sshExec, scpUpload, connectionFailed, type SshResult } from '../source/ssh.js';
 
 /** Maximum number of concurrent sidecar downloads (lightweight). */
 const DOWNLOAD_CONCURRENCY = 8;
@@ -31,6 +36,31 @@ const DOWNLOAD_CONCURRENCY = 8;
 const COMPUTE_CONCURRENCY = 1;
 
 type HashType = 'md5' | 'sha256';
+
+/** Shape of a valid hash, by type. */
+const HASH_PATTERN: Record<HashType, RegExp> = {
+	md5: /^[0-9a-f]{32}$/,
+	sha256: /^[0-9a-f]{64}$/,
+};
+
+/** Time allowed for a small remote command (`cat` / `ls` of a sidecar). */
+const QUICK_TIMEOUT = 60000;
+
+/**
+ * Returns the hash at the start of `<type>sum` output or a sidecar
+ * (`<hash>  <filename>`), or null if it does not look like one.
+ */
+function parseHash(output: string, type: HashType): string | null {
+	const hash = output.split(/\s/)[0].toLowerCase();
+	return HASH_PATTERN[type].test(hash) ? hash : null;
+}
+
+/** Throws if ssh could not reach the Storage Box, so the failure is never read as an answer. */
+function assertReachable(result: SshResult, what: string): void {
+	if (connectionFailed(result)) {
+		throw new Error(`Could not reach the Storage Box while ${what}: ${result.stderr || 'no error output'}`);
+	}
+}
 
 interface HashTask {
 	file: FileRef;
@@ -41,7 +71,8 @@ interface HashTask {
  * Populates `file.hashes = { md5, sha256 }` for every file, downloading existing
  * sidecars where possible and computing (then uploading) the rest.
  *
- * Throws if a hash can neither be downloaded nor computed.
+ * Throws if a hash can neither be downloaded nor computed, or if the Storage
+ * Box cannot be reached.
  */
 export async function generateHashes(files: FileRef[]) {
 	console.log('Fetching hashes from remote storage...');
@@ -100,13 +131,20 @@ export async function generateHashes(files: FileRef[]) {
  * Reads an existing `.<type>` sidecar and returns its hash — but only if the
  * sidecar is present, well-formed, and **not older than the data file**. Returns
  * null (→ recompute) if it is missing, malformed, or stale.
+ *
+ * Throws if the Storage Box could not be reached.
  */
 async function downloadSidecar(remotePath: string, type: HashType): Promise<string | null> {
 	const sidecar = `${remotePath}.${type}`;
-	const result = await sshExec(['cat', sidecar]);
-	if (!result.success || result.stdout.length === 0) return null;
-	const hash = result.stdout.split(/\s/)[0];
-	if (!hash || hash.length < 32) return null;
+	const result = await sshExec(['cat', sidecar], { timeout: QUICK_TIMEOUT });
+	assertReachable(result, `reading ${basename(sidecar)}`);
+	if (!result.success) return null;
+
+	const hash = parseHash(result.stdout, type);
+	if (!hash) {
+		if (result.stdout.length > 0) console.log(` - Sidecar ${basename(sidecar)} is malformed; recomputing.`);
+		return null;
+	}
 
 	if (await sidecarIsStale(remotePath, sidecar)) {
 		console.log(` - Sidecar ${basename(sidecar)} is older than its data file; recomputing.`);
@@ -122,7 +160,8 @@ async function downloadSidecar(remotePath: string, type: HashType): Promise<stri
  * needless full recompute of every file.
  */
 async function sidecarIsStale(dataPath: string, sidecarPath: string): Promise<boolean> {
-	const ls = await sshExec(['ls', '-l', '--time-style=+%s', dataPath, sidecarPath]);
+	const ls = await sshExec(['ls', '-l', '--time-style=+%s', dataPath, sidecarPath], { timeout: QUICK_TIMEOUT });
+	assertReachable(ls, `checking the age of ${basename(sidecarPath)}`);
 	if (!ls.success) return false;
 	const dataMtime = mtimeFromLs(ls.stdout, dataPath);
 	const sideMtime = mtimeFromLs(ls.stdout, sidecarPath);
@@ -144,9 +183,13 @@ function mtimeFromLs(output: string, path: string): number | null {
 /** Computes a hash remotely, uploads the sidecar back, and returns the hash. */
 async function computeSidecar(remotePath: string, type: HashType): Promise<string> {
 	console.log(` - Calculating ${type} for ${basename(remotePath)} on remote...`);
+	// No timeout: this reads the whole file and can run for hours.
 	const result = await sshExec([`${type}sum`, remotePath]);
-	const hash = result.success ? result.stdout.split(/\s/)[0] : '';
-	if (!hash || hash.length < 32) throw new Error(`Failed to calculate ${type} for ${remotePath}`);
+	assertReachable(result, `calculating ${type} for ${basename(remotePath)}`);
+	const hash = result.success ? parseHash(result.stdout, type) : null;
+	if (!hash) {
+		throw new Error(`Failed to calculate ${type} for ${remotePath}${result.stderr ? `: ${result.stderr}` : ''}`);
+	}
 
 	// Persist the sidecar back to the Storage Box for future runs.
 	const tmpFile = join(tmpdir(), `hash-${basename(remotePath)}.${type}`);

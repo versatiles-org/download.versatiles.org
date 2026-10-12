@@ -18,6 +18,9 @@ describe('buildSSHArgs', () => {
 		const args = buildSSHArgs(['ls', '-lR', '/home']);
 		expect(args.slice(0, 5)).toEqual(['user@host', '-p', '23', '-i', resolve('.ssh/storage')]);
 		expect(args).toContain('-oBatchMode=yes');
+		expect(args).toContain('-oIdentitiesOnly=yes');
+		expect(args).toContain('-oConnectTimeout=15');
+		expect(args).toContain('-oServerAliveInterval=30');
 		expect(args.slice(-3)).toEqual(['ls', '-lR', '/home']);
 	});
 

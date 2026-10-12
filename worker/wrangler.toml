@@ -9,6 +9,13 @@ compatibility_date = "2025-09-01"
 # See worker/README.md. (No `routes`/`custom_domain` here: download.versatiles.org
 # is NOT a zone in this account, so it can't be a Worker custom domain.)
 
+# Serve the bucket on the public hostnames only. Without routes in this file,
+# wrangler would otherwise also publish the Worker at
+# <name>.<subdomain>.workers.dev (and at per-version preview URLs) on every
+# deploy — a second, unmonitored address for the same data.
+workers_dev = false
+preview_urls = false
+
 # R2 bucket holding the data files, sidecars and generated site assets.
 # `bucket_name` must match the bucket the updater mirrors into (R2_BUCKET).
 # `jurisdiction = "eu"` is required because the bucket is EU-jurisdiction —

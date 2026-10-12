@@ -11,30 +11,58 @@ interface StubObject {
 	contentType?: string;
 	/** Set to emulate R2 resolving a Range request. */
 	range?: { offset?: number; length?: number } | { suffix: number };
-	/** Set to emulate a conditional request matching (R2 returns no body). */
+	/** Set to emulate a condition of the request not being met (R2 returns no body). */
 	notModified?: boolean;
+	/** Entity tag without quotes; defaults to `etag-<key>`. */
+	etag?: string;
+	/** Upload time; defaults to 2026-01-01. */
+	uploaded?: Date;
+	/** Replaces the object after this many reads, to emulate an upload in between. */
+	replacedAfter?: { reads: number; by: StubObject };
 }
 
-function stubEnv(objects: Record<string, StubObject>): Env {
-	function build(key: string, withBody: boolean) {
-		const stub = objects[key];
+/** The options of every `get` issued against a stub bucket. */
+type GetOptions = { range?: Headers; onlyIf?: Headers | { etagMatches?: string } } | undefined;
+
+function stubEnv(objects: Record<string, StubObject>, gets: GetOptions[] = []): Env {
+	const reads: Record<string, number> = {};
+
+	function current(key: string): StubObject | undefined {
+		let stub = objects[key];
+		if (stub?.replacedAfter && (reads[key] ?? 0) >= stub.replacedAfter.reads) stub = stub.replacedAfter.by;
+		return stub;
+	}
+
+	function build(key: string, options?: GetOptions, withBody = false) {
+		const stub = current(key);
+		reads[key] = (reads[key] ?? 0) + 1;
 		if (!stub) return null;
 		const body = stub.body ?? '';
+		const etag = stub.etag ?? `etag-${key}`;
 
 		const object: Record<string, unknown> = {
 			size: body.length,
-			httpEtag: `"etag-${key}"`,
+			etag,
+			httpEtag: `"${etag}"`,
+			uploaded: stub.uploaded ?? new Date('2026-01-01T00:00:00Z'),
 			writeHttpMetadata: (headers: Headers) => headers.set('content-type', stub.contentType ?? 'text/plain'),
 		};
-		if (stub.range) object.range = stub.range;
-		if (withBody && !stub.notModified) object.body = body;
+		// R2 only resolves a range it was asked for.
+		if (stub.range && options?.range) object.range = stub.range;
+
+		const onlyIf = options?.onlyIf;
+		const pinFailed = onlyIf !== undefined && !(onlyIf instanceof Headers) && 'etagMatches' in onlyIf && onlyIf.etagMatches !== etag;
+		if (withBody && !stub.notModified && !pinFailed) object.body = body;
 		return object;
 	}
 
 	return {
 		BUCKET: {
-			head: async (key: string) => build(key, false),
-			get: async (key: string) => build(key, true),
+			head: async (key: string) => build(key),
+			get: async (key: string, options?: GetOptions) => {
+				gets.push(options);
+				return build(key, options, true);
+			},
 		},
 	} as unknown as Env;
 }
@@ -122,6 +150,147 @@ describe('GET', () => {
 		});
 
 		expect(response.status).toBe(304);
+	});
+});
+
+describe('malformed URLs', () => {
+	it.each(['/%E0', '/%', '/osm%ZZ.versatiles'])('answers %s with 400 instead of failing', async (path) => {
+		const response = await fetchWorker(`https://d.example${path}`, INDEX);
+
+		expect(response.status).toBe(400);
+		expect(response.headers.get('access-control-allow-origin')).toBe('*');
+	});
+});
+
+describe('preconditions', () => {
+	const unmet = { 'f.versatiles': { body: 'data', notModified: true } };
+
+	/** Status of a GET whose condition R2 reports as not met. */
+	async function statusFor(headers: Record<string, string>, objects: Record<string, StubObject> = unmet) {
+		return (await fetchWorker('https://d.example/f.versatiles', objects, { headers })).status;
+	}
+
+	it('answers a failed If-Match with 412', async () => {
+		expect(await statusFor({ 'if-match': '"some-other-version"' })).toBe(412);
+	});
+
+	it('answers a failed If-Match list with 412', async () => {
+		expect(await statusFor({ 'if-match': '"a", "b"' })).toBe(412);
+	});
+
+	it('answers a failed If-Unmodified-Since with 412', async () => {
+		// The object was uploaded on 2026-01-01, after the date the client allows.
+		expect(await statusFor({ 'if-unmodified-since': 'Mon, 01 Dec 2025 00:00:00 GMT' })).toBe(412);
+	});
+
+	it('keeps 304 for If-None-Match and If-Modified-Since', async () => {
+		expect(await statusFor({ 'if-none-match': '"etag-f.versatiles"' })).toBe(304);
+		expect(await statusFor({ 'if-modified-since': 'Thu, 01 Jan 2026 00:00:00 GMT' })).toBe(304);
+	});
+
+	it('answers 304 when If-Match holds and it was If-None-Match that matched', async () => {
+		expect(await statusFor({ 'if-match': '"etag-f.versatiles"', 'if-none-match': '"etag-f.versatiles"' })).toBe(304);
+		expect(await statusFor({ 'if-match': '*', 'if-none-match': '"etag-f.versatiles"' })).toBe(304);
+	});
+
+	it('carries CORS and the current etag on a 412', async () => {
+		const response = await fetchWorker('https://d.example/f.versatiles', unmet, {
+			headers: { 'if-match': '"some-other-version"' },
+		});
+
+		expect(response.headers.get('access-control-allow-origin')).toBe('*');
+		expect(response.headers.get('etag')).toBe('"etag-f.versatiles"');
+	});
+});
+
+describe('If-Range', () => {
+	const FILE = { body: '0123456789', range: { offset: 4 } };
+
+	/** Resumes a download of `f.versatiles` at byte 4 with the given validator. */
+	function resume(ifRange: string, object: StubObject = FILE, gets: GetOptions[] = []) {
+		const request = new Request('https://d.example/f.versatiles', { headers: { range: 'bytes=4-', 'if-range': ifRange } });
+		return worker.fetch(request, stubEnv({ 'f.versatiles': object }, gets));
+	}
+
+	it('continues the download when the entity tag still matches', async () => {
+		const gets: GetOptions[] = [];
+		const response = await resume('"etag-f.versatiles"', FILE, gets);
+
+		expect(response.status).toBe(206);
+		expect(response.headers.get('content-range')).toBe('bytes 4-9/10');
+		// The read is pinned to the version that was checked.
+		expect(gets).toHaveLength(1);
+		expect(gets[0]?.onlyIf).toEqual({ etagMatches: 'etag-f.versatiles' });
+	});
+
+	it('sends the whole new object when the dataset was replaced', async () => {
+		const gets: GetOptions[] = [];
+		const response = await resume('"etag-of-the-previous-release"', FILE, gets);
+
+		expect(response.status).toBe(200);
+		expect(response.headers.get('content-range')).toBeNull();
+		expect(response.headers.get('content-length')).toBe('10');
+		expect(await response.text()).toBe('0123456789');
+		expect(gets[0]?.range).toBeUndefined();
+	});
+
+	it('never continues on a weak entity tag', async () => {
+		expect((await resume('W/"etag-f.versatiles"')).status).toBe(200);
+	});
+
+	it('continues when the object is not newer than the given date', async () => {
+		expect((await resume('Thu, 01 Jan 2026 00:00:00 GMT')).status).toBe(206);
+		expect((await resume('Fri, 02 Jan 2026 00:00:00 GMT')).status).toBe(206);
+	});
+
+	it('sends the whole object when it is newer than the given date', async () => {
+		expect((await resume('Wed, 31 Dec 2025 00:00:00 GMT')).status).toBe(200);
+	});
+
+	it('ignores sub-second differences, which HTTP dates cannot express', async () => {
+		const object = { ...FILE, uploaded: new Date('2026-01-01T00:00:00.700Z') };
+
+		expect((await resume('Thu, 01 Jan 2026 00:00:00 GMT', object)).status).toBe(206);
+	});
+
+	it('sends the whole object for a validator it cannot read', async () => {
+		expect((await resume('yesterday-ish')).status).toBe(200);
+	});
+
+	it('sends the whole new object when it is replaced between the check and the read', async () => {
+		const replacement = { body: 'NEW RELEASE', etag: 'etag-new', range: { offset: 4 } };
+		const gets: GetOptions[] = [];
+		const response = await resume('"etag-f.versatiles"', { ...FILE, replacedAfter: { reads: 1, by: replacement } }, gets);
+
+		expect(response.status).toBe(200);
+		expect(await response.text()).toBe('NEW RELEASE');
+		expect(response.headers.get('etag')).toBe('"etag-new"');
+		expect(response.headers.get('content-range')).toBeNull();
+		expect(gets).toHaveLength(2);
+	});
+
+	it('is ignored without a Range header', async () => {
+		const gets: GetOptions[] = [];
+		const request = new Request('https://d.example/f.versatiles', { headers: { 'if-range': '"anything"' } });
+		const response = await worker.fetch(request, stubEnv({ 'f.versatiles': { body: '0123456789' } }, gets));
+
+		expect(response.status).toBe(200);
+		expect(gets[0]?.onlyIf).toBeInstanceOf(Headers);
+	});
+
+	it('answers 404 for a missing key', async () => {
+		const request = new Request('https://d.example/nope.versatiles', { headers: { range: 'bytes=4-', 'if-range': '"x"' } });
+
+		expect((await worker.fetch(request, stubEnv({}))).status).toBe(404);
+	});
+});
+
+describe('CORS', () => {
+	it('allows the headers a resuming, validating client sends', async () => {
+		const response = await fetchWorker('https://d.example/', INDEX, { method: 'OPTIONS' });
+		const allowed = response.headers.get('access-control-allow-headers')?.split(', ');
+
+		expect(allowed).toEqual(expect.arrayContaining(['range', 'if-range', 'if-match', 'if-none-match']));
 	});
 });
 

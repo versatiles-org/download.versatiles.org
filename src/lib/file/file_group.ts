@@ -1,4 +1,4 @@
-import { basename } from 'path';
+import { datasetOf, slugOf } from './datasets.js';
 import { FileRef } from './file_ref.js';
 import { FileResponse } from './file_response.js';
 
@@ -134,10 +134,11 @@ export class FileGroup {
 /**
  * Groups a flat list of `FileRef`s into logical `FileGroup`s.
  *
- * - The group `slug` is derived from `basename(file.filename)` without extension.
- * - Known slugs get predefined titles, descriptions, ordering, `local` and
- *   `tileType`.
- * - Unknown slugs are logged to stderr and still added with placeholder values.
+ * - The group `slug` is the file name up to its first dot.
+ * - Title, description, ordering, `local` and `tileType` of each group come from
+ *   the dataset table in `./datasets.ts`.
+ * - A file of a dataset that is not in that table is an error: it must not be
+ *   published under a placeholder title.
  *
  * Within each group:
  * - Files are sorted by `filename` descending (newest first).
@@ -152,84 +153,14 @@ export class FileGroup {
 export function groupFiles(files: FileRef[]): FileGroup[] {
 	const groupMap = new Map<string, FileGroup>();
 	files.forEach((file) => {
-		const slug = basename(file.filename).replace(/\..*/, '');
+		const slug = slugOf(file.filename);
 		let group = groupMap.get(slug);
 
 		if (!group) {
-			let title = '???',
-				desc: string[] = [],
-				order = 10000,
-				local = false,
-				tileType: 'raster' | 'vector' = 'vector';
-			switch (slug) {
-				case 'osm':
-					title = 'OpenStreetMap';
-					desc = [
-						'Full planet tileset with zoom levels 0-14 in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a>.',
-						'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a>, available under <a href="https://opendatacommons.org/licenses/odbl/">ODbL</a>',
-					];
-					order = 0;
-					local = true;
-					break;
-				case 'osm-landcover':
-					title = 'OpenStreetMap + Landcover (Beta)';
-					desc = [
-						'Combined tileset of <a href="https://www.openstreetmap.org/">OpenStreetMap</a> in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a> and global landcover classification based on <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, merged into a single file.',
-						'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a>, © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a>',
-					];
-					order = 5;
-					local = true;
-					break;
-				case 'satellite':
-					title = 'Satellite Imagery (Alpha)';
-					desc = [
-						'Global satellite imagery composited from <a href="https://versatiles.org/sources/">open data sources</a>.',
-					];
-					order = 10;
-					local = true;
-					tileType = 'raster';
-					break;
-				case 'elevation':
-					title = 'Elevation Data (Beta)';
-					desc = [
-						'Global elevation data encoded as raster tiles.',
-						'© <a href="https://mapterhorn.com/attribution">Mapterhorn</a>',
-					];
-					order = 20;
-					local = true;
-					tileType = 'raster';
-					break;
-				case 'landcover-vectors':
-					title = 'Landcover (Beta)';
-					desc = [
-						'Global landcover classification based on <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>.',
-						'© <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021), available under <a href="http://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
-					];
-					order = 30;
-					local = true;
-					break;
-				case 'hillshade-vectors':
-					title = 'Hillshading (Alpha)';
-					desc = [
-						'Hillshade contours based on <a href="https://github.com/tilezen/joerd">Mapzen Terrain Tiles</a>.',
-						'© <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Mapzen Terrain Tiles, DEM Sources</a>',
-					];
-					order = 40;
-					local = true;
-					break;
-				case 'bathymetry-vectors':
-					title = 'Bathymetry (Alpha)';
-					desc = [
-						'Ocean depth contours derived from the <a href="https://www.gebco.net/data_and_products/historical_data_sets/#gebco_2021">GEBCO 2021 Grid</a>, processed with <a href="https://www.naturalearthdata.com/">Natural Earth</a> by <a href="https://opendem.info">OpenDEM</a>.',
-					];
-					order = 50;
-					local = true;
-					break;
-				default:
-					console.error(`Unknown group "${slug}"`);
-			}
+			const dataset = datasetOf(slug);
+			if (!dataset) throw new Error(`"${file.filename}" belongs to no known dataset ("${slug}")`);
 
-			group = new FileGroup({ slug, title, desc, order, local, tileType });
+			group = new FileGroup({ slug, ...dataset });
 			groupMap.set(slug, group);
 		}
 

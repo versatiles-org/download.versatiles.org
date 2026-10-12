@@ -1,4 +1,4 @@
-import { describe, it, expect, vi } from 'vitest';
+import { describe, it, expect } from 'vitest';
 import { hex2base64, groupFiles, collectFiles, FileGroup } from './file_group.js';
 import { FileRef } from './file_ref.js';
 
@@ -140,17 +140,10 @@ describe('groupFiles', () => {
 		expect(groups[0].latestFile!.url).toBe('/osm.versatiles');
 	});
 
-	it('handles unknown groups with a warning', () => {
-		const consoleSpy = vi.spyOn(console, 'error').mockImplementation(() => {});
-
-		const groups = groupFiles([createMockFileRef('unknown-dataset.20240101.versatiles', 1000)]);
-
-		expect(groups.length).toBe(1);
-		expect(groups[0].slug).toBe('unknown-dataset');
-		expect(groups[0].title).toBe('???');
-		expect(consoleSpy).toHaveBeenCalledWith('Unknown group "unknown-dataset"');
-
-		consoleSpy.mockRestore();
+	it('refuses a file of an unknown dataset instead of publishing a placeholder', () => {
+		expect(() => groupFiles([createMockFileRef('unknown-dataset.20240101.versatiles', 1000)])).toThrow(
+			'"unknown-dataset.20240101.versatiles" belongs to no known dataset ("unknown-dataset")',
+		);
 	});
 });
 

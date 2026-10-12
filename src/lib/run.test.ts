@@ -97,6 +97,14 @@ describe('run', () => {
 		await expect(run()).rejects.toThrow('no remote files found');
 	});
 
+	it('stops before hashing when a file belongs to no known dataset', async () => {
+		given([file('osm.20260608.versatiles', 62 * GB), file('test.versatiles', GB)]);
+
+		await expect(run()).rejects.toThrow(/belongs to no known dataset:\n - test\.versatiles\n/);
+		expect(generateHashes).not.toHaveBeenCalled();
+		expect(buildAndUploadSite).not.toHaveBeenCalled();
+	});
+
 	it('mirrors a new release with a copy to its stable key, then publishes the site', async () => {
 		const previous = file('osm.20260413.versatiles', 60 * GB);
 		const release = file('osm.20260608.versatiles', 62 * GB);

@@ -21,6 +21,7 @@ import { loadConfig, type Config } from './config.js';
 import { acquireLock } from './lock.js';
 import { preflight } from './preflight.js';
 import { getRemoteFiles } from './source/scan.js';
+import { assertKnownDatasets } from './file/datasets.js';
 import { groupFiles, type FileGroup } from './file/file_group.js';
 import type { FileRef } from './file/file_ref.js';
 import { generateHashes } from './file/hashes.js';
@@ -66,7 +67,8 @@ export interface RunOptions {
  * Throws:
  * - If the configuration is incomplete or invalid, or a connection check fails —
  *   before anything else runs.
- * - If no remote files are found, or none of them can be published.
+ * - If no remote files are found, one of them belongs to no known dataset, or
+ *   none of them can be published.
  * - If any downstream step fails (hashing, mirroring, grouping, templating, upload).
  * - `DeferredUploadsError`, after everything else has been published, if
  *   uploads were skipped because of the size limit.
@@ -101,6 +103,10 @@ async function update(config: Config, dryRun: boolean): Promise<void> {
 
 	// If no remote files are found, throw an error.
 	if (scanned.length === 0) throw Error('no remote files found');
+
+	// Stop at a file of no known dataset now, before hours of hashing are spent
+	// on something that must not be published.
+	assertKnownDatasets(scanned.map(({ file }) => file.filename));
 
 	// Download or compute MD5/SHA256 sidecars for each file. A dry run only reads
 	// the sidecars that exist; files without them cannot be planned yet.

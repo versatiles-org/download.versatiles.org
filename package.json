@@ -26,7 +26,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json && tsc --noEmit",
-    "upgrade": "ncu -u && npm install && cd worker && ncu -u && npm install && cd .."
+    "upgrade": "vrt deps-upgrade && cd worker && ncu -u --peer && npm install && npm audit fix && cd .."
   },
   "type": "module",
   "author": {
@@ -40,27 +40,27 @@
     "cookie": "^0.7.0"
   },
   "dependencies": {
-    "@sveltejs/adapter-static": "^3.0.10",
-    "@sveltejs/kit": "^2.70.3",
-    "@versatiles/container": "^2.0.0",
-    "@versatiles/svelte": "^2.3.1",
-    "sass": "^1.104.0",
-    "svelte": "^5.57.0",
-    "tsx": "^4.23.13",
+    "@sveltejs/adapter-static": "^4.0.0",
+    "@sveltejs/kit": "^3.0.1",
+    "@versatiles/container": "^2.0.2",
+    "@versatiles/svelte": "^3.0.0",
+    "sass": "^1.105.1",
+    "svelte": "^5.57.2",
+    "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "vite": "^8.2.2",
-    "vitest": "^5.0.0"
+    "vite": "^8.3.4",
+    "vitest": "^5.0.3"
   },
   "devDependencies": {
-    "@playwright/test": "1.62.1",
-    "@types/node": "^26.4.1",
-    "@typescript-eslint/eslint-plugin": "^8.69.0",
-    "@typescript-eslint/parser": "^8.69.0",
-    "@versatiles/release-tool": "^2.9.1",
-    "@vitest/coverage-v8": "^5.0.0",
-    "eslint": "^10.9.1",
-    "npm-check-updates": "^23.1.0",
-    "prettier": "^3.9.6",
+    "@playwright/test": "1.64.0",
+    "@types/node": "^26.6.5",
+    "@typescript-eslint/eslint-plugin": "^8.71.1",
+    "@typescript-eslint/parser": "^8.71.1",
+    "@versatiles/release-tool": "^2.20.0",
+    "@vitest/coverage-v8": "^5.0.3",
+    "eslint": "^10.12.0",
+    "npm-check-updates": "^23.1.1",
+    "prettier": "^3.9.10",
     "prettier-plugin-svelte": "^4.1.1",
     "svelte-check": "^4.7.6"
   }

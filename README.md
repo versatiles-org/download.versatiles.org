@@ -28,6 +28,8 @@ domains lack.
 
 The updater runs **once a month as a GitHub workflow**, and on a server for the uploads
 that are too large for that — see [Running the updater](#running-the-updater).
+The [runbook](docs/runbook.md) covers day-to-day operation: a failed run, a new release, a
+new dataset, replacing credentials.
 
 ## Architecture
 
@@ -205,6 +207,7 @@ npm run setup          # installs rclone and creates the two remotes from .env
 npm run once
 ```
 
+The [runbook](docs/runbook.md#uploading-a-large-file-from-a-server) has the full procedure.
 A lock file (`data/.lock`) keeps two runs on the same host apart. It does not reach across
 machines: do not start a server run while the workflow is running, or the other way round.
 

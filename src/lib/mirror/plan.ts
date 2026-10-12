@@ -127,10 +127,8 @@ export function planStableCopies(groups: FileGroup[], remote: Map<string, Remote
 
 	for (const group of groups) {
 		const latest = group.latestFile;
-		// `groupFiles()` clones the newest dated file into `latestFile` and leaves
-		// the original at the head of `olderFiles`.
-		const release = group.olderFiles[0];
-		if (!latest || !release || release.url === latest.url || release.md5 !== latest.md5) continue;
+		const release = releaseOf(group);
+		if (!latest || !release) continue;
 
 		const object = remote.get(latest.url);
 		if (object && object.md5 === latest.md5 && object.size === latest.size) continue;
@@ -139,6 +137,20 @@ export function planStableCopies(groups: FileGroup[], remote: Map<string, Remote
 	}
 
 	return copies;
+}
+
+/**
+ * The dated release a group's stable key is a copy of, or null if the group's
+ * latest file is not published under a second key.
+ *
+ * `groupFiles()` clones the newest dated file into `latestFile` (with the date
+ * removed from its url) and leaves the original at the head of `olderFiles`.
+ */
+export function releaseOf(group: FileGroup): FileRef | null {
+	const latest = group.latestFile;
+	const release = group.olderFiles[0];
+	if (!latest || !release || release.url === latest.url || release.md5 !== latest.md5) return null;
+	return release;
 }
 
 /** A short, human-readable account of what a plan will do. */

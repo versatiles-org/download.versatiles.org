@@ -8,12 +8,8 @@ console.log = vi.fn();
 vi.mock('./preflight.js', () => ({ preflight: vi.fn() }));
 vi.mock('./source/scan.js', () => ({ getRemoteFiles: vi.fn() }));
 vi.mock('./file/hashes.js', () => ({ generateHashes: vi.fn() }));
-vi.mock('./mirror/rclone.js', () => ({
-	listRemoteDataFiles: vi.fn(),
-	uploadDataFile: vi.fn(),
-	copyDataFile: vi.fn(),
-}));
-vi.mock('./size_index/sync.js', () => ({ syncSizeIndices: vi.fn() }));
+vi.mock('./mirror/rclone.js', () => ({ listRemoteDataFiles: vi.fn() }));
+vi.mock('./mirror/execute.js', () => ({ executeMirror: vi.fn() }));
 vi.mock('./site/site.js', () => ({ buildAndUploadSite: vi.fn() }));
 
 // Planning and grouping are not mocked: what the run publishes is the point.
@@ -21,8 +17,8 @@ const { run } = await import('./run.js');
 const { preflight } = await import('./preflight.js');
 const { getRemoteFiles } = await import('./source/scan.js');
 const { generateHashes } = await import('./file/hashes.js');
-const { listRemoteDataFiles, uploadDataFile, copyDataFile } = await import('./mirror/rclone.js');
-const { syncSizeIndices } = await import('./size_index/sync.js');
+const { listRemoteDataFiles } = await import('./mirror/rclone.js');
+const { executeMirror } = await import('./mirror/execute.js');
 const { buildAndUploadSite } = await import('./site/site.js');
 
 const GB = 2 ** 30;
@@ -45,7 +41,14 @@ function given(files: FileRef[], remote: Record<string, RemoteObject> = {}): voi
 /** The file groups the site was built from. */
 const publishedGroups = () => vi.mocked(buildAndUploadSite).mock.calls[0][0];
 
-const order = (mock: unknown) => vi.mocked(mock as () => void).mock.invocationCallOrder[0];
+/** The urls of the uploads and copies the mirror was asked to execute. */
+function executed(): { uploads: string[]; copies: string[] } {
+	const [, plan, copies] = vi.mocked(executeMirror).mock.calls[0];
+	return {
+		uploads: plan.actions.filter((action) => action.type === 'upload').map((action) => action.file.url),
+		copies: copies.map((copy) => `${copy.from.url} -> ${copy.to.url}`),
+	};
+}
 
 describe('run', () => {
 	beforeEach(() => {
@@ -84,7 +87,7 @@ describe('run', () => {
 		await expect(run()).rejects.toThrow('no remote files found');
 	});
 
-	it('uploads a new release, copies it to the stable key and publishes the site', async () => {
+	it('mirrors a new release with a copy to its stable key, then publishes the site', async () => {
 		const previous = file('osm.20260413.versatiles', 60 * GB);
 		const release = file('osm.20260608.versatiles', 62 * GB);
 		given([previous, release], {
@@ -95,23 +98,22 @@ describe('run', () => {
 		await run();
 
 		expect(generateHashes).toHaveBeenCalled();
-		// Only the new release crosses the network…
-		expect(vi.mocked(uploadDataFile).mock.calls).toEqual([[release]]);
-		// …and its stable key is made from it inside R2.
-		expect(copyDataFile).toHaveBeenCalledTimes(1);
-		const [from, to] = vi.mocked(copyDataFile).mock.calls[0];
-		expect(from).toBe(release);
-		expect(to.url).toBe('/osm.versatiles');
-		expect(to.md5).toBe(release.md5);
+		// Only the new release crosses the network; its stable key is made inside R2.
+		expect(executed()).toEqual({
+			uploads: ['/osm.20260608.versatiles'],
+			copies: ['/osm.20260608.versatiles -> /osm.versatiles'],
+		});
 
 		const groups = publishedGroups();
 		expect(groups).toHaveLength(1);
 		expect(groups[0].latestFile?.md5).toBe(release.md5);
-		expect(syncSizeIndices).toHaveBeenCalledWith(groups, 'https://example.com/');
+		// The mirror and the site work from the same groups and base URL.
+		expect(vi.mocked(executeMirror).mock.calls[0][0]).toBe(groups);
+		expect(vi.mocked(executeMirror).mock.calls[0][3]).toBe('https://example.com/');
 		expect(buildAndUploadSite).toHaveBeenCalledWith(groups, 'https://example.com/');
 	});
 
-	it('transfers nothing when R2 is up to date', async () => {
+	it('plans no transfer when R2 is up to date', async () => {
 		const release = file('osm.20260608.versatiles', 62 * GB);
 		const satellite = file('satellite.versatiles', 1600 * GB);
 		given([release, satellite], {
@@ -122,8 +124,7 @@ describe('run', () => {
 
 		await run();
 
-		expect(uploadDataFile).not.toHaveBeenCalled();
-		expect(copyDataFile).not.toHaveBeenCalled();
+		expect(executed()).toEqual({ uploads: [], copies: [] });
 		expect(buildAndUploadSite).toHaveBeenCalled();
 	});
 
@@ -132,28 +133,25 @@ describe('run', () => {
 
 		await run();
 
-		expect(order(uploadDataFile)).toBeLessThan(order(copyDataFile));
-		expect(order(copyDataFile)).toBeLessThan(order(syncSizeIndices));
-		expect(order(syncSizeIndices)).toBeLessThan(order(buildAndUploadSite));
+		expect(vi.mocked(executeMirror).mock.invocationCallOrder[0]).toBeLessThan(
+			vi.mocked(buildAndUploadSite).mock.invocationCallOrder[0],
+		);
 	});
 
-	it('stops before publishing the site when an upload fails', async () => {
+	it('stops before publishing the site when the mirror fails', async () => {
 		given([file('osm.20260608.versatiles', 62 * GB)]);
-		vi.mocked(uploadDataFile).mockImplementationOnce(() => {
-			throw new Error('rclone failed');
-		});
+		vi.mocked(executeMirror).mockRejectedValueOnce(new Error('rclone failed'));
 
 		await expect(run()).rejects.toThrow('rclone failed');
 		expect(buildAndUploadSite).not.toHaveBeenCalled();
 	});
 
 	it('uploads files of any size when there is no limit', async () => {
-		const satellite = file('satellite.versatiles', 1600 * GB);
-		given([satellite]);
+		given([file('satellite.versatiles', 1600 * GB)]);
 
 		await run();
 
-		expect(uploadDataFile).toHaveBeenCalledWith(satellite);
+		expect(executed().uploads).toEqual(['/satellite.versatiles']);
 	});
 
 	describe('with MAX_UPLOAD_GB', () => {
@@ -180,10 +178,11 @@ describe('run', () => {
 				].join('\n'),
 			);
 
-			// The small upload happened, and the site was published before failing.
-			expect(vi.mocked(uploadDataFile).mock.calls).toEqual([[release]]);
-			expect(copyDataFile).toHaveBeenCalledTimes(1);
-			expect(syncSizeIndices).toHaveBeenCalled();
+			// The small upload was executed, and the site was published before failing.
+			expect(executed()).toEqual({
+				uploads: [release.url],
+				copies: ['/osm.20260608.versatiles -> /osm.versatiles'],
+			});
 			expect(buildAndUploadSite).toHaveBeenCalled();
 		});
 
@@ -200,7 +199,7 @@ describe('run', () => {
 			expect(groups.map((group) => group.slug)).toEqual(['satellite']);
 			expect(groups[0].latestFile?.size).toBe(1600 * GB);
 			expect(groups[0].latestFile?.md5).toBe('md5-old');
-			expect(uploadDataFile).not.toHaveBeenCalled();
+			expect(executed().uploads).toEqual([]);
 		});
 
 		it('fails without publishing an empty site when nothing can be published', async () => {

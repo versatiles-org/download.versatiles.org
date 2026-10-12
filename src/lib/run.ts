@@ -4,10 +4,10 @@
  * The `run()` function:
  * - discovers all `.versatiles` files on the Storage Box via SSH
  * - downloads or computes MD5/SHA256 sidecars for each file
- * - plans the mirror against what is on R2, then uploads what changed
+ * - plans the mirror against what is on R2
  * - groups the published files into logical `FileGroup`s with metadata
- * - copies each latest release to its stable key within R2
- * - refreshes the `*.index.json` size indices for changed data files
+ * - per dataset, uploads what changed, refreshes the `*.index.json` size index
+ *   and copies the latest release to its stable key within R2
  * - builds the static site (HTML, RSS, sidecars, url lists) and uploads it to R2
  *
  * Atomic publish: the data files are mirrored **before** the site is uploaded,
@@ -23,8 +23,8 @@ import { getRemoteFiles } from './source/scan.js';
 import { groupFiles } from './file/file_group.js';
 import { generateHashes } from './file/hashes.js';
 import { DeferredUploadsError, deferredFiles, describePlan, planMirror, planStableCopies } from './mirror/plan.js';
-import { copyDataFile, listRemoteDataFiles, uploadDataFile } from './mirror/rclone.js';
-import { syncSizeIndices } from './size_index/sync.js';
+import { executeMirror } from './mirror/execute.js';
+import { listRemoteDataFiles } from './mirror/rclone.js';
 import { buildAndUploadSite } from './site/site.js';
 
 /**
@@ -36,11 +36,10 @@ import { buildAndUploadSite } from './site/site.js';
  * 3. Discover all `.versatiles` files on the Storage Box via SSH.
  * 4. Download or compute MD5/SHA256 sidecars for each file.
  * 5. Plan the mirror: what to upload, what is unchanged, what is deferred.
- * 6. Upload the changed data files to R2.
- * 7. Group the published files into `FileGroup`s and derive metadata.
- * 8. Copy each latest release to its stable key within R2.
- * 9. Build and upload size indices for data files that changed.
- * 10. Build the static site and upload it to R2 (last).
+ * 6. Group the published files into `FileGroup`s and derive metadata.
+ * 7. Per dataset: upload the changed files with their checksums, build the size
+ *    index of the latest release, then copy that release to its stable key.
+ * 8. Build the static site and upload it to R2 (last).
  *
  * Throws:
  * - If the configuration is incomplete or invalid, or a connection check fails —
@@ -83,14 +82,8 @@ export async function run() {
 	console.log(describePlan(plan, copies));
 
 	// Mirror the data files to R2 *before* publishing the site (atomic publish).
-	for (const action of plan.actions) {
-		if (action.type === 'upload') uploadDataFile(action.file);
-	}
-	for (const copy of copies) copyDataFile(copy.from, copy.to);
-
-	// Refresh the size indices used for download estimates. Reads the containers
-	// back over HTTP, so it must run after the mirror; only rebuilds what changed.
-	await syncSizeIndices(fileGroups, baseURL);
+	// Dataset by dataset: uploads, checksums, size index, then the stable key.
+	await executeMirror(fileGroups, plan, copies, baseURL);
 
 	// Build the static site (index.html, RSS, sidecars, url lists) and upload last.
 	buildAndUploadSite(fileGroups, baseURL);

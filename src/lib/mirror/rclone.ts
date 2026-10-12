@@ -98,6 +98,22 @@ export function uploadObject(
 }
 
 /**
+ * Copies an object to another key within R2, keeping its content type and
+ * metadata. `fromUrl` / `toUrl` are object paths, with or without a leading slash.
+ *
+ * Throws if the copy fails.
+ */
+export function copyObject(fromUrl: string, toUrl: string): void {
+	const cfg = config();
+	const fromKey = fromUrl.replace(/^\//, '');
+	const toKey = toUrl.replace(/^\//, '');
+	const result = runRclone(['copyto', '--metadata', r2Dest(cfg, fromKey), r2Dest(cfg, toKey)]);
+	if (result.status !== 0) {
+		throw new Error(`rclone failed to copy ${fromKey} to ${toKey} (exit ${result.status})`);
+	}
+}
+
+/**
  * Uploads a local directory tree to the R2 bucket (optionally under `destPrefix`),
  * transferring only changed files. Used to publish the built static site
  * (`build/` → bucket root: index.html, feeds, `_app/…` assets).

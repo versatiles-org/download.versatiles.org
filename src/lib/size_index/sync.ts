@@ -10,111 +10,79 @@
  * Building an index takes roughly 20 minutes per planet-sized container, so an
  * index is only rebuilt when the data it describes has changed. Change detection
  * uses the **md5 recorded in the index object's metadata**, not the mere presence
- * of the object: `groupFiles()` publishes each dataset under a stable, undated
- * key as well (`/osm.versatiles`, `/satellite.versatiles`), and those keys are
- * overwritten in place on every release. A presence check would therefore pin a
- * stale index onto exactly the URLs the site links to.
+ * of the object: each dataset is also published under a stable, undated key
+ * (`/osm.versatiles`, `/satellite.versatiles`), and those keys are overwritten in
+ * place on every release. A presence check would therefore pin a stale index
+ * onto exactly the URLs the site links to.
+ *
+ * A release that is published under a dated and a stable key has its index
+ * built once, for the dated key, and copied to the stable one within R2.
  *
  * Only the *latest* file of each group is indexed — older versions are shown in a
- * collapsed list and do not need an estimate.
+ * collapsed list and do not need an estimate. Which file that is, and when its
+ * index is made, is decided in `../mirror/execute.ts`.
  */
-import { FileGroup } from '../file/file_group.js';
-import { FileRef } from '../file/file_ref.js';
-import { remoteMd5, uploadObject } from '../mirror/rclone.js';
+import type { FileRef } from '../file/file_ref.js';
+import { copyObject, remoteMd5, uploadObject } from '../mirror/rclone.js';
 import { buildSizeIndex } from './build.js';
 
 /** Suffix appended to a data file's key to get its size index key. */
 const INDEX_SUFFIX = '.index.json';
-
-/** Result of a sync run. */
-export interface SizeIndexStats {
-	/** Number of indices built and uploaded. */
-	built: number;
-	/** Number of indices already current on R2 (skipped). */
-	skipped: number;
-}
 
 /** The size index key belonging to a data file url. */
 export function indexUrl(fileUrl: string): string {
 	return `${fileUrl}${INDEX_SUFFIX}`;
 }
 
-/**
- * Builds and uploads a size index for the latest file of every group whose index
- * is missing or out of date.
- *
- * `baseURL` is the public base the indices are read through — the builder streams
- * the container over HTTP range requests, so the data files must already be
- * mirrored to R2 before this runs.
- *
- * Throws if an index cannot be built or uploaded.
- */
-export async function syncSizeIndices(fileGroups: FileGroup[], baseURL: string): Promise<SizeIndexStats> {
-	const stats: SizeIndexStats = { built: 0, skipped: 0 };
-
-	console.log('Syncing size indices...');
-
-	for (const [file, urls] of latestFilesByContent(fileGroups)) {
-		const upToDate = urls.filter((url) => remoteMd5(indexUrl(url)) === file.md5);
-		const stale = urls.filter((url) => !upToDate.includes(url));
-
-		stats.skipped += upToDate.length;
-		if (stale.length === 0) continue;
-
-		// The same bytes are published under both a dated and a stable key, so
-		// build once and upload the result to every key that needs it.
-		const source = new URL(file.url, baseURL).href;
-		console.log(` - Building index for ${file.filename} (${file.sizeString})`);
-
-		let lastReported = 0;
-		const index = await buildSizeIndex(source, (completed, total) => {
-			const percent = Math.floor((completed / total) * 100);
-			if (percent >= lastReported + 10 || completed === total) {
-				lastReported = percent;
-				console.log(`   ${completed}/${total} blocks (${percent}%)`);
-			}
-		});
-
-		const content = JSON.stringify(index);
-		for (const url of stale) {
-			console.log(` - Uploading ${indexUrl(url)} (${(content.length / 2 ** 20).toFixed(1)} MB)`);
-			uploadObject(indexUrl(url), content, 'application/json', { md5: file.md5 });
-			stats.built++;
-		}
-	}
-
-	console.log(` - ${stats.built} built, ${stats.skipped} unchanged`);
-	return stats;
+/** True if the index stored for `file` describes exactly this version of it. */
+function isCurrent(file: FileRef): boolean {
+	return remoteMd5(indexUrl(file.url)) === file.md5;
 }
 
 /**
- * Groups the latest file of every group by content (md5), mapping each distinct
- * file to all the urls it is published under.
+ * Builds and uploads the size index of `file` unless the one on R2 is current.
+ * Returns true if an index was built.
  *
- * `groupFiles()` clones the newest file into `latestFile` with the date stripped
- * from its url, so one dataset is published under both `/osm.20260105.versatiles`
- * and `/osm.versatiles` — identical bytes, two keys. Building the index once per
- * url would double an already expensive step.
+ * `baseURL` is the public base the index is read through — the builder streams
+ * the container over HTTP range requests, so the data file must already be on
+ * R2 under `file.url` before this runs.
+ *
+ * Throws if the index cannot be built or uploaded.
  */
-function latestFilesByContent(fileGroups: FileGroup[]): Map<FileRef, string[]> {
-	const byMd5 = new Map<string, { file: FileRef; urls: Set<string> }>();
+export async function ensureSizeIndex(file: FileRef, baseURL: string): Promise<boolean> {
+	if (isCurrent(file)) return false;
 
-	for (const group of fileGroups) {
-		const latest = group.latestFile;
-		if (!latest) continue;
+	const source = new URL(file.url, baseURL).href;
+	console.log(` - Building size index for ${file.filename} (${file.sizeString})`);
 
-		let entry = byMd5.get(latest.md5);
-		if (!entry) {
-			entry = { file: latest, urls: new Set() };
-			byMd5.set(latest.md5, entry);
+	let lastReported = 0;
+	const index = await buildSizeIndex(source, (completed, total) => {
+		const percent = Math.floor((completed / total) * 100);
+		if (percent >= lastReported + 10 || completed === total) {
+			lastReported = percent;
+			console.log(`   ${completed}/${total} blocks (${percent}%)`);
 		}
-		entry.urls.add(latest.url);
+	});
 
-		// The dated original the stable url was cloned from, when it still exists.
-		for (const older of group.olderFiles) {
-			if (older.hashes && older.md5 === latest.md5) entry.urls.add(older.url);
-		}
-	}
+	const content = JSON.stringify(index);
+	console.log(` - Uploading ${indexUrl(file.url)} (${(content.length / 2 ** 20).toFixed(1)} MB)`);
+	uploadObject(indexUrl(file.url), content, 'application/json', { md5: file.md5 });
+	return true;
+}
 
-	return new Map(Array.from(byMd5.values(), ({ file, urls }) => [file, Array.from(urls)]));
+/**
+ * Gives `to` the size index of `from` — the same bytes under another key — by
+ * copying the index object within R2, unless `to` already has a current one.
+ * Returns true if the index was copied.
+ *
+ * The index of `from` must exist (see {@link ensureSizeIndex}). The copy keeps
+ * the md5 metadata, which is correct for `to` because both keys hold the same
+ * data.
+ */
+export function copySizeIndex(from: FileRef, to: FileRef): boolean {
+	if (isCurrent(to)) return false;
+
+	console.log(` - Copying ${indexUrl(from.url)} -> ${indexUrl(to.url)} within R2`);
+	copyObject(indexUrl(from.url), indexUrl(to.url));
+	return true;
 }

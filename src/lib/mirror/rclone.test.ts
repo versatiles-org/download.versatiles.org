@@ -6,8 +6,16 @@ const cp = { spawnSync: vi.fn() };
 vi.mock('child_process', () => cp);
 
 const { FileRef } = await import('../file/file_ref.js');
-const { uploadDataFile, copyDataFile, remoteObject, remoteMd5, uploadObject, uploadDir, listRemoteDataFiles } =
-	await import('./rclone.js');
+const {
+	uploadDataFile,
+	copyDataFile,
+	copyObject,
+	remoteObject,
+	remoteMd5,
+	uploadObject,
+	uploadDir,
+	listRemoteDataFiles,
+} = await import('./rclone.js');
 
 /** Builds a remote data FileRef with a given destination url and md5. */
 function dataFile(remotePath: string, url: string, md5: string): InstanceType<typeof FileRef> {
@@ -191,6 +199,26 @@ describe('uploadObject', () => {
 	it('throws when the upload fails', () => {
 		cp.spawnSync.mockReturnValue({ status: 1, stderr: 'boom' });
 		expect(() => uploadObject('/index.html', 'x', 'text/html')).toThrow(/rclone failed to upload index.html/);
+	});
+});
+
+describe('copyObject', () => {
+	it('copies between two keys of the bucket, keeping the metadata', () => {
+		cp.spawnSync.mockReturnValue({ status: 0, stdout: '' });
+
+		copyObject('/osm.20260105.versatiles.index.json', '/osm.versatiles.index.json');
+
+		expect(cp.spawnSync.mock.calls[0][1]).toEqual([
+			'copyto',
+			'--metadata',
+			'r2:downloads/osm.20260105.versatiles.index.json',
+			'r2:downloads/osm.versatiles.index.json',
+		]);
+	});
+
+	it('throws when the copy fails', () => {
+		cp.spawnSync.mockReturnValue({ status: 1, stdout: '' });
+		expect(() => copyObject('/a.json', '/b.json')).toThrow(/rclone failed to copy a.json to b.json/);
 	});
 });
 

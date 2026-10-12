@@ -3,7 +3,7 @@ import { describe, it, expect, beforeEach, vi } from 'vitest';
 console.log = vi.fn();
 
 const { rclone, builder } = vi.hoisted(() => ({
-	rclone: { remoteMd5: vi.fn(), uploadObject: vi.fn() },
+	rclone: { remoteMd5: vi.fn(), uploadObject: vi.fn(), copyObject: vi.fn() },
 	builder: {
 		// Typed parameters so `mock.calls[i][j]` is indexable in assertions below.
 		buildSizeIndex: vi.fn(async (_source: string, _onProgress?: (completed: number, total: number) => void) => ({
@@ -14,9 +14,8 @@ const { rclone, builder } = vi.hoisted(() => ({
 vi.mock('../mirror/rclone.js', () => rclone);
 vi.mock('./build.js', () => builder);
 
-const { FileGroup } = await import('../file/file_group.js');
 const { FileRef } = await import('../file/file_ref.js');
-const { syncSizeIndices, indexUrl } = await import('./sync.js');
+const { ensureSizeIndex, copySizeIndex, indexUrl } = await import('./sync.js');
 
 const BASE = 'https://download.versatiles.org/';
 
@@ -29,112 +28,85 @@ function file(url: string, md5: string): InstanceType<typeof FileRef> {
 	return ref;
 }
 
-/** Builds a group with the given latest file and optional older versions. */
-function group(
-	slug: string,
-	latestFile: InstanceType<typeof FileRef>,
-	olderFiles: InstanceType<typeof FileRef>[] = [],
-): InstanceType<typeof FileGroup> {
-	return new FileGroup({ slug, title: slug, desc: [], order: 0, latestFile, olderFiles });
-}
-
-/** Keys passed to uploadObject, in call order. */
-function uploadedKeys(): string[] {
-	return rclone.uploadObject.mock.calls.map((c) => c[0] as string);
-}
-
-describe('syncSizeIndices', () => {
+describe('ensureSizeIndex', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 		rclone.remoteMd5.mockReturnValue(null);
 	});
 
 	it('builds and uploads an index with the source md5 as metadata', async () => {
-		const stats = await syncSizeIndices([group('osm', file('/osm.versatiles', 'abc'))], BASE);
+		const built = await ensureSizeIndex(file('/osm.20260105.versatiles', 'abc'), BASE);
 
+		expect(built).toBe(true);
 		expect(builder.buildSizeIndex).toHaveBeenCalledTimes(1);
-		expect(builder.buildSizeIndex.mock.calls[0][0]).toBe('https://download.versatiles.org/osm.versatiles');
+		expect(builder.buildSizeIndex.mock.calls[0][0]).toBe('https://download.versatiles.org/osm.20260105.versatiles');
 
 		expect(rclone.uploadObject).toHaveBeenCalledTimes(1);
 		const [url, content, contentType, metadata] = rclone.uploadObject.mock.calls[0];
-		expect(url).toBe('/osm.versatiles.index.json');
+		expect(url).toBe('/osm.20260105.versatiles.index.json');
 		expect(JSON.parse(content as string)).toEqual({ levels: { '0': 42 } });
 		expect(contentType).toBe('application/json');
 		expect(metadata).toEqual({ md5: 'abc' });
-
-		expect(stats).toEqual({ built: 1, skipped: 0 });
 	});
 
 	it('skips when the stored md5 already matches', async () => {
 		rclone.remoteMd5.mockReturnValue('abc');
 
-		const stats = await syncSizeIndices([group('osm', file('/osm.versatiles', 'abc'))], BASE);
+		const built = await ensureSizeIndex(file('/osm.versatiles', 'abc'), BASE);
 
+		expect(built).toBe(false);
+		expect(rclone.remoteMd5).toHaveBeenCalledWith('/osm.versatiles.index.json');
 		expect(builder.buildSizeIndex).not.toHaveBeenCalled();
 		expect(rclone.uploadObject).not.toHaveBeenCalled();
-		expect(stats).toEqual({ built: 0, skipped: 1 });
 	});
 
 	it('rebuilds when the data changed under a stable key', async () => {
 		// The index on R2 describes the previous release of the same key.
 		rclone.remoteMd5.mockReturnValue('old-md5');
 
-		const stats = await syncSizeIndices([group('osm', file('/osm.versatiles', 'new-md5'))], BASE);
+		const built = await ensureSizeIndex(file('/satellite.versatiles', 'new-md5'), BASE);
 
-		expect(builder.buildSizeIndex).toHaveBeenCalledTimes(1);
+		expect(built).toBe(true);
 		expect(rclone.uploadObject.mock.calls[0][3]).toEqual({ md5: 'new-md5' });
-		expect(stats).toEqual({ built: 1, skipped: 0 });
 	});
 
-	it('builds once for identical bytes published under a dated and a stable key', async () => {
-		const stats = await syncSizeIndices(
-			[group('osm', file('/osm.versatiles', 'abc'), [file('/osm.20260105.versatiles', 'abc')])],
-			BASE,
-		);
+	it('uploads nothing when the build fails', async () => {
+		builder.buildSizeIndex.mockRejectedValueOnce(new Error('range request failed'));
 
-		expect(builder.buildSizeIndex).toHaveBeenCalledTimes(1);
-		expect(uploadedKeys().sort()).toEqual(['/osm.20260105.versatiles.index.json', '/osm.versatiles.index.json']);
-		expect(stats).toEqual({ built: 2, skipped: 0 });
+		await expect(ensureSizeIndex(file('/osm.versatiles', 'abc'), BASE)).rejects.toThrow('range request failed');
+		expect(rclone.uploadObject).not.toHaveBeenCalled();
+	});
+});
+
+describe('copySizeIndex', () => {
+	const release = file('/osm.20260105.versatiles', 'abc');
+	const stable = file('/osm.versatiles', 'abc');
+
+	beforeEach(() => {
+		vi.clearAllMocks();
+		rclone.remoteMd5.mockReturnValue(null);
 	});
 
-	it('does not index older versions with different content', async () => {
-		const stats = await syncSizeIndices(
-			[group('osm', file('/osm.versatiles', 'new'), [file('/osm.20240101.versatiles', 'ancient')])],
-			BASE,
-		);
+	it('copies the index of a release to its stable key within R2, without building', () => {
+		expect(copySizeIndex(release, stable)).toBe(true);
 
-		expect(builder.buildSizeIndex).toHaveBeenCalledTimes(1);
-		expect(uploadedKeys()).toEqual(['/osm.versatiles.index.json']);
-		expect(stats).toEqual({ built: 1, skipped: 0 });
+		expect(rclone.copyObject).toHaveBeenCalledWith('/osm.20260105.versatiles.index.json', '/osm.versatiles.index.json');
+		expect(builder.buildSizeIndex).not.toHaveBeenCalled();
+		expect(rclone.uploadObject).not.toHaveBeenCalled();
 	});
 
-	it('uploads only the keys that are stale', async () => {
-		// The dated index is current, the stable one is not.
-		rclone.remoteMd5.mockImplementation((key: string) =>
-			key === '/osm.20260105.versatiles.index.json' ? 'abc' : null,
-		);
+	it('copies when the stable index describes an older release', () => {
+		rclone.remoteMd5.mockReturnValue('previous');
 
-		const stats = await syncSizeIndices(
-			[group('osm', file('/osm.versatiles', 'abc'), [file('/osm.20260105.versatiles', 'abc')])],
-			BASE,
-		);
-
-		expect(uploadedKeys()).toEqual(['/osm.versatiles.index.json']);
-		expect(stats).toEqual({ built: 1, skipped: 1 });
+		expect(copySizeIndex(release, stable)).toBe(true);
 	});
 
-	it('handles several groups and skips groups without a latest file', async () => {
-		const stats = await syncSizeIndices(
-			[
-				group('osm', file('/osm.versatiles', 'a')),
-				group('satellite', file('/satellite.versatiles', 'b')),
-				new FileGroup({ slug: 'empty', title: 'empty', desc: [], order: 9 }),
-			],
-			BASE,
-		);
+	it('skips when the stable index is already current', () => {
+		rclone.remoteMd5.mockReturnValue('abc');
 
-		expect(uploadedKeys()).toEqual(['/osm.versatiles.index.json', '/satellite.versatiles.index.json']);
-		expect(stats).toEqual({ built: 2, skipped: 0 });
+		expect(copySizeIndex(release, stable)).toBe(false);
+		expect(rclone.remoteMd5).toHaveBeenCalledWith('/osm.versatiles.index.json');
+		expect(rclone.copyObject).not.toHaveBeenCalled();
 	});
 });
 

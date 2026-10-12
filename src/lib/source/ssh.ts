@@ -65,9 +65,15 @@ export function connectionFailed(result: SshResult): boolean {
 	return result.status === SSH_CONNECTION_FAILED;
 }
 
+/**
+ * Output a synchronous command may produce. Node's default of 1 MB would cut off
+ * the recursive listing of a large Storage Box.
+ */
+const SYNC_MAX_BUFFER = 64 * 1024 * 1024;
+
 /** Runs a remote command synchronously and returns its status, stdout and stderr. */
 export function sshExecSync(remoteArgs: string[], timeout = 120000): SshResult {
-	const result = spawnSync('ssh', buildSSHArgs(remoteArgs), { encoding: 'utf-8', timeout });
+	const result = spawnSync('ssh', buildSSHArgs(remoteArgs), { encoding: 'utf-8', timeout, maxBuffer: SYNC_MAX_BUFFER });
 	if (result.error || result.status === null) {
 		// Could not be started, timed out or was killed — none of which is an
 		// answer from the remote command.

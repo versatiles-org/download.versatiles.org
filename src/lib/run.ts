@@ -52,13 +52,14 @@ export async function run() {
 	await preflight(config);
 
 	// Discover all .versatiles files on the Storage Box.
-	const files = getRemoteFiles();
+	const scanned = getRemoteFiles();
 
 	// If no remote files are found, throw an error.
-	if (files.length === 0) throw Error('no remote files found');
+	if (scanned.length === 0) throw Error('no remote files found');
 
 	// Download or compute MD5/SHA256 sidecars for each file.
-	await generateHashes(files);
+	await generateHashes(scanned);
+	const files = scanned.map(({ file }) => file);
 
 	// Group files based on their names.
 	const fileGroups = groupFiles(files);

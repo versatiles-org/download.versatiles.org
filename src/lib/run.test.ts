@@ -43,6 +43,7 @@ describe('run', () => {
 	const domain = 'example.com';
 	const files: FileRef[] = [new FileRef('file1', 100), new FileRef('file2', 200)];
 	files.forEach((f) => (f.hashes = { md5: 'md5', sha256: 'sha256' }));
+	const scanned = files.map((file) => ({ file, mtime: null, sidecars: {} }));
 	const fileGroups = [
 		new FileGroup({
 			slug: 'slug',
@@ -63,7 +64,7 @@ describe('run', () => {
 		vi.stubEnv('R2_BUCKET', 'downloads');
 
 		// Mock getRemoteFiles to return a list of files
-		vi.mocked(getRemoteFiles).mockReturnValue(files);
+		vi.mocked(getRemoteFiles).mockReturnValue(scanned);
 
 		// Mock other functions to do nothing
 		vi.mocked(generateHashes).mockResolvedValue(undefined);
@@ -104,8 +105,8 @@ describe('run', () => {
 		// Verify getRemoteFiles is called
 		expect(getRemoteFiles).toHaveBeenCalled();
 
-		// Verify generateHashes is called with the file list
-		expect(generateHashes).toHaveBeenCalledWith(files);
+		// Verify generateHashes is called with the scan result
+		expect(generateHashes).toHaveBeenCalledWith(scanned);
 
 		// Verify groupFiles is called with the correct file list
 		expect(groupFiles).toHaveBeenCalledWith(files);

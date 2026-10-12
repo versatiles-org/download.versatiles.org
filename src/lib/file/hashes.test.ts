@@ -1,4 +1,5 @@
 import { describe, it, expect, beforeEach, vi } from 'vitest';
+import type { ScannedFile } from '../source/scan.js';
 
 console.log = vi.fn();
 
@@ -29,15 +30,27 @@ const { writeFileSync, unlinkSync } = await import('fs');
 
 const MD5 = 'a'.repeat(32);
 const SHA = 'b'.repeat(64);
+const PATH = '/home/osm/osm.versatiles';
 
-function remoteFile(remotePath: string): InstanceType<typeof FileRef> {
-	return new FileRef(remotePath, 100, remotePath);
+/** A scanned data file modified at `mtime`, with sidecars modified at the given times. */
+function scanned(mtime: number | null, sidecars: { md5?: number | null; sha256?: number | null } = {}): ScannedFile {
+	const result: ScannedFile = { file: new FileRef(PATH, 100, PATH), mtime, sidecars: {} };
+	if (sidecars.md5 !== undefined) result.sidecars.md5 = { mtime: sidecars.md5 };
+	if (sidecars.sha256 !== undefined) result.sidecars.sha256 = { mtime: sidecars.sha256 };
+	return result;
 }
 
-/** `ls -l --time-style=+%s` line for a path with a given epoch mtime. */
-function lsLine(path: string, mtime: number): string {
-	return `-rw-r--r-- 1 u u 100 ${mtime} ${path}`;
+/** Answers `cat` with the given sidecar content and `<type>sum` with a valid hash. */
+function remote(sidecar: (type: 'md5' | 'sha256') => string = (type) => (type === 'md5' ? MD5 : SHA)): void {
+	ssh.sshExec.mockImplementation(async (args: string[]) => {
+		if (args[0] === 'cat') return ok(`${sidecar(args[1].endsWith('.md5') ? 'md5' : 'sha256')}  file.versatiles\n`);
+		return ok(`${args[0] === 'md5sum' ? MD5 : SHA}  ${PATH}\n`);
+	});
+	ssh.scpUpload.mockResolvedValue(true);
 }
+
+/** The remote commands that were run, e.g. `['cat', 'md5sum']`. */
+const commands = (): string[] => ssh.sshExec.mock.calls.map((call) => (call[0] as string[])[0]);
 
 describe('generateHashes', () => {
 	beforeEach(() => {
@@ -45,104 +58,90 @@ describe('generateHashes', () => {
 	});
 
 	it('uses fresh existing sidecars (sidecar newer than data)', async () => {
-		ssh.sshExec.mockImplementation(async (args: string[]) => {
-			if (args[0] === 'cat') {
-				const hash = args[1].endsWith('.md5') ? MD5 : SHA;
-				return ok(`${hash}  file.versatiles\n`);
-			}
-			if (args[0] === 'ls') {
-				const data = args[3];
-				const sidecar = args[4];
-				// sidecar (2000) newer than data (1000) → fresh
-				return ok(`${lsLine(data, 1000)}\n${lsLine(sidecar, 2000)}`);
-			}
-			return failed;
-		});
+		remote();
 
-		const file = remoteFile('/home/osm/osm.versatiles');
+		const file = scanned(1000, { md5: 2000, sha256: 2000 });
 		await generateHashes([file]);
 
-		expect(file.hashes?.md5).toBe(MD5);
-		expect(file.hashes?.sha256).toBe(SHA);
+		expect(file.file.hashes).toEqual({ md5: MD5, sha256: SHA });
+		// One `cat` per sidecar and nothing else: the ages came with the scan.
+		expect(commands()).toEqual(['cat', 'cat']);
 		expect(ssh.scpUpload).not.toHaveBeenCalled();
 		expect(writeFileSync).not.toHaveBeenCalled();
 	});
 
-	it('recomputes when the sidecar is missing', async () => {
-		ssh.sshExec.mockImplementation(async (args: string[]) => {
-			if (args[0] === 'cat') return failed;
-			if (args[0] === 'ls') return failed;
-			const type = args[0].replace('sum', '');
-			return ok(`${type === 'md5' ? MD5 : SHA}  /home/osm/osm.versatiles\n`);
-		});
-		ssh.scpUpload.mockResolvedValue(true);
+	it('uses a sidecar exactly as old as its data file', async () => {
+		remote();
 
-		const file = remoteFile('/home/osm/osm.versatiles');
+		await generateHashes([scanned(1000, { md5: 1000, sha256: 1000 })]);
+
+		expect(commands()).toEqual(['cat', 'cat']);
+	});
+
+	it('computes a missing sidecar without asking for it first', async () => {
+		remote();
+
+		const file = scanned(1000);
 		await generateHashes([file]);
 
-		expect(file.hashes?.md5).toBe(MD5);
-		expect(file.hashes?.sha256).toBe(SHA);
-		expect(ssh.sshExec).toHaveBeenCalledWith(['md5sum', '/home/osm/osm.versatiles']);
+		expect(file.file.hashes).toEqual({ md5: MD5, sha256: SHA });
+		expect(commands()).toEqual(['md5sum', 'sha256sum']);
+		expect(ssh.sshExec).toHaveBeenCalledWith(['md5sum', PATH]);
 		expect(ssh.scpUpload).toHaveBeenCalledTimes(2);
 		expect(writeFileSync).toHaveBeenCalledTimes(2);
 		expect(unlinkSync).toHaveBeenCalledTimes(2);
 	});
 
-	it('recomputes when the sidecar is stale (older than the data file)', async () => {
-		ssh.sshExec.mockImplementation(async (args: string[]) => {
-			if (args[0] === 'cat') {
-				const hash = args[1].endsWith('.md5') ? MD5 : SHA;
-				return ok(`${hash}  file.versatiles\n`);
-			}
-			if (args[0] === 'ls') {
-				const data = args[3];
-				const sidecar = args[4];
-				// data (2000) newer than sidecar (1000) → stale → recompute
-				return ok(`${lsLine(data, 2000)}\n${lsLine(sidecar, 1000)}`);
-			}
-			const type = args[0].replace('sum', '');
-			return ok(`${type === 'md5' ? MD5 : SHA}  /home/osm/osm.versatiles\n`);
-		});
-		ssh.scpUpload.mockResolvedValue(true);
+	it('recomputes a stale sidecar (older than the data file) without reading it', async () => {
+		remote();
 
-		const file = remoteFile('/home/osm/osm.versatiles');
+		const file = scanned(2000, { md5: 1000, sha256: 3000 });
 		await generateHashes([file]);
 
-		expect(file.hashes?.md5).toBe(MD5);
-		expect(file.hashes?.sha256).toBe(SHA);
-		// stale → both types recomputed + re-uploaded
-		expect(ssh.sshExec).toHaveBeenCalledWith(['md5sum', '/home/osm/osm.versatiles']);
-		expect(ssh.sshExec).toHaveBeenCalledWith(['sha256sum', '/home/osm/osm.versatiles']);
+		expect(file.file.hashes).toEqual({ md5: MD5, sha256: SHA });
+		// md5 is stale → computed; sha256 is fresh → read.
+		expect(commands().sort()).toEqual(['cat', 'md5sum']);
+		expect(ssh.sshExec).toHaveBeenCalledWith(['cat', `${PATH}.sha256`], { timeout: 60000 });
+		expect(ssh.scpUpload).toHaveBeenCalledTimes(1);
+	});
+
+	it('assumes a sidecar is fresh when the scan has no modification times', async () => {
+		remote();
+
+		await generateHashes([scanned(null, { md5: null, sha256: null })]);
+
+		expect(commands()).toEqual(['cat', 'cat']);
+	});
+
+	it('computes a sidecar that was listed by the scan but is gone when read', async () => {
+		ssh.sshExec.mockImplementation(async (args: string[]) =>
+			args[0] === 'cat' ? failed : ok(`${args[0] === 'md5sum' ? MD5 : SHA}  ${PATH}\n`),
+		);
+		ssh.scpUpload.mockResolvedValue(true);
+
+		const file = scanned(1000, { md5: 2000, sha256: 2000 });
+		await generateHashes([file]);
+
+		expect(file.file.hashes).toEqual({ md5: MD5, sha256: SHA });
 		expect(ssh.scpUpload).toHaveBeenCalledTimes(2);
 	});
 
 	it('throws when a hash can neither be downloaded nor computed', async () => {
 		ssh.sshExec.mockResolvedValue(failed);
 
-		const file = remoteFile('/home/osm/osm.versatiles');
-		await expect(generateHashes([file])).rejects.toThrow(/Failed to calculate.*No such file/);
+		await expect(generateHashes([scanned(1000)])).rejects.toThrow(/Failed to calculate.*No such file/);
 	});
 
 	it('aborts instead of recomputing when the Storage Box cannot be reached', async () => {
 		ssh.sshExec.mockResolvedValue(unreachable);
 
-		const file = remoteFile('/home/osm/osm.versatiles');
-		await expect(generateHashes([file])).rejects.toThrow(/Could not reach the Storage Box.*Connection timed out/);
+		await expect(generateHashes([scanned(1000, { md5: 2000, sha256: 2000 })])).rejects.toThrow(
+			/Could not reach the Storage Box.*Connection timed out/,
+		);
 
 		// The failed `cat` must not be read as "sidecar missing".
-		expect(ssh.sshExec).not.toHaveBeenCalledWith(['md5sum', '/home/osm/osm.versatiles']);
-		expect(ssh.sshExec).not.toHaveBeenCalledWith(['sha256sum', '/home/osm/osm.versatiles']);
-		expect(ssh.scpUpload).not.toHaveBeenCalled();
-	});
-
-	it('aborts when the connection drops during the staleness check', async () => {
-		ssh.sshExec.mockImplementation(async (args: string[]) => {
-			if (args[0] === 'cat') return ok(`${args[1].endsWith('.md5') ? MD5 : SHA}  file.versatiles\n`);
-			return unreachable;
-		});
-
-		const file = remoteFile('/home/osm/osm.versatiles');
-		await expect(generateHashes([file])).rejects.toThrow(/Could not reach the Storage Box/);
+		expect(commands()).not.toContain('md5sum');
+		expect(commands()).not.toContain('sha256sum');
 		expect(ssh.scpUpload).not.toHaveBeenCalled();
 	});
 
@@ -151,39 +150,28 @@ describe('generateHashes', () => {
 		['not hexadecimal', 'z'.repeat(32)],
 		['of the wrong length for its type', 'a'.repeat(40)],
 	])('recomputes when the sidecar content is %s', async (_what, content) => {
-		ssh.sshExec.mockImplementation(async (args: string[]) => {
-			if (args[0] === 'cat') return ok(`${content}  file.versatiles\n`);
-			if (args[0] === 'ls') return failed;
-			return ok(`${args[0] === 'md5sum' ? MD5 : SHA}  /home/osm/osm.versatiles\n`);
-		});
-		ssh.scpUpload.mockResolvedValue(true);
+		remote(() => content);
 
-		const file = remoteFile('/home/osm/osm.versatiles');
+		const file = scanned(1000, { md5: 2000, sha256: 2000 });
 		await generateHashes([file]);
 
-		expect(file.hashes).toEqual({ md5: MD5, sha256: SHA });
+		expect(file.file.hashes).toEqual({ md5: MD5, sha256: SHA });
 		expect(ssh.scpUpload).toHaveBeenCalledTimes(2);
 	});
 
 	it('rejects a computed hash that is not a hash', async () => {
-		ssh.sshExec.mockImplementation(async (args: string[]) =>
-			args[0] === 'cat' ? failed : ok('md5sum: something went wrong'),
-		);
+		ssh.sshExec.mockResolvedValue(ok('md5sum: something went wrong'));
 
-		const file = remoteFile('/home/osm/osm.versatiles');
-		await expect(generateHashes([file])).rejects.toThrow(/Failed to calculate/);
+		await expect(generateHashes([scanned(1000)])).rejects.toThrow(/Failed to calculate/);
 		expect(ssh.scpUpload).not.toHaveBeenCalled();
 	});
 
-	it('gives the quick commands a timeout but not the hash computation', async () => {
-		ssh.sshExec.mockImplementation(async (args: string[]) =>
-			args[0] === 'cat' ? failed : ok(`${args[0] === 'md5sum' ? MD5 : SHA}  x\n`),
-		);
-		ssh.scpUpload.mockResolvedValue(true);
+	it('gives reading a sidecar a timeout but not the hash computation', async () => {
+		remote();
 
-		await generateHashes([remoteFile('/home/osm/osm.versatiles')]);
+		await generateHashes([scanned(1000, { md5: 2000 })]);
 
-		expect(ssh.sshExec).toHaveBeenCalledWith(['cat', '/home/osm/osm.versatiles.md5'], { timeout: 60000 });
-		expect(ssh.sshExec).toHaveBeenCalledWith(['md5sum', '/home/osm/osm.versatiles']);
+		expect(ssh.sshExec).toHaveBeenCalledWith(['cat', `${PATH}.md5`], { timeout: 60000 });
+		expect(ssh.sshExec).toHaveBeenCalledWith(['sha256sum', PATH]);
 	});
 });

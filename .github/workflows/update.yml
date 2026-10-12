@@ -1,0 +1,201 @@
+name: Update
+
+# Runs the updater (`npm run once`) once a month: mirrors new releases from the
+# Storage Box to R2, rebuilds the size indices and publishes the site.
+#
+# A hosted runner cannot move a file of hundreds of GB within the 6 hours a job
+# may take, so this run has an upload size limit. Larger uploads are skipped;
+# everything else is still updated, and the run then FAILS with a message
+# naming the files that have to be uploaded from a real server
+# (`npm run once` there, without MAX_UPLOAD_GB). It keeps failing every month
+# until that has been done — that is the reminder, not a malfunction.
+
+on:
+  schedule:
+    # 03:00 UTC on the 20th of each month. GitHub may start it late, and
+    # disables schedules in repositories without activity for 60 days.
+    - cron: '0 3 20 * *'
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only report what an update would do, change nothing
+        type: boolean
+        default: false
+      max_upload_gb:
+        description: Skip uploads larger than this many GB
+        type: string
+        default: '80'
+
+# One update at a time, and never cancel one halfway through an upload.
+concurrency:
+  group: update
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  FORCE_COLOR: 1
+  NODE_VERSION: 22
+  # Not kept current by Dependabot: bump the version and the checksum together.
+  # The checksum is the line for `rclone-<version>-linux-amd64.deb` in
+  # https://downloads.rclone.org/<version>/SHA256SUMS
+  RCLONE_VERSION: v1.75.2
+  RCLONE_SHA256: efbfe852181f7191eb3c9043ed1ab49c9b2d0ba045c61c926a5da111c939ec5c
+
+jobs:
+  update:
+    name: Update
+    runs-on: ubuntu-latest
+    # Holds the Storage Box key and the R2 credentials, so that only this job —
+    # and only on `main`, if the environment is restricted to it — can read them.
+    environment: updater
+    # Just under the 6 hour limit of a hosted runner, so the job ends with a
+    # message of its own. An upload cut off here leaves nothing behind on R2: a
+    # multipart upload only becomes an object when it completes.
+    timeout-minutes: 350
+    env:
+      # What the updater reads — see .env.sample.
+      DOMAIN: ${{ vars.DOMAIN }}
+      STORAGE_URL: ${{ secrets.STORAGE_URL }}
+      STORAGE_ROOT: ${{ vars.STORAGE_ROOT }}
+      R2_BUCKET: ${{ vars.R2_BUCKET }}
+      RCLONE_SFTP_REMOTE: hetzner
+      RCLONE_R2_REMOTE: r2
+      MAX_UPLOAD_GB: ${{ inputs.max_upload_gb || '80' }}
+      DRY_RUN: ${{ inputs.dry_run && '1' || '0' }}
+      # rclone prints its progress every half second by default; over an upload
+      # of hours that is a log of several hundred thousand lines.
+      RCLONE_STATS: 60s
+      RCLONE_STATS_ONE_LINE: 'true'
+    steps:
+      # Without its settings this job reports why it did nothing instead of
+      # failing on the 20th of every month until the environment is set up.
+      - name: Check configuration
+        id: configuration
+        env:
+          STORAGE_SSH_KEY: ${{ secrets.STORAGE_SSH_KEY }}
+          STORAGE_KNOWN_HOSTS: ${{ vars.STORAGE_KNOWN_HOSTS }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+        run: |
+          missing=""
+          for name in DOMAIN STORAGE_URL STORAGE_ROOT R2_BUCKET STORAGE_SSH_KEY STORAGE_KNOWN_HOSTS R2_ACCESS_KEY_ID R2_SECRET_ACCESS_KEY R2_ENDPOINT; do
+            if [ -z "${!name}" ]; then missing="$missing $name"; fi
+          done
+          if [ -n "$missing" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::No update was run: the 'updater' environment is missing$missing."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.configuration.outputs.available == 'true'
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        if: steps.configuration.outputs.available == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install dependencies
+        if: steps.configuration.outputs.available == 'true'
+        run: npm ci
+
+      # A pinned release, verified against a checksum recorded in this file —
+      # not `curl | bash`, and not the years-old version in the Ubuntu archive.
+      - name: Install rclone
+        if: steps.configuration.outputs.available == 'true'
+        run: |
+          deb="rclone-${RCLONE_VERSION}-linux-amd64.deb"
+          curl -fsSL -o "$RUNNER_TEMP/$deb" "https://downloads.rclone.org/${RCLONE_VERSION}/$deb"
+          echo "${RCLONE_SHA256}  $RUNNER_TEMP/$deb" | sha256sum --check
+          sudo dpkg -i "$RUNNER_TEMP/$deb"
+          rclone version | head -n 1
+
+      # The key and the host key go into files outside the checkout. The host key
+      # is pinned: the updater and rclone refuse a Storage Box that presents
+      # another one, instead of trusting whatever answers first.
+      - name: Set up the Storage Box connection
+        if: steps.configuration.outputs.available == 'true'
+        env:
+          STORAGE_SSH_KEY: ${{ secrets.STORAGE_SSH_KEY }}
+          STORAGE_KNOWN_HOSTS: ${{ vars.STORAGE_KNOWN_HOSTS }}
+        run: |
+          umask 077
+          mkdir -p "$RUNNER_TEMP/ssh"
+          printf '%s\n' "$STORAGE_SSH_KEY" > "$RUNNER_TEMP/ssh/storage"
+          printf '%s\n' "$STORAGE_KNOWN_HOSTS" > "$RUNNER_TEMP/ssh/known_hosts"
+
+          echo "SSH_KEY=$RUNNER_TEMP/ssh/storage" >> "$GITHUB_ENV"
+          echo "SSH_KNOWN_HOSTS=$RUNNER_TEMP/ssh/known_hosts" >> "$GITHUB_ENV"
+
+          # The rclone SFTP remote, configured through the environment instead of
+          # an rclone.conf — the same settings `scripts/setup.sh` writes on a server.
+          {
+            echo "RCLONE_CONFIG_HETZNER_TYPE=sftp"
+            echo "RCLONE_CONFIG_HETZNER_HOST=${STORAGE_URL#*@}"
+            echo "RCLONE_CONFIG_HETZNER_USER=${STORAGE_URL%@*}"
+            echo "RCLONE_CONFIG_HETZNER_PORT=23"
+            echo "RCLONE_CONFIG_HETZNER_KEY_FILE=$RUNNER_TEMP/ssh/storage"
+            echo "RCLONE_CONFIG_HETZNER_KNOWN_HOSTS_FILE=$RUNNER_TEMP/ssh/known_hosts"
+            echo "RCLONE_CONFIG_HETZNER_SHELL_TYPE=none"
+            echo "RCLONE_CONFIG_HETZNER_DISABLE_HASHCHECK=true"
+          } >> "$GITHUB_ENV"
+
+      # Exit status of the updater (see src/run_once.ts):
+      #   0 — everything is up to date
+      #   1 — the run failed
+      #   2 — everything was updated except uploads above the size limit
+      - name: Update
+        if: steps.configuration.outputs.available == 'true'
+        env:
+          # The rclone R2 remote, configured through the environment like the
+          # SFTP remote above, but only for this step: no other step needs the
+          # credentials. The endpoint is the account-level host only
+          # (`https://<account>.eu.r2.cloudflarestorage.com` for an EU bucket) —
+          # a bucket path appended to it breaks the request signature.
+          RCLONE_CONFIG_R2_TYPE: s3
+          RCLONE_CONFIG_R2_PROVIDER: Cloudflare
+          RCLONE_CONFIG_R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          RCLONE_CONFIG_R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          RCLONE_CONFIG_R2_ENDPOINT: ${{ vars.R2_ENDPOINT }}
+          RCLONE_CONFIG_R2_REGION: auto
+          RCLONE_CONFIG_R2_NO_CHECK_BUCKET: 'true'
+        run: |
+          set +e
+          npm run once 2>&1 | tee "$RUNNER_TEMP/update.log"
+          status=${PIPESTATUS[0]}
+          set -e
+
+          # The plan — what was uploaded, copied, indexed or skipped — as the
+          # summary of the run.
+          {
+            echo "### Update (limit: ${MAX_UPLOAD_GB} GB, dry run: ${DRY_RUN})"
+            echo
+            echo '```'
+            grep -E '^ - (upload|defer|copy|index|hash) |^ - [0-9]+ data files? unchanged' "$RUNNER_TEMP/update.log" || echo '(no plan was printed)'
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+
+          if [ "$status" -eq 2 ]; then
+            # The lines the updater lists under "Update complete, but …".
+            skipped="$(sed -n '/^Update complete, but /,$p' "$RUNNER_TEMP/update.log" | grep -E '^ - ' | sed -E 's/^ - //' | paste -sd ',' - | sed 's/,/, /g')"
+            echo "::error title=Uploads greater than ${MAX_UPLOAD_GB} GB were skipped::Everything else was updated. These uploads have to be handled on a real server (run \`npm run once\` there, without MAX_UPLOAD_GB): ${skipped}"
+            {
+              echo
+              echo "**Uploads greater than ${MAX_UPLOAD_GB} GB were skipped and have to be handled on a real server:** ${skipped}"
+              echo
+              echo 'Run `npm run once` there, without `MAX_UPLOAD_GB`. Everything else was updated.'
+            } >> "$GITHUB_STEP_SUMMARY"
+            exit 1
+          fi
+          exit "$status"
+
+      # Not left on the runner's disk for the steps GitHub runs after the job.
+      - name: Remove the key
+        if: always()
+        run: rm -rf "$RUNNER_TEMP/ssh"

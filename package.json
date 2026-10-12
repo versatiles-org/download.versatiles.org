@@ -16,7 +16,7 @@
     "format:check": "prettier --check .",
     "lint": "svelte-kit sync && eslint src/ e2e/",
     "lint:fix": "svelte-kit sync && eslint src/ e2e/ --fix",
-    "once": "tsx --env-file=.env src/run_once.ts",
+    "once": "tsx --env-file-if-exists=.env src/run_once.ts",
     "prebuild:site": "test -f data/fileGroups.json || tsx src/generate_testdata.ts",
     "prepare": "svelte-kit sync",
     "preview:site": "vite preview",

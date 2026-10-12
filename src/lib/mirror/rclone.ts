@@ -116,15 +116,19 @@ export function copyObject(fromUrl: string, toUrl: string): void {
 /**
  * Uploads a local directory tree to the R2 bucket (optionally under `destPrefix`),
  * transferring only changed files. Used to publish the built static site
- * (`build/` → bucket root: index.html, feeds, `_app/…` assets).
+ * (`build/` → bucket root: index.html, `_app/…` assets).
+ *
+ * `exclude` holds rclone filter patterns, relative to `localDir` (a leading
+ * slash anchors a pattern at its root), for files to leave out.
  *
  * Throws if the copy fails.
  */
-export function uploadDir(localDir: string, destPrefix = ''): void {
+export function uploadDir(localDir: string, destPrefix = '', exclude: string[] = []): void {
 	const cfg = config();
 	const dest = destPrefix ? r2Dest(cfg, destPrefix) : `${cfg.r2Remote}:${cfg.bucket}`;
 	console.log(`Uploading ${localDir} -> ${dest} ...`);
-	const result = runRclone(['copy', localDir, dest, '--progress'], { inherit: true });
+	const excludeArgs = exclude.flatMap((pattern) => ['--exclude', pattern]);
+	const result = runRclone(['copy', ...excludeArgs, localDir, dest, '--progress'], { inherit: true });
 	if (result.status !== 0) {
 		throw new Error(`rclone failed to upload ${localDir} (exit ${result.status})`);
 	}

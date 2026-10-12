@@ -36,37 +36,69 @@ describe('buildAndUploadSite', () => {
 		});
 	}
 
-	it('writes data, builds, uploads sidecars then build dir, and fixes the feed mime', () => {
-		const count = buildAndUploadSite([group()], 'https://download.versatiles.org/');
+	/** Everything sent to R2, in order: object urls and `dir:<prefix>` for directory uploads. */
+	function uploads(): string[] {
+		const objects = rclone.uploadObject.mock.calls.map((call, i) => ({
+			at: rclone.uploadObject.mock.invocationCallOrder[i],
+			what: call[0] as string,
+		}));
+		const dirs = rclone.uploadDir.mock.calls.map((call, i) => ({
+			at: rclone.uploadDir.mock.invocationCallOrder[i],
+			what: `dir:${(call[1] as string | undefined) ?? ''}`,
+		}));
+		return [...objects, ...dirs].sort((a, b) => a.at - b.at).map((entry) => entry.what);
+	}
 
-		// 1. data file written
+	it('writes the data file and builds the site', () => {
+		buildAndUploadSite([group()], 'https://download.versatiles.org/');
+
 		expect(String(fsMock.writeFileSync.mock.calls[0][0])).toMatch(/data\/fileGroups\.json$/);
 		expect(String(fsMock.writeFileSync.mock.calls[0][1])).toContain('"slug":"osm"');
-
-		// 2. vite build invoked
 		expect(cpMock.execSync).toHaveBeenCalledWith(expect.stringContaining('vite build'), expect.anything());
+	});
 
-		// index the uploadObject calls by url
-		const calls = rclone.uploadObject.mock.calls as [string, string, string][];
-		const byUrl = Object.fromEntries(calls.map((c) => [c[0], c]));
-		expect(byUrl['/osm.versatiles.md5']).toBeDefined();
-		expect(byUrl['/osm.versatiles.sha256']).toBeDefined();
-		expect(byUrl['/urllist_osm.tsv']).toBeDefined();
+	it('uploads the pages last, after everything they refer to', () => {
+		const count = buildAndUploadSite([group()], 'https://download.versatiles.org/');
+
+		expect(uploads()).toEqual([
+			'/osm.versatiles.md5',
+			'/osm.versatiles.sha256',
+			'/urllist_osm.tsv',
+			'dir:_app',
+			'/feed-osm.xml',
+			'dir:',
+		]);
 		expect(count).toBe(3); // sidecars + url list (feeds not counted)
+	});
 
-		// 3. feed re-uploaded with the RSS content type
-		expect(byUrl['/feed-osm.xml']).toBeDefined();
-		expect(byUrl['/feed-osm.xml'][2]).toBe('application/rss+xml');
+	it('uploads the assets from the _app folder of the build to the same prefix', () => {
+		buildAndUploadSite([group()], 'https://download.versatiles.org/');
 
-		// 4. ordering: sidecars → build dir → feed mime fix
-		const orderOf = (url: string) => rclone.uploadObject.mock.invocationCallOrder[calls.findIndex((c) => c[0] === url)];
-		const sidecarMax = Math.max(
-			orderOf('/osm.versatiles.md5'),
-			orderOf('/osm.versatiles.sha256'),
-			orderOf('/urllist_osm.tsv'),
-		);
-		const dirOrder = rclone.uploadDir.mock.invocationCallOrder[0];
-		expect(sidecarMax).toBeLessThan(dirOrder);
-		expect(dirOrder).toBeLessThan(orderOf('/feed-osm.xml'));
+		const [dir, prefix] = rclone.uploadDir.mock.calls[0];
+		expect(String(dir)).toMatch(/build\/_app$/);
+		expect(prefix).toBe('_app');
+	});
+
+	it('uploads each feed once, with the RSS content type', () => {
+		buildAndUploadSite([group()], 'https://download.versatiles.org/');
+
+		const feeds = rclone.uploadObject.mock.calls.filter((call) => call[0] === '/feed-osm.xml');
+		expect(feeds).toHaveLength(1);
+		expect(feeds[0][2]).toBe('application/rss+xml');
+
+		// …and keeps them, and the assets, out of the final directory upload.
+		const [dir, prefix, exclude] = rclone.uploadDir.mock.calls[1];
+		expect(String(dir)).toMatch(/build$/);
+		expect(prefix).toBe('');
+		expect(exclude).toEqual(['/_app/**', '/feed-*.xml']);
+	});
+
+	it('copes with a build that has no assets folder or feed', () => {
+		fsMock.existsSync.mockReturnValue(false);
+
+		buildAndUploadSite([group()], 'https://download.versatiles.org/');
+
+		expect(uploads()).toEqual(['/osm.versatiles.md5', '/osm.versatiles.sha256', '/urllist_osm.tsv', 'dir:']);
+		fsMock.existsSync.mockReturnValue(true);
 	});
 });

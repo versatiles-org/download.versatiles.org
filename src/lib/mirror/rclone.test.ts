@@ -234,6 +234,21 @@ describe('uploadDir', () => {
 		expect(args).toContain('r2:downloads');
 	});
 
+	it('copies to a prefix and leaves out excluded files', () => {
+		cp.spawnSync.mockReturnValue({ status: 0 });
+
+		uploadDir('/repo/build/_app', '_app', ['/version.json']);
+
+		expect(cp.spawnSync.mock.calls[0][1]).toEqual([
+			'copy',
+			'--exclude',
+			'/version.json',
+			'/repo/build/_app',
+			'r2:downloads/_app',
+			'--progress',
+		]);
+	});
+
 	it('throws when the copy fails', () => {
 		cp.spawnSync.mockReturnValue({ status: 1 });
 		expect(() => uploadDir('/repo/build')).toThrow(/rclone failed to upload \/repo\/build/);

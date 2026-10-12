@@ -1,22 +1,21 @@
 /**
- * rclone wrapper — mirrors `.versatiles` data files from the Hetzner Storage Box
- * (SFTP) to the Cloudflare R2 bucket (S3 API).
+ * rclone wrapper — moves `.versatiles` data files from the Hetzner Storage Box
+ * (SFTP) to the Cloudflare R2 bucket (S3 API), and generated objects to R2.
  *
- * Node only orchestrates; rclone moves the bytes (multipart, retries, resume).
- * Files are uploaded one at a time to their flat R2 key (the `FileRef.url`):
+ * Node only orchestrates; rclone moves the bytes (multipart, retries). Which
+ * files are transferred is decided by `./plan.ts`; this module performs single
+ * operations:
  *
- *   /home/osm/osm.20240701.versatiles  ──▶  r2:<bucket>/osm.20240701.versatiles
- *   (same source, stable "latest" key)  ──▶  r2:<bucket>/osm.versatiles
+ *   /home/osm/osm.20240701.versatiles  ──upload──▶  r2:<bucket>/osm.20240701.versatiles
+ *   r2:<bucket>/osm.20240701.versatiles  ──copy──▶  r2:<bucket>/osm.versatiles
  *
- * Change detection uses the **MD5 from the sidecar** (`FileRef.md5`), stored as
- * R2 object metadata on upload and read back via `rclone lsjson --metadata`.
- * ⚠️ The R2/S3 ETag is deliberately NOT used — for multipart (2 TB) uploads it is
- * not the MD5.
+ * The stable "latest" key is a copy made inside R2, so the bytes of a release
+ * cross the network once, not twice.
  *
- * Scope: this module mirrors **data files only**. The `.md5`/`.sha256` sidecars,
- * the HTML and the RSS feeds are generated and uploaded as the site assets in a
- * later phase (so their content carries the correct, possibly date-stripped key
- * name rather than the dated source name).
+ * Every data object carries the **MD5 and SHA256 from the sidecars** as
+ * metadata, which is how a later run recognises it. ⚠️ The R2/S3 ETag is
+ * deliberately NOT used — for multipart (2 TB) uploads it is not the MD5.
+ * After each transfer the object is read back and its size and md5 are checked.
  *
  * The rclone executable, the two remotes and the bucket come from the
  * environment — see `../config.ts`.
@@ -115,26 +114,6 @@ export function uploadDir(localDir: string, destPrefix = ''): void {
 	}
 }
 
-/**
- * Returns the md5 stored in an R2 object's metadata, or null if the object or
- * the metadata entry is absent.
- *
- * This is the change-detection primitive for everything the pipeline uploads:
- * data files carry the md5 of their own content, generated size indices carry
- * the md5 of the data file they describe.
- */
-export function remoteMd5(key: string): string | null {
-	const cfg = config();
-	const result = runRclone(['lsjson', '--metadata', r2Dest(cfg, key.replace(/^\//, ''))]);
-	if (result.status !== 0) return null;
-	try {
-		const entries = JSON.parse(result.stdout) as { Metadata?: Record<string, string> }[];
-		return entries[0]?.Metadata?.md5 ?? null;
-	} catch {
-		return null;
-	}
-}
-
 /** What is known about an object on R2. */
 export interface RemoteObject {
 	/** Size in bytes. */
@@ -180,60 +159,107 @@ export function listRemoteDataFiles(): Map<string, RemoteObject> {
 	);
 }
 
-/** Result of a mirror run. */
-export interface MirrorStats {
-	/** Number of files transferred. */
-	uploaded: number;
-	/** Number of files already current on R2 (skipped). */
-	skipped: number;
+/**
+ * Reads one object's size and recorded checksums, or returns null if it cannot
+ * be read. Null does not prove the object is absent — use
+ * {@link listRemoteDataFiles} where that distinction matters.
+ */
+export function remoteObject(key: string): RemoteObject | null {
+	const cfg = config();
+	const result = runRclone(['lsjson', '--metadata', r2Dest(cfg, key.replace(/^\//, ''))]);
+	if (result.status !== 0) return null;
+	try {
+		const [entry] = JSON.parse(result.stdout) as { Size: number; Metadata?: Record<string, string> }[];
+		if (!entry) return null;
+		return { size: entry.Size, md5: entry.Metadata?.md5 ?? null, sha256: entry.Metadata?.sha256 ?? null };
+	} catch {
+		return null;
+	}
 }
 
 /**
- * Mirrors the given data files to R2, skipping any whose R2 object already
- * carries a matching MD5. Uploads set `md5`, `sha256` and `content-type`
- * metadata on the object.
+ * Returns the md5 stored in an R2 object's metadata, or null if the object or
+ * the metadata entry is absent.
  *
- * Throws if an upload fails.
+ * This is the change-detection primitive for the generated size indices, which
+ * carry the md5 of the data file they describe.
  */
-export function mirrorToR2(files: FileRef[]): MirrorStats {
+export function remoteMd5(key: string): string | null {
+	return remoteObject(key)?.md5 ?? null;
+}
+
+/**
+ * Uploads a data file from the Storage Box to its key on R2, recording its
+ * `md5`, `sha256` and `content-type` as object metadata, and verifies the result.
+ *
+ * Throws if the upload fails or the object on R2 is not the file afterwards.
+ */
+export function uploadDataFile(file: FileRef): void {
 	const cfg = config();
-	const stats: MirrorStats = { uploaded: 0, skipped: 0 };
+	const key = keyOf(file);
 
-	console.log('Mirroring data files to R2...');
-	for (const file of files) {
-		const key = keyOf(file);
-
-		if (remoteMd5(key) === file.md5) {
-			stats.skipped++;
-			continue;
-		}
-
-		console.log(` - Uploading ${key} (${file.sizeString})`);
-		const result = runRclone(
-			[
-				'copyto',
-				'--progress',
-				'--retries',
-				'3',
-				'--metadata',
-				'--metadata-set',
-				`md5=${file.md5}`,
-				'--metadata-set',
-				`sha256=${file.sha256}`,
-				'--metadata-set',
-				'content-type=application/octet-stream',
-				sftpSource(cfg, file.remotePath),
-				r2Dest(cfg, key),
-			],
-			{ inherit: true },
-		);
-
-		if (result.status !== 0) {
-			throw new Error(`rclone failed to upload ${key} (exit ${result.status})`);
-		}
-		stats.uploaded++;
+	console.log(` - Uploading ${key} (${file.sizeString})`);
+	const result = runRclone(
+		[
+			'copyto',
+			'--progress',
+			'--retries',
+			'3',
+			'--metadata',
+			'--metadata-set',
+			`md5=${file.md5}`,
+			'--metadata-set',
+			`sha256=${file.sha256}`,
+			'--metadata-set',
+			'content-type=application/octet-stream',
+			sftpSource(cfg, file.remotePath),
+			r2Dest(cfg, key),
+		],
+		{ inherit: true },
+	);
+	if (result.status !== 0) {
+		throw new Error(`rclone failed to upload ${key} (exit ${result.status})`);
 	}
+	verifyDataFile(file);
+}
 
-	console.log(` - ${stats.uploaded} uploaded, ${stats.skipped} unchanged`);
-	return stats;
+/**
+ * Copies a data file that is already on R2 to a second key — the stable
+ * "latest" key of a release — without the bytes leaving R2, and verifies the
+ * result. `--metadata` carries the checksums and content type over.
+ *
+ * Throws if the copy fails or the copy is not the file afterwards.
+ */
+export function copyDataFile(from: FileRef, to: FileRef): void {
+	const cfg = config();
+	const fromKey = keyOf(from);
+	const toKey = keyOf(to);
+
+	console.log(` - Copying ${fromKey} -> ${toKey} within R2 (${to.sizeString})`);
+	const result = runRclone(
+		['copyto', '--progress', '--retries', '3', '--metadata', r2Dest(cfg, fromKey), r2Dest(cfg, toKey)],
+		{ inherit: true },
+	);
+	if (result.status !== 0) {
+		throw new Error(`rclone failed to copy ${fromKey} to ${toKey} (exit ${result.status})`);
+	}
+	verifyDataFile(to);
+}
+
+/**
+ * Checks that the object under a file's key has the file's size and md5.
+ *
+ * The md5 is metadata, so on its own it only shows that the transfer was
+ * started for this file; the size is what the bytes on R2 actually amount to.
+ */
+function verifyDataFile(file: FileRef): void {
+	const key = keyOf(file);
+	const object = remoteObject(key);
+	if (!object) throw new Error(`${key} cannot be read back from R2 after the transfer`);
+	if (object.size !== file.size) {
+		throw new Error(`${key} has ${object.size} bytes on R2 after the transfer, expected ${file.size}`);
+	}
+	if (object.md5 !== file.md5) {
+		throw new Error(`${key} carries md5 "${object.md5}" on R2 after the transfer, expected "${file.md5}"`);
+	}
 }

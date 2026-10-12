@@ -4,22 +4,26 @@
  * The `run()` function:
  * - discovers all `.versatiles` files on the Storage Box via SSH
  * - downloads or computes MD5/SHA256 sidecars for each file
- * - groups files into logical `FileGroup`s with metadata
- * - mirrors the data files to Cloudflare R2
+ * - plans the mirror against what is on R2, then uploads what changed
+ * - groups the published files into logical `FileGroup`s with metadata
+ * - copies each latest release to its stable key within R2
  * - refreshes the `*.index.json` size indices for changed data files
  * - builds the static site (HTML, RSS, sidecars, url lists) and uploads it to R2
  *
  * Atomic publish: the data files are mirrored **before** the site is uploaded,
- * so the site never advertises a file that isn't fully present on R2.
+ * and the site is built from the files the plan says will be on R2 — so it never
+ * advertises a file that isn't fully present there, also not while an upload is
+ * deferred because of `MAX_UPLOAD_GB`.
  *
  * This module is the single entry point for one-shot updates (`run_once.ts`).
  */
 import { loadConfig } from './config.js';
 import { preflight } from './preflight.js';
 import { getRemoteFiles } from './source/scan.js';
-import { collectFiles, groupFiles } from './file/file_group.js';
+import { groupFiles } from './file/file_group.js';
 import { generateHashes } from './file/hashes.js';
-import { mirrorToR2 } from './mirror/rclone.js';
+import { DeferredUploadsError, deferredFiles, describePlan, planMirror, planStableCopies } from './mirror/plan.js';
+import { copyDataFile, listRemoteDataFiles, uploadDataFile } from './mirror/rclone.js';
 import { syncSizeIndices } from './size_index/sync.js';
 import { buildAndUploadSite } from './site/site.js';
 
@@ -31,16 +35,20 @@ import { buildAndUploadSite } from './site/site.js';
  * 2. Check that the Storage Box and both rclone remotes are reachable.
  * 3. Discover all `.versatiles` files on the Storage Box via SSH.
  * 4. Download or compute MD5/SHA256 sidecars for each file.
- * 5. Group files into `FileGroup`s and derive metadata.
- * 6. Mirror the data files to R2.
- * 7. Build and upload size indices for data files that changed.
- * 8. Build the static site and upload it to R2 (last).
+ * 5. Plan the mirror: what to upload, what is unchanged, what is deferred.
+ * 6. Upload the changed data files to R2.
+ * 7. Group the published files into `FileGroup`s and derive metadata.
+ * 8. Copy each latest release to its stable key within R2.
+ * 9. Build and upload size indices for data files that changed.
+ * 10. Build the static site and upload it to R2 (last).
  *
  * Throws:
  * - If the configuration is incomplete or invalid, or a connection check fails —
  *   before anything else runs.
- * - If no remote files are found.
- * - If any downstream step fails (hashing, grouping, mirroring, templating, upload).
+ * - If no remote files are found, or none of them can be published.
+ * - If any downstream step fails (hashing, mirroring, grouping, templating, upload).
+ * - `DeferredUploadsError`, after everything else has been published, if
+ *   uploads were skipped because of the size limit.
  */
 export async function run() {
 	// Validate everything up front: a missing R2 setting should not surface only
@@ -61,12 +69,24 @@ export async function run() {
 	await generateHashes(scanned);
 	const files = scanned.map(({ file }) => file);
 
-	// Group files based on their names.
-	const fileGroups = groupFiles(files);
+	// Decide what to do with each file before transferring anything.
+	const remote = listRemoteDataFiles();
+	const plan = planMirror(files, remote, { maxUploadBytes: config.maxUploadBytes });
+
+	// Group what will be on R2 — not what was scanned: a deferred file is
+	// represented by the version R2 still serves, or not at all.
+	if (plan.published.length === 0) throw Error('none of the remote files can be published');
+	const fileGroups = groupFiles(plan.published);
+	const copies = planStableCopies(fileGroups, remote);
+
+	console.log('Mirroring data files to R2...');
+	console.log(describePlan(plan, copies));
 
 	// Mirror the data files to R2 *before* publishing the site (atomic publish).
-	const dataFiles = collectFiles(fileGroups);
-	mirrorToR2(dataFiles);
+	for (const action of plan.actions) {
+		if (action.type === 'upload') uploadDataFile(action.file);
+	}
+	for (const copy of copies) copyDataFile(copy.from, copy.to);
 
 	// Refresh the size indices used for download estimates. Reads the containers
 	// back over HTTP, so it must run after the mirror; only rebuilds what changed.
@@ -74,6 +94,12 @@ export async function run() {
 
 	// Build the static site (index.html, RSS, sidecars, url lists) and upload last.
 	buildAndUploadSite(fileGroups, baseURL);
+
+	// Everything else is done; now report what this run was not allowed to do.
+	const deferred = deferredFiles(plan);
+	if (deferred.length > 0 && config.maxUploadBytes !== undefined) {
+		throw new DeferredUploadsError(deferred, config.maxUploadBytes);
+	}
 
 	console.log('Update complete.');
 }

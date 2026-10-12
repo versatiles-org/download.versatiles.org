@@ -1,14 +1,21 @@
 /**
  * One-shot entry point for the update pipeline.
  *
- * Run manually on the persistent host (`npm run once`). Logs a final status and
- * exits non-zero on failure so the operator / monitoring can detect a bad run.
- * A lock file keeps a second run on the same host from starting meanwhile.
+ * Run manually on the persistent host (`npm run once`) or by the scheduled
+ * workflow. A lock file keeps a second run on the same host from starting
+ * meanwhile.
+ *
+ * Exit status:
+ * - `0` — everything is up to date.
+ * - `1` — the run failed.
+ * - `2` — everything was updated except uploads above `MAX_UPLOAD_GB`, which
+ *   still have to be run on a host without that limit.
  */
 import { acquireLock } from './lib/lock.js';
+import { DeferredUploadsError } from './lib/mirror/plan.js';
 import { run } from './lib/run.js';
 
-let failed = false;
+let status = 0;
 
 try {
 	const release = acquireLock();
@@ -18,9 +25,14 @@ try {
 		release();
 	}
 } catch (error) {
-	console.error('Update failed:', error);
-	failed = true;
+	if (error instanceof DeferredUploadsError) {
+		console.error(error.message);
+		status = 2;
+	} else {
+		console.error('Update failed:', error);
+		status = 1;
+	}
 }
 
 // After the lock is released: `process.exit()` does not run pending `finally` blocks.
-if (failed) process.exit(1);
+if (status !== 0) process.exit(status);

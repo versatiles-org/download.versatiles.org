@@ -40,6 +40,28 @@ describe('run_once', () => {
 		err.mockRestore();
 	});
 
+	it('exits with status 2 when uploads were deferred', async () => {
+		const { DeferredUploadsError } = await import('./lib/mirror/plan.js');
+		const { FileRef } = await import('./lib/file/file_ref.js');
+		const deferred = new DeferredUploadsError(
+			[new FileRef('/home/satellite.versatiles', 2 ** 40, '/home/x')],
+			80 * 2 ** 30,
+		);
+		const run = vi.fn().mockRejectedValue(deferred);
+		vi.doMock('./lib/run.js', () => ({ run }));
+		const exit = vi.spyOn(process, 'exit').mockImplementation((() => undefined) as never);
+		const err = vi.spyOn(console, 'error').mockImplementation(() => {});
+
+		await import('./run_once.js');
+
+		expect(exit).toHaveBeenCalledWith(2);
+		// The message alone — this is a reminder, not a crash with a stack trace.
+		expect(err).toHaveBeenCalledWith(deferred.message);
+		expect(release).toHaveBeenCalled();
+		exit.mockRestore();
+		err.mockRestore();
+	});
+
 	it('does not start the pipeline while another run holds the lock', async () => {
 		const run = vi.fn();
 		vi.doMock('./lib/run.js', () => ({ run }));

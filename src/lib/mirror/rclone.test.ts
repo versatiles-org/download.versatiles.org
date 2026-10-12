@@ -6,7 +6,8 @@ const cp = { spawnSync: vi.fn() };
 vi.mock('child_process', () => cp);
 
 const { FileRef } = await import('../file/file_ref.js');
-const { mirrorToR2, uploadObject, uploadDir, listRemoteDataFiles } = await import('./rclone.js');
+const { uploadDataFile, copyDataFile, remoteObject, remoteMd5, uploadObject, uploadDir, listRemoteDataFiles } =
+	await import('./rclone.js');
 
 /** Builds a remote data FileRef with a given destination url and md5. */
 function dataFile(remotePath: string, url: string, md5: string): InstanceType<typeof FileRef> {
@@ -40,58 +41,95 @@ afterEach(() => {
 	}
 });
 
-describe('mirrorToR2', () => {
-	it('skips files whose R2 md5 already matches', () => {
-		cp.spawnSync.mockImplementation((_bin: string, args: string[]) =>
-			args[0] === 'lsjson' ? { status: 0, stdout: JSON.stringify([{ Metadata: { md5: 'abc' } }]) } : { status: 0 },
-		);
-
-		const stats = mirrorToR2([dataFile('/home/osm/osm.20240701.versatiles', '/osm.versatiles', 'abc')]);
-
-		expect(stats).toEqual({ uploaded: 0, skipped: 1 });
-		expect(copytoArgs()).toBeUndefined();
+/** Scripts `lsjson` (reading an object back) and the result of every other rclone command. */
+function rcloneReturns(readBack: { Size: number; Metadata?: Record<string, string> } | null, transferStatus = 0): void {
+	cp.spawnSync.mockImplementation((_bin: string, args: string[]) => {
+		if (args[0] !== 'lsjson') return { status: transferStatus };
+		return readBack ? { status: 0, stdout: JSON.stringify([readBack]) } : { status: 3, stdout: '' };
 	});
+}
 
-	it('uploads when the R2 md5 differs, mapping source → flat key', () => {
-		cp.spawnSync.mockImplementation((_bin: string, args: string[]) =>
-			args[0] === 'lsjson' ? { status: 0, stdout: JSON.stringify([{ Metadata: { md5: 'old' } }]) } : { status: 0 },
-		);
+describe('uploadDataFile', () => {
+	const file = () => dataFile('/home/osm/osm.20240701.versatiles', '/osm.20240701.versatiles', 'new');
 
-		const stats = mirrorToR2([dataFile('/home/osm/osm.20240701.versatiles', '/osm.versatiles', 'new')]);
+	it('uploads from the Storage Box to the flat key, recording the checksums', () => {
+		rcloneReturns({ Size: 2 ** 30, Metadata: { md5: 'new' } });
 
-		expect(stats).toEqual({ uploaded: 1, skipped: 0 });
+		uploadDataFile(file());
+
 		const args = copytoArgs()!;
 		// SFTP source is home-relative (no /home prefix); R2 dest is the flat key.
-		expect(args).toContain('hetzner:osm/osm.20240701.versatiles');
-		expect(args).toContain('r2:downloads/osm.versatiles');
+		expect(args.slice(-2)).toEqual(['hetzner:osm/osm.20240701.versatiles', 'r2:downloads/osm.20240701.versatiles']);
 		expect(args).toContain('md5=new');
 		expect(args).toContain('sha256=sha-new');
 		expect(args).toContain('content-type=application/octet-stream');
 	});
 
-	it('uploads when the R2 object does not exist yet', () => {
-		cp.spawnSync.mockImplementation((_bin: string, args: string[]) =>
-			args[0] === 'lsjson' ? { status: 3, stdout: '' } : { status: 0 },
-		);
-
-		const stats = mirrorToR2([dataFile('/home/osm/osm.versatiles', '/osm.versatiles', 'abc')]);
-
-		expect(stats).toEqual({ uploaded: 1, skipped: 0 });
+	it('throws when the upload fails', () => {
+		rcloneReturns(null, 1);
+		expect(() => uploadDataFile(file())).toThrow(/rclone failed to upload osm.20240701.versatiles/);
 	});
 
-	it('throws when an upload fails', () => {
-		cp.spawnSync.mockImplementation((_bin: string, args: string[]) =>
-			args[0] === 'lsjson' ? { status: 3, stdout: '' } : { status: 1, stderr: 'boom' },
-		);
+	it('throws when the object cannot be read back', () => {
+		rcloneReturns(null);
+		expect(() => uploadDataFile(file())).toThrow(/cannot be read back from R2/);
+	});
 
-		expect(() => mirrorToR2([dataFile('/home/osm/osm.versatiles', '/osm.versatiles', 'abc')])).toThrow(
-			/rclone failed to upload osm.versatiles/,
-		);
+	it('throws when the object on R2 has a different size', () => {
+		rcloneReturns({ Size: 2 ** 30 - 1, Metadata: { md5: 'new' } });
+		expect(() => uploadDataFile(file())).toThrow(/has 1073741823 bytes on R2 after the transfer, expected 1073741824/);
+	});
+
+	it('throws when the object on R2 carries a different md5', () => {
+		rcloneReturns({ Size: 2 ** 30, Metadata: { md5: 'old' } });
+		expect(() => uploadDataFile(file())).toThrow(/carries md5 "old"/);
 	});
 
 	it('throws when required configuration is missing', () => {
 		delete process.env['R2_BUCKET'];
-		expect(() => mirrorToR2([dataFile('/home/osm/osm.versatiles', '/osm.versatiles', 'abc')])).toThrow(/R2_BUCKET/);
+		expect(() => uploadDataFile(file())).toThrow(/R2_BUCKET/);
+	});
+});
+
+describe('copyDataFile', () => {
+	const release = () => dataFile('/home/osm/osm.20240701.versatiles', '/osm.20240701.versatiles', 'abc');
+	const stable = () => dataFile('/home/osm/osm.20240701.versatiles', '/osm.versatiles', 'abc');
+
+	it('copies between two keys of the bucket, never from the Storage Box', () => {
+		rcloneReturns({ Size: 2 ** 30, Metadata: { md5: 'abc' } });
+
+		copyDataFile(release(), stable());
+
+		const args = copytoArgs()!;
+		expect(args.slice(-2)).toEqual(['r2:downloads/osm.20240701.versatiles', 'r2:downloads/osm.versatiles']);
+		expect(args).toContain('--metadata');
+		expect(args.some((arg) => arg.startsWith('hetzner:'))).toBe(false);
+	});
+
+	it('throws when the copy fails', () => {
+		rcloneReturns(null, 1);
+		expect(() => copyDataFile(release(), stable())).toThrow(
+			/rclone failed to copy osm.20240701.versatiles to osm.versatiles/,
+		);
+	});
+
+	it('throws when the copy lost the checksum metadata', () => {
+		rcloneReturns({ Size: 2 ** 30 });
+		expect(() => copyDataFile(release(), stable())).toThrow(/osm.versatiles carries md5 "null"/);
+	});
+});
+
+describe('remoteObject', () => {
+	it('returns size and checksums of an object', () => {
+		rcloneReturns({ Size: 5, Metadata: { md5: 'abc', sha256: 'def' } });
+		expect(remoteObject('/osm.versatiles')).toEqual({ size: 5, md5: 'abc', sha256: 'def' });
+		expect(remoteMd5('/osm.versatiles')).toBe('abc');
+	});
+
+	it('returns null when the object cannot be read', () => {
+		rcloneReturns(null);
+		expect(remoteObject('/osm.versatiles')).toBeNull();
+		expect(remoteMd5('/osm.versatiles')).toBeNull();
 	});
 });
 

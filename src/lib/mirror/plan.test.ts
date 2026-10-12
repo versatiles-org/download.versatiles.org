@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { FileRef } from '../file/file_ref.js';
 import { groupFiles } from '../file/file_group.js';
 import type { RemoteObject } from './rclone.js';
-import { deferredFiles, planMirror } from './plan.js';
+import { DeferredUploadsError, deferredFiles, describePlan, planMirror, planStableCopies } from './plan.js';
 
 const GB = 2 ** 30;
 
@@ -165,5 +165,91 @@ describe('planMirror', () => {
 			expect(group.latestFile?.md5).toBe(previous.md5);
 			expect(group.olderFiles.map((f) => f.url)).toEqual(['/osm.20260413.versatiles']);
 		});
+	});
+});
+
+describe('planStableCopies', () => {
+	const previous = file('osm.20260413.versatiles', 60 * GB);
+	const release = file('osm.20260608.versatiles', 62 * GB);
+
+	it('copies the latest release to the stable key when that key is outdated', () => {
+		const groups = groupFiles([previous, release]);
+		const copies = planStableCopies(groups, remote({ '/osm.versatiles': object(60 * GB, 'osm.20260413.versatiles') }));
+
+		expect(copies).toHaveLength(1);
+		expect(copies[0].from).toBe(release);
+		expect(copies[0].to.url).toBe('/osm.versatiles');
+		expect(copies[0].to.md5).toBe(release.md5);
+	});
+
+	it('copies when the stable key does not exist yet', () => {
+		expect(planStableCopies(groupFiles([release]), remote({}))).toHaveLength(1);
+	});
+
+	it('copies nothing when the stable key already holds the latest release', () => {
+		const copies = planStableCopies(
+			groupFiles([previous, release]),
+			remote({ '/osm.versatiles': object(62 * GB, 'osm.20260608.versatiles') }),
+		);
+
+		expect(copies).toEqual([]);
+	});
+
+	it('copies again when the stable key has the right md5 but the wrong size', () => {
+		const copies = planStableCopies(
+			groupFiles([release]),
+			remote({ '/osm.versatiles': object(61 * GB, 'osm.20260608.versatiles') }),
+		);
+
+		expect(copies).toHaveLength(1);
+	});
+
+	it('needs no copy for a dataset that only has an undated file', () => {
+		const satellite = file('satellite.versatiles', 1600 * GB);
+
+		expect(planStableCopies(groupFiles([satellite]), remote({}))).toEqual([]);
+	});
+});
+
+describe('describePlan', () => {
+	it('lists what will change and counts what will not', () => {
+		const release = file('osm.20260608.versatiles', 62 * GB);
+		const satellite = file('satellite.versatiles', 1700 * GB, 'new');
+		const elevation = file('elevation.versatiles', 400 * GB);
+		const hillshade = file('hillshade-vectors.versatiles', 105 * GB);
+
+		const plan = planMirror(
+			[release, satellite, elevation, hillshade],
+			remote({
+				'/satellite.versatiles': object(1600 * GB, 'old'),
+				'/hillshade-vectors.versatiles': object(105 * GB, 'hillshade-vectors.versatiles'),
+			}),
+			{ maxUploadBytes: 80 * GB },
+		);
+		const copies = planStableCopies(groupFiles(plan.published), remote({}));
+
+		expect(describePlan(plan, copies).split('\n')).toEqual([
+			' - upload osm.20260608.versatiles (62.0 GB)',
+			' - defer  satellite.versatiles (1700.0 GB) — too large; the version on R2 stays published',
+			' - defer  elevation.versatiles (400.0 GB) — too large; not on R2 yet, so not published',
+			' - copy   osm.20260608.versatiles -> osm.versatiles within R2',
+			' - 1 data file unchanged',
+		]);
+	});
+});
+
+describe('DeferredUploadsError', () => {
+	it('names the single skipped upload and the limit', () => {
+		const error = new DeferredUploadsError([file('satellite.versatiles', 1700 * GB)], 80 * GB);
+
+		expect(error.message).toContain('1 upload greater than 80 GB was skipped:');
+		expect(error.message).toContain(' - satellite.versatiles (1700.0 GB)');
+		expect(error.message).toContain('have to be handled on a real server');
+	});
+
+	it('shows a fractional limit', () => {
+		const error = new DeferredUploadsError([file('a.versatiles', 2 * GB)], 1.5 * GB);
+
+		expect(error.message).toContain('greater than 1.5 GB');
 	});
 });

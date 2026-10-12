@@ -40,8 +40,12 @@ env:
   # Not kept current by Dependabot: bump the version and the checksum together.
   # The checksum is the line for `rclone-<version>-linux-amd64.deb` in
   # https://downloads.rclone.org/<version>/SHA256SUMS
-  RCLONE_VERSION: v1.75.2
-  RCLONE_SHA256: efbfe852181f7191eb3c9043ed1ab49c9b2d0ba045c61c926a5da111c939ec5c
+  #
+  # Deliberately not named RCLONE_…: rclone reads every environment variable
+  # with that prefix as one of its flags, and `RCLONE_VERSION=v1.75.2` makes
+  # each rclone call fail with "invalid argument for --version".
+  PINNED_RCLONE_VERSION: v1.75.2
+  PINNED_RCLONE_SHA256: efbfe852181f7191eb3c9043ed1ab49c9b2d0ba045c61c926a5da111c939ec5c
 
 jobs:
   update:
@@ -110,11 +114,12 @@ jobs:
       - name: Install rclone
         if: steps.configuration.outputs.available == 'true'
         run: |
-          deb="rclone-${RCLONE_VERSION}-linux-amd64.deb"
-          curl -fsSL -o "$RUNNER_TEMP/$deb" "https://downloads.rclone.org/${RCLONE_VERSION}/$deb"
-          echo "${RCLONE_SHA256}  $RUNNER_TEMP/$deb" | sha256sum --check
+          deb="rclone-${PINNED_RCLONE_VERSION}-linux-amd64.deb"
+          curl -fsSL -o "$RUNNER_TEMP/$deb" "https://downloads.rclone.org/${PINNED_RCLONE_VERSION}/$deb"
+          echo "${PINNED_RCLONE_SHA256}  $RUNNER_TEMP/$deb" | sha256sum --check
           sudo dpkg -i "$RUNNER_TEMP/$deb"
-          rclone version | head -n 1
+          # On its own line, not piped: a pipe would hide a failing rclone.
+          rclone version
 
       # The key and the host key go into files outside the checkout. The host key
       # is pinned: the updater and rclone refuse a Storage Box that presents

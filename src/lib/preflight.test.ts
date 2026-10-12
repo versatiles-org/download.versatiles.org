@@ -66,6 +66,15 @@ describe('preflight', () => {
 		expect(rclone.runRclone).toHaveBeenCalledTimes(1);
 	});
 
+	it('says why rclone failed when it did start', async () => {
+		failRclone('version', 'CRITICAL: Invalid value when setting --version from environment variable RCLONE_VERSION');
+
+		await expect(preflight(config)).rejects.toThrow(
+			/"rclone version" failed — CRITICAL: Invalid value .* RCLONE_VERSION/,
+		);
+		expect(rclone.runRclone).toHaveBeenCalledTimes(1);
+	});
+
 	it('reports a broken SFTP remote', async () => {
 		failRclone('hetzner:', 'NOTICE: something\nFailed to create file system: ssh: handshake failed');
 

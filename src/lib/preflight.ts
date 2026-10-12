@@ -27,9 +27,16 @@ export async function preflight(config: Config): Promise<void> {
 	}
 
 	const { bin, sftpRemote, r2Remote, bucket } = config.rclone;
-	if (runRclone(['version']).status !== 0) {
-		// Without the executable the remote checks below would only repeat this.
-		problems.push(`rclone: cannot run "${bin}" (is it installed? see RCLONE_BIN)`);
+	const version = runRclone(['version']);
+	if (version.status !== 0) {
+		// Without a working executable the remote checks below would only repeat
+		// this. With output it did start, so say what it complained about; without,
+		// it most likely is not there at all.
+		problems.push(
+			version.stderr.trim()
+				? `rclone: "${bin} version" failed${reason(version.stderr)}`
+				: `rclone: cannot run "${bin}" (is it installed? see RCLONE_BIN)`,
+		);
 	} else {
 		const sftp = runRclone(['lsf', '--max-depth', '1', `${sftpRemote}:`]);
 		if (sftp.status !== 0) {

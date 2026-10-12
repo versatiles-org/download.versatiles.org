@@ -83,19 +83,20 @@ descriptions live in [`src/lib/file/file_group.ts`](src/lib/file/file_group.ts).
 > [!NOTE]
 > This repo sets `ignore-scripts=true` in [`.npmrc`](.npmrc) (supply-chain
 > hardening — dependency install scripts don't run). That also skips the root
-> `prepare` step, so after a plain `npm install` run **`npm run prepare`** once
-> (it runs `svelte-kit sync`, which generates the `.svelte-kit/` types that
-> `tsconfig.json` extends). The install warnings (low-severity audit advisories,
-> funding notices) are harmless.
+> `prepare` step (`svelte-kit sync`), which generates the types and the
+> `$app/tsconfig` base that `tsconfig.json` extends, into `node_modules/$app`.
+> `npm install` removes that folder again each time it runs.
+>
+> You rarely need to care: `npm run dev`, `npm run build:site`, `npm run lint`,
+> `npm run typecheck` and `npm run check` all sync first. Only your editor does
+> not — if it reports `File '$app/tsconfig' not found` after an install, run:
 >
 > ```bash
-> npm install        # or: npm ci
 > npm run prepare    # svelte-kit sync (skipped during install)
 > ```
 >
-> You can skip `npm run prepare` if your next command already syncs:
-> `npm run dev`, `npm run build:site`, and `npm run typecheck` all do. Only a
-> standalone `npm run lint` / `npm run check` needs it first.
+> The install warnings (low-severity audit advisories, funding notices) are
+> harmless.
 
 ## Configuration
 
@@ -149,7 +150,7 @@ After a deploy / cutover, confirm:
 - **`npm run once`**: Runs the updater once (`run_once.ts`).
 - **`npm run dev`**: Generates sample data and starts the SvelteKit dev server.
 - **`npm run build:site`**: Prerenders the static site to `build/` (`vite build`).
-- **`npm run check`**: Runs lint + typecheck + tests.
+- **`npm run check`**: Runs everything CI does: format check, lint, typecheck, unit tests, browser tests and the worker typecheck.
 - **`npm run lint`** / **`npm run format`**: ESLint / Prettier.
 - **`npm run typecheck`**: `svelte-check` + `tsc`.
 - **`npm run test`** / **`npm run test-coverage`**: Vitest.

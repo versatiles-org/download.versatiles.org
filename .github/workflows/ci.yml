@@ -10,6 +10,11 @@ on:
   pull_request:
   # Kept so CI can be run by hand against a branch that has no PR open yet.
   workflow_dispatch:
+    inputs:
+      deploy_worker:
+        description: Deploy the worker afterwards, even if it did not change (main only)
+        type: boolean
+        default: false
 
 # A new push supersedes whatever is still running for the same ref. `main` is
 # exempt: those runs are the record of what landed, so they finish.
@@ -170,3 +175,90 @@ jobs:
           name: playwright-report
           path: playwright-report/
           retention-days: 7
+
+  # Decides whether a push to `main` has a worker to deploy. A job of its own,
+  # without the environment: a push that leaves `worker/` alone then never
+  # touches the deployment environment, or waits for its approval if it has one.
+  worker-changes:
+    name: Worker changes
+    if: github.ref == 'refs/heads/main' && (github.event_name == 'push' || inputs.deploy_worker)
+    runs-on: ubuntu-latest
+    outputs:
+      deploy: ${{ steps.changed.outputs.deploy }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          # The full history: the push may contain several commits, and the diff
+          # below spans all of them.
+          fetch-depth: 0
+
+      # A manual run always deploys, and so does a push whose previous state is
+      # unknown.
+      - name: Check whether the worker changed
+        id: changed
+        env:
+          BEFORE: ${{ github.event.before }}
+          FORCE: ${{ inputs.deploy_worker }}
+        run: |
+          if [ "$FORCE" = "true" ]; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif [ -z "$BEFORE" ] || ! git cat-file -e "$BEFORE^{commit}" 2>/dev/null; then
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "$BEFORE" "$GITHUB_SHA" -- worker/; then
+            echo "deploy=false" >> "$GITHUB_OUTPUT"
+            echo "The worker did not change; nothing to deploy." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "deploy=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  # Deploys the Cloudflare Worker once the commit that changed it has passed
+  # every check. Until now this was `npm run deploy` on a laptop, so what ran in
+  # production was whatever someone last remembered to upload.
+  deploy-worker:
+    name: Deploy worker
+    needs: [check, e2e, worker-changes]
+    if: needs.worker-changes.outputs.deploy == 'true'
+    runs-on: ubuntu-latest
+    # Holds the Cloudflare credentials, so that only this job — and only on
+    # `main`, if the environment is restricted to it — can read them.
+    environment: worker
+    # Never two deployments at once, and never cancel one halfway.
+    concurrency:
+      group: deploy-worker
+      cancel-in-progress: false
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+      CLOUDFLARE_ACCOUNT_ID: ${{ vars.CLOUDFLARE_ACCOUNT_ID }}
+    steps:
+      # Without the credentials this job reports why it did nothing instead of
+      # failing every worker change until someone has set the environment up.
+      - name: Check credentials
+        id: credentials
+        run: |
+          if [ -z "$CLOUDFLARE_API_TOKEN" ] || [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+            echo "available=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::The worker changed but was not deployed: set CLOUDFLARE_API_TOKEN (secret) and CLOUDFLARE_ACCOUNT_ID (variable) in the 'worker' environment."
+          else
+            echo "available=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Checkout
+        if: steps.credentials.outputs.available == 'true'
+        uses: actions/checkout@v7
+
+      - name: Setup Node
+        if: steps.credentials.outputs.available == 'true'
+        uses: actions/setup-node@v7
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install worker dependencies
+        if: steps.credentials.outputs.available == 'true'
+        run: npm ci
+        working-directory: worker
+
+      - name: Deploy
+        if: steps.credentials.outputs.available == 'true'
+        run: npm run deploy
+        working-directory: worker

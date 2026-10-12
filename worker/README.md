@@ -36,17 +36,33 @@ which is handy for testing before the `.org` custom hostname is live.
 
 ## Deploy
 
-1. Make sure `versatiles.cloud` is an **active zone** in this Cloudflare account
-   and the R2 bucket exists (`bucket_name` / `jurisdiction` in `wrangler.toml`).
-2. Upload the Worker:
+The Worker is deployed by CI: a push to `main` that changes anything under
+`worker/` runs the `Deploy worker` job of
+[`ci.yml`](../.github/workflows/ci.yml) once all checks have passed. To deploy
+without a change — after rotating the token, say — start the CI workflow by hand
+on `main` with **Deploy the worker afterwards** ticked.
 
-   ```bash
-   cd worker
-   npm install
-   npm run deploy        # wrangler deploy (uploads the script + R2 binding)
-   ```
+The job needs, in a GitHub environment named `worker`:
 
-   `wrangler.toml` declares no routes — routing is set up in the dashboard below.
+| Kind     | Name                    | Value                                                         |
+| -------- | ----------------------- | ------------------------------------------------------------- |
+| secret   | `CLOUDFLARE_API_TOKEN`  | an API token that may edit Workers scripts of the account     |
+| variable | `CLOUDFLARE_ACCOUNT_ID` | the id of the Cloudflare account that owns `versatiles.cloud` |
+
+While either is missing the job only prints a warning.
+
+Prerequisites, as for a manual deployment: `versatiles.cloud` is an **active
+zone** in the Cloudflare account and the R2 bucket exists (`bucket_name` /
+`jurisdiction` in `wrangler.toml`). `wrangler.toml` declares no routes — routing
+is set up in the dashboard below, and a deployment does not touch it.
+
+To deploy from a laptop instead:
+
+```bash
+cd worker
+npm install
+npm run deploy        # wrangler deploy (uploads the script + R2 binding)
+```
 
 ## Cloudflare dashboard configuration (one-time)
 

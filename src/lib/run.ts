@@ -14,6 +14,7 @@
  *
  * This module is the single entry point for one-shot updates (`run_once.ts`).
  */
+import { loadConfig } from './config.js';
 import { getRemoteFiles } from './source/scan.js';
 import { collectFiles, groupFiles } from './file/file_group.js';
 import { generateHashes } from './file/hashes.js';
@@ -22,20 +23,10 @@ import { syncSizeIndices } from './size_index/sync.js';
 import { buildAndUploadSite } from './site/site.js';
 
 /**
- * Configuration options for the `run()` pipeline.
- *
- * - `domain`: public domain name used to construct absolute URLs
- *   (falls back to the `DOMAIN` environment variable when omitted).
- */
-export interface Options {
-	domain?: string;
-}
-
-/**
  * Executes the update pipeline.
  *
  * Steps:
- * 1. Resolve `domain` from `options.domain` or the `DOMAIN` environment variable.
+ * 1. Read and validate the configuration from the environment.
  * 2. Discover all `.versatiles` files on the Storage Box via SSH.
  * 3. Download or compute MD5/SHA256 sidecars for each file.
  * 4. Group files into `FileGroup`s and derive metadata.
@@ -44,14 +35,14 @@ export interface Options {
  * 7. Build the static site and upload it to R2 (last).
  *
  * Throws:
- * - If `domain` is missing (no `DOMAIN` env and no `options.domain` provided).
+ * - If the configuration is incomplete or invalid — before anything else runs.
  * - If no remote files are found.
  * - If any downstream step fails (hashing, grouping, mirroring, templating, upload).
  */
-export async function run(options: Options = {}) {
-	// Get the domain from environment variables. Throw an error if it's not set.
-	const domain = options.domain ?? process.env['DOMAIN'];
-	if (domain == null) throw Error('missing $DOMAIN');
+export async function run() {
+	// Validate everything up front: a missing R2 setting should not surface only
+	// after the Storage Box has been scanned and hashed.
+	const { domain } = loadConfig();
 	const baseURL = `https://${domain}/`;
 
 	// Discover all .versatiles files on the Storage Box.

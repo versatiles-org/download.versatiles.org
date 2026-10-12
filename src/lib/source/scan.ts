@@ -9,10 +9,8 @@
  * handled by `../file/hashes.ts`.
  */
 import { FileRef } from '../file/file_ref.js';
+import { sshConfig } from '../config.js';
 import { sshExecSync } from './ssh.js';
-
-/** Default remote root scanned for datasets (override with STORAGE_ROOT). */
-const DEFAULT_ROOT = '/home';
 
 /**
  * Scans the Storage Box and returns all `.versatiles` files, sorted by remote path.
@@ -24,7 +22,7 @@ const DEFAULT_ROOT = '/home';
  * Throws if the SSH scan command fails.
  */
 export function getRemoteFiles(): FileRef[] {
-	const root = process.env['STORAGE_ROOT'] ?? DEFAULT_ROOT;
+	const root = sshConfig().storageRoot;
 	console.log(`Scanning remote storage (${root}) via SSH...`);
 
 	const result = sshExecSync(['ls', '-lR', root]);

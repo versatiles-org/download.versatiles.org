@@ -18,47 +18,21 @@
  * later phase (so their content carries the correct, possibly date-stripped key
  * name rather than the dated source name).
  *
- * Configuration via environment:
- * - `RCLONE_BIN` — rclone executable (default `rclone`).
- * - `RCLONE_SFTP_REMOTE` — name of the configured SFTP remote (Storage Box).
- * - `RCLONE_R2_REMOTE` — name of the configured S3 remote (R2).
- * - `R2_BUCKET` — target bucket name.
+ * The rclone executable, the two remotes and the bucket come from the
+ * environment — see `../config.ts`.
  */
 import { spawnSync } from 'child_process';
 import { FileRef } from '../file/file_ref.js';
-
-/** rclone executable. */
-const RCLONE_BIN = process.env['RCLONE_BIN'] ?? 'rclone';
-
-interface RcloneConfig {
-	/** Name of the configured SFTP remote (source). */
-	sftpRemote: string;
-	/** Name of the configured S3/R2 remote (destination). */
-	r2Remote: string;
-	/** Target bucket. */
-	bucket: string;
-}
-
-/** Resolves the rclone remote configuration from the environment, or throws. */
-function config(): RcloneConfig {
-	const sftpRemote = process.env['RCLONE_SFTP_REMOTE'];
-	const r2Remote = process.env['RCLONE_R2_REMOTE'];
-	const bucket = process.env['R2_BUCKET'];
-	if (!sftpRemote) throw new Error('RCLONE_SFTP_REMOTE environment variable is not set');
-	if (!r2Remote) throw new Error('RCLONE_R2_REMOTE environment variable is not set');
-	if (!bucket) throw new Error('R2_BUCKET environment variable is not set');
-	return { sftpRemote, r2Remote, bucket };
-}
+import { rcloneConfig as config, type RcloneConfig } from '../config.js';
 
 /**
  * Source path on the SFTP remote. The scan produces absolute `/home/...` paths;
  * rclone SFTP paths are relative to the remote's login directory, so a prefix is
- * stripped. The prefix defaults to `/home/` (override with
- * `RCLONE_SFTP_STRIP_PREFIX`, e.g. `/` if the folders appear under
- * `<remote>:home`).
+ * stripped (`RCLONE_SFTP_STRIP_PREFIX`, default `/home/`; e.g. `/` if the
+ * folders appear under `<remote>:home`).
  */
 function sftpSource(cfg: RcloneConfig, remotePath: string): string {
-	const prefix = process.env['RCLONE_SFTP_STRIP_PREFIX'] ?? '/home/';
+	const prefix = cfg.sftpStripPrefix;
 	const rel = remotePath.startsWith(prefix) ? remotePath.slice(prefix.length) : remotePath.replace(/^\/+/, '');
 	return `${cfg.sftpRemote}:${rel}`;
 }
@@ -83,9 +57,10 @@ export function runRclone(
 	args: string[],
 	opts: { inherit?: boolean; input?: string } = {},
 ): { status: number; stdout: string; stderr: string } {
+	const { bin } = config();
 	const result = opts.inherit
-		? spawnSync(RCLONE_BIN, args, { stdio: 'inherit' })
-		: spawnSync(RCLONE_BIN, args, { encoding: 'utf-8', maxBuffer: 64 * 1024 * 1024, input: opts.input });
+		? spawnSync(bin, args, { stdio: 'inherit' })
+		: spawnSync(bin, args, { encoding: 'utf-8', maxBuffer: 64 * 1024 * 1024, input: opts.input });
 	return {
 		status: result.status ?? 1,
 		stdout: result.stdout?.toString() ?? '',

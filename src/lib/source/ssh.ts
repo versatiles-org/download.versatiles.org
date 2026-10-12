@@ -6,45 +6,29 @@
  * used by both the remote file scan (`scan.ts`) and the hash/sidecar handling
  * (`../file/hashes.ts`).
  *
- * Configuration via environment:
- * - `STORAGE_URL` — `user@host` of the Storage Box (required).
- * - `SSH_KEY` — path to the identity file (default `.ssh/storage`).
+ * The Storage Box address, port, identity file and host-key policy come from
+ * the environment — see `../config.ts`.
  */
 import { spawn, spawnSync } from 'child_process';
-import { homedir } from 'os';
-import { join, resolve } from 'path';
-
-/** SSH port of the Hetzner Storage Box. */
-const SSH_PORT = '23';
+import { sshConfig, type SshConfig } from '../config.js';
 
 /**
- * Resolves the SSH key path to an absolute path, expanding a leading `~` or
- * `$HOME` (env files pass these literally — neither Node nor ssh expand them).
+ * Connection options shared by ssh and scp (the port flag differs, set per call).
+ *
+ * With a known-hosts file configured the host key must match it; without one, a
+ * host key seen for the first time is accepted and remembered.
  */
-function resolveKeyPath(p: string): string {
-	let out = p;
-	if (out === '~') out = homedir();
-	else if (out.startsWith('~/')) out = join(homedir(), out.slice(2));
-	else if (out.startsWith('$HOME/')) out = join(homedir(), out.slice('$HOME/'.length));
-	return resolve(out);
-}
-
-/** Path to the SSH identity file (absolute). */
-const SSH_KEY = resolveKeyPath(process.env['SSH_KEY'] ?? '.ssh/storage');
-
-/** Connection options shared by ssh and scp (the port flag differs, set per call). */
-const SSH_COMMON_OPTIONS = ['-i', SSH_KEY, '-oBatchMode=yes', '-oStrictHostKeyChecking=accept-new'];
-
-/** Resolves `STORAGE_URL` or throws if it is missing. */
-function storageUrl(): string {
-	const url = process.env['STORAGE_URL'];
-	if (!url) throw new Error('STORAGE_URL environment variable is not set');
-	return url;
+function commonOptions(cfg: SshConfig): string[] {
+	const hostKeyOptions = cfg.knownHosts
+		? [`-oUserKnownHostsFile=${cfg.knownHosts}`, '-oStrictHostKeyChecking=yes']
+		: ['-oStrictHostKeyChecking=accept-new'];
+	return ['-i', cfg.key, '-oBatchMode=yes', ...hostKeyOptions];
 }
 
 /** Builds the full ssh argument list for a remote command. */
 export function buildSSHArgs(remoteArgs: string[]): string[] {
-	return [storageUrl(), '-p', SSH_PORT, ...SSH_COMMON_OPTIONS, ...remoteArgs];
+	const cfg = sshConfig();
+	return [cfg.storageUrl, '-p', cfg.port, ...commonOptions(cfg), ...remoteArgs];
 }
 
 /** Runs a remote command synchronously and returns its status, stdout and stderr. */
@@ -73,7 +57,8 @@ export function sshExec(remoteArgs: string[]): Promise<{ success: boolean; stdou
 
 /** Uploads a local file to the Storage Box via scp. Resolves true on success. */
 export function scpUpload(localPath: string, remotePath: string): Promise<boolean> {
-	const args = ['-P', SSH_PORT, ...SSH_COMMON_OPTIONS, localPath, `${storageUrl()}:${remotePath}`];
+	const cfg = sshConfig();
+	const args = ['-P', cfg.port, ...commonOptions(cfg), localPath, `${cfg.storageUrl}:${remotePath}`];
 	return new Promise((resolve) => {
 		const proc = spawn('scp', args);
 		proc.on('error', () => resolve(false));

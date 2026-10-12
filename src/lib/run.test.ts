@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { FileRef } from './file/file_ref.js';
 import { FileGroup } from './file/file_group.js';
 
@@ -51,6 +51,12 @@ describe('run', () => {
 	beforeEach(() => {
 		vi.clearAllMocks();
 
+		vi.stubEnv('DOMAIN', domain);
+		vi.stubEnv('STORAGE_URL', 'user@host');
+		vi.stubEnv('RCLONE_SFTP_REMOTE', 'hetzner');
+		vi.stubEnv('RCLONE_R2_REMOTE', 'r2');
+		vi.stubEnv('R2_BUCKET', 'downloads');
+
 		// Mock getRemoteFiles to return a list of files
 		vi.mocked(getRemoteFiles).mockReturnValue(files);
 
@@ -61,21 +67,27 @@ describe('run', () => {
 		vi.mocked(buildAndUploadSite).mockReturnValue(0);
 	});
 
-	it('should throw an error if $DOMAIN is not set and no domain is provided in options', async () => {
-		delete process.env['DOMAIN']; // Unset the domain
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
 
-		await expect(run({})).rejects.toThrow('missing $DOMAIN');
+	it('should throw before doing anything if the configuration is incomplete', async () => {
+		vi.stubEnv('DOMAIN', undefined);
+		vi.stubEnv('R2_BUCKET', undefined);
+
+		await expect(run()).rejects.toThrow(/DOMAIN is not set[\s\S]*R2_BUCKET is not set/);
+		expect(getRemoteFiles).not.toHaveBeenCalled();
 	});
 
 	it('should throw an error if no files are found in the remote folder', async () => {
 		// Return an empty list of files
 		vi.mocked(getRemoteFiles).mockReturnValue([]);
 
-		await expect(run({ domain })).rejects.toThrow('no remote files found');
+		await expect(run()).rejects.toThrow('no remote files found');
 	});
 
 	it('should call the necessary functions with correct arguments', async () => {
-		await run({ domain });
+		await run();
 
 		// Verify getRemoteFiles is called
 		expect(getRemoteFiles).toHaveBeenCalled();
@@ -94,7 +106,7 @@ describe('run', () => {
 	});
 
 	it('should mirror the data before uploading the site (atomic publish)', async () => {
-		await run({ domain });
+		await run();
 
 		const mirrorOrder = vi.mocked(mirrorToR2).mock.invocationCallOrder[0];
 		const siteOrder = vi.mocked(buildAndUploadSite).mock.invocationCallOrder[0];

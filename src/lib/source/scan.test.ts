@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach, vi } from 'vitest';
+import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 
 console.log = vi.fn();
 
@@ -8,7 +8,15 @@ vi.mock('./ssh.js', () => ssh);
 const { getRemoteFiles } = await import('./scan.js');
 
 describe('getRemoteFiles', () => {
-	beforeEach(() => vi.clearAllMocks());
+	beforeEach(() => {
+		vi.clearAllMocks();
+		vi.stubEnv('STORAGE_URL', 'user@host');
+		vi.stubEnv('STORAGE_ROOT', undefined);
+	});
+
+	afterEach(() => {
+		vi.unstubAllEnvs();
+	});
 
 	it('parses `ls -lR` output into FileRefs and ignores sidecars/dirs', () => {
 		ssh.sshExecSync.mockReturnValue({
@@ -37,6 +45,15 @@ describe('getRemoteFiles', () => {
 		expect(files[0].size).toBe(12345);
 		expect(files[0].filename).toBe('osm.20240101.versatiles');
 		expect(files[0].url).toBe('/osm.20240101.versatiles');
+	});
+
+	it('scans only the subtree given by STORAGE_ROOT', () => {
+		vi.stubEnv('STORAGE_ROOT', '/home/download');
+		ssh.sshExecSync.mockReturnValue({ status: 0, stdout: '', stderr: '' });
+
+		getRemoteFiles();
+
+		expect(ssh.sshExecSync).toHaveBeenCalledWith(['ls', '-lR', '/home/download']);
 	});
 
 	it('throws when the SSH scan fails', () => {

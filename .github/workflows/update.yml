@@ -138,6 +138,18 @@ jobs:
           echo "SSH_KEY=$RUNNER_TEMP/ssh/storage" >> "$GITHUB_ENV"
           echo "SSH_KNOWN_HOSTS=$RUNNER_TEMP/ssh/known_hosts" >> "$GITHUB_ENV"
 
+          # rclone negotiates the host key type on its own, and not necessarily
+          # the one ssh picks. Offered a type that is not pinned, it gives up with
+          # "knownhosts: key mismatch". So let it ask only for the types that are
+          # in the known-hosts file. (An RSA key is used with the rsa-sha2
+          # signature algorithms.)
+          algorithms="$(awk '!/^[[:space:]]*(#|$)/ { print $2 }' "$RUNNER_TEMP/ssh/known_hosts" | sort -u |
+            sed 's/^ssh-rsa$/rsa-sha2-512 rsa-sha2-256 ssh-rsa/' | paste -sd ' ' -)"
+          if [ -z "$algorithms" ]; then
+            echo "::error::STORAGE_KNOWN_HOSTS contains no host key."
+            exit 1
+          fi
+
           # The rclone SFTP remote, configured through the environment instead of
           # an rclone.conf — the same settings `scripts/setup.sh` writes on a server.
           {
@@ -147,6 +159,7 @@ jobs:
             echo "RCLONE_CONFIG_HETZNER_PORT=23"
             echo "RCLONE_CONFIG_HETZNER_KEY_FILE=$RUNNER_TEMP/ssh/storage"
             echo "RCLONE_CONFIG_HETZNER_KNOWN_HOSTS_FILE=$RUNNER_TEMP/ssh/known_hosts"
+            echo "RCLONE_CONFIG_HETZNER_HOST_KEY_ALGORITHMS=$algorithms"
             echo "RCLONE_CONFIG_HETZNER_SHELL_TYPE=none"
             echo "RCLONE_CONFIG_HETZNER_DISABLE_HASHCHECK=true"
           } >> "$GITHUB_ENV"

@@ -300,7 +300,7 @@ describe('run', () => {
 			expect((error as Error).message).toBe(
 				[
 					'Update complete, but 2 uploads greater than 80 GB were skipped:',
-					' - satellite.versatiles (1700.0 GB)',
+					' - satellite.versatiles (1.66 TB)',
 					' - elevation.versatiles (400.0 GB)',
 					'Uploads greater than 80 GB have to be handled on a real server: run `npm run once` there, without MAX_UPLOAD_GB.',
 				].join('\n'),

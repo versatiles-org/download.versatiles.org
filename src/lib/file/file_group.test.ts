@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hex2base64, groupFiles, collectFiles, FileGroup } from './file_group.js';
+import { hex2base64, groupFiles, FileGroup } from './file_group.js';
 import { FileRef } from './file_ref.js';
 
 describe('hex2base64', () => {
@@ -27,22 +27,13 @@ describe('FileGroup', () => {
 			expect(group.title).toBe('Test Group');
 			expect(group.desc).toEqual(['A test group']);
 			expect(group.order).toBe(1);
-			expect(group.local).toBe(false);
 			expect(group.tileType).toBe('vector');
 			expect(group.latestFile).toBeUndefined();
 			expect(group.olderFiles).toEqual([]);
 		});
 
-		it('accepts optional local and tileType flags', () => {
-			const group = new FileGroup({
-				slug: 'test',
-				title: 'Test',
-				desc: ['Test'],
-				order: 1,
-				local: true,
-				tileType: 'raster',
-			});
-			expect(group.local).toBe(true);
+		it('accepts an optional tileType', () => {
+			const group = new FileGroup({ slug: 'test', title: 'Test', desc: ['Test'], order: 1, tileType: 'raster' });
 			expect(group.tileType).toBe('raster');
 		});
 	});
@@ -104,7 +95,6 @@ describe('groupFiles', () => {
 	it('assigns correct metadata to known groups', () => {
 		const groups = groupFiles([createMockFileRef('osm.20240101.versatiles', 1000)]);
 		expect(groups[0].title).toBe('OpenStreetMap');
-		expect(groups[0].local).toBe(true);
 		expect(groups[0].order).toBe(0);
 		expect(groups[0].tileType).toBe('vector');
 	});
@@ -144,55 +134,5 @@ describe('groupFiles', () => {
 		expect(() => groupFiles([createMockFileRef('unknown-dataset.20240101.versatiles', 1000)])).toThrow(
 			'"unknown-dataset.20240101.versatiles" belongs to no known dataset ("unknown-dataset")',
 		);
-	});
-});
-
-describe('collectFiles', () => {
-	function createMockFileRef(url: string): FileRef {
-		const ref = Object.create(FileRef.prototype) as FileRef;
-		ref.url = url;
-		ref.fullname = url;
-		ref.filename = url.slice(1);
-		(ref as { size: number }).size = 1000;
-		(ref as { sizeString: string }).sizeString = '0.0 GB';
-		ref.remotePath = '';
-		return ref;
-	}
-
-	it('collects files from a FileRef array', () => {
-		const result = collectFiles([createMockFileRef('/file1.txt'), createMockFileRef('/file2.txt')]);
-		expect(result.length).toBe(2);
-	});
-
-	it('deduplicates files by url', () => {
-		const result = collectFiles([
-			createMockFileRef('/file1.txt'),
-			createMockFileRef('/file1.txt'),
-			createMockFileRef('/file2.txt'),
-		]);
-		expect(result.length).toBe(2);
-	});
-
-	it('collects files from a FileGroup', () => {
-		const group = new FileGroup({
-			slug: 'test',
-			title: 'Test',
-			desc: ['Test'],
-			order: 1,
-			latestFile: createMockFileRef('/latest.txt'),
-			olderFiles: [createMockFileRef('/older.txt')],
-		});
-		expect(collectFiles(group).length).toBe(2);
-	});
-
-	it('handles mixed inputs', () => {
-		const group = new FileGroup({
-			slug: 'test',
-			title: 'Test',
-			desc: ['Test'],
-			order: 1,
-			latestFile: createMockFileRef('/file1.txt'),
-		});
-		expect(collectFiles(group, [createMockFileRef('/file2.txt')]).length).toBe(2);
 	});
 });

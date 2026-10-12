@@ -230,7 +230,7 @@ describe('describePlan', () => {
 
 		expect(describePlan(plan, copies).split('\n')).toEqual([
 			' - upload osm.20260608.versatiles (62.0 GB)',
-			' - defer  satellite.versatiles (1700.0 GB) — too large; the version on R2 stays published',
+			' - defer  satellite.versatiles (1.66 TB) — too large; the version on R2 stays published',
 			' - defer  elevation.versatiles (400.0 GB) — too large; not on R2 yet, so not published',
 			' - copy   osm.20260608.versatiles -> osm.versatiles within R2',
 			' - 1 data file unchanged',
@@ -243,7 +243,7 @@ describe('DeferredUploadsError', () => {
 		const error = new DeferredUploadsError([file('satellite.versatiles', 1700 * GB)], 80 * GB);
 
 		expect(error.message).toContain('1 upload greater than 80 GB was skipped:');
-		expect(error.message).toContain(' - satellite.versatiles (1700.0 GB)');
+		expect(error.message).toContain(' - satellite.versatiles (1.66 TB)');
 		expect(error.message).toContain('have to be handled on a real server');
 	});
 

@@ -22,8 +22,6 @@ export interface Dataset {
 	desc: string[];
 	/** Sort order in the listing; lower values appear first. */
 	order: number;
-	/** See `FileGroup.local`. */
-	local: boolean;
 	/** `'vector'` (the default) or `'raster'`. */
 	tileType?: 'raster' | 'vector';
 }
@@ -37,7 +35,6 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 			'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a>, available under <a href="https://opendatacommons.org/licenses/odbl/">ODbL</a>',
 		],
 		order: 0,
-		local: true,
 	},
 	'osm-landcover': {
 		title: 'OpenStreetMap + Landcover (Beta)',
@@ -46,13 +43,11 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 			'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a>, © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a>',
 		],
 		order: 5,
-		local: true,
 	},
 	satellite: {
 		title: 'Satellite Imagery (Alpha)',
 		desc: ['Global satellite imagery composited from <a href="https://versatiles.org/sources/">open data sources</a>.'],
 		order: 10,
-		local: true,
 		tileType: 'raster',
 	},
 	elevation: {
@@ -62,7 +57,6 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 			'© <a href="https://mapterhorn.com/attribution">Mapterhorn</a>',
 		],
 		order: 20,
-		local: true,
 		tileType: 'raster',
 	},
 	'landcover-vectors': {
@@ -72,7 +66,6 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 			'© <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021), available under <a href="http://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
 		],
 		order: 30,
-		local: true,
 	},
 	'hillshade-vectors': {
 		title: 'Hillshading (Alpha)',
@@ -81,7 +74,6 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 			'© <a href="https://github.com/tilezen/joerd/blob/master/docs/attribution.md">Mapzen Terrain Tiles, DEM Sources</a>',
 		],
 		order: 40,
-		local: true,
 	},
 	'bathymetry-vectors': {
 		title: 'Bathymetry (Alpha)',
@@ -89,7 +81,6 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 			'Ocean depth contours derived from the <a href="https://www.gebco.net/data_and_products/historical_data_sets/#gebco_2021">GEBCO 2021 Grid</a>, processed with <a href="https://www.naturalearthdata.com/">Natural Earth</a> by <a href="https://opendem.info">OpenDEM</a>.',
 		],
 		order: 50,
-		local: true,
 	},
 };
 

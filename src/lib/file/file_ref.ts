@@ -1,34 +1,29 @@
-import { statSync } from 'fs';
 import { basename } from 'path';
 import { FileResponse } from './file_response.js';
 
 /**
- * Represents a single file that is part of the download.versatiles.org catalog.
+ * Represents a single data file of the download.versatiles.org catalog: a
+ * `.versatiles` file on the Storage Box that is, or is about to be, published
+ * on R2.
  *
  * A `FileRef` has several perspectives on the same file:
- * - `fullname`: a local path (for generated site assets) or, for remote files,
- *   the path on the Storage Box
+ * - `remotePath` / `fullname`: the absolute path on the Storage Box
  * - `filename`: the basename
  * - `url`: the path/key under which the file is exposed (R2 key / HTTP path)
- * - `remotePath`: the absolute path on the Storage Box (empty for local files)
  *
- * Construction is flexible to support the different call sites in the pipeline:
+ * Construction:
  *
- * - `new FileRef(fullname, url)`:
- *   Local file; size is read from the filesystem via `statSync`.
- * - `new FileRef(fullname, size)`:
- *   Local file with a known size; `url` defaults to `/basename`.
  * - `new FileRef(fullname, size, remotePath)`:
- *   Remote file (on the Storage Box) with a known size and remote path.
+ *   a file on the Storage Box with a known size.
  * - `new FileRef(fileRef)`:
- *   Copy constructor that clones an existing instance.
+ *   copy constructor that clones an existing instance.
  *
  * Hashes (`hashes.md5` / `hashes.sha256`) are optional and are typically populated
  * by the hash generation step. Accessing `md5` or `sha256` before they are set
  * throws to surface misconfigurations early.
  */
 export class FileRef {
-	/** Local path (generated assets) or path on the Storage Box (remote files). */
+	/** Path on the Storage Box. */
 	public fullname: string;
 
 	/** File name (basename of `fullname`). */
@@ -43,40 +38,21 @@ export class FileRef {
 	/** Human-readable size string (e.g. `"1.2 GB"`). */
 	public readonly sizeString: string;
 
-	/** Absolute path on the Storage Box (empty string for local files). */
+	/** Absolute path on the Storage Box. */
 	public remotePath: string;
 
 	/** Optional precomputed hashes for integrity / checksum files. */
 	public hashes?: { md5: string; sha256: string };
 
-	constructor(fullname: string, url: string);
-	constructor(fullname: string, size: number);
 	constructor(fullname: string, size: number, remotePath: string);
 	constructor(file: FileRef);
-	constructor(a: FileRef | string, b?: number | string, c?: string) {
-		if (typeof a === 'string') {
+	constructor(a: FileRef | string, b?: number, c?: string) {
+		if (typeof a === 'string' && typeof b === 'number' && typeof c === 'string') {
 			this.fullname = a;
 			this.filename = basename(a);
-			if (typeof b === 'string') {
-				// (fullname, url) — local file, size from the filesystem.
-				this.url = b;
-				this.size = statSync(a).size;
-				this.remotePath = '';
-			} else if (typeof b === 'number' && typeof c === 'string') {
-				// (fullname, size, remotePath) — remote file on the Storage Box.
-				this.url = '/' + this.filename;
-				this.size = b;
-				this.remotePath = c;
-			} else if (typeof b === 'number') {
-				// (fullname, size) — local file with a known size.
-				this.url = '/' + this.filename;
-				this.size = b;
-				this.remotePath = '';
-			} else {
-				throw new Error(
-					'Invalid FileRef constructor arguments: expected (fullname, url:string), (fullname, size:number) or (fullname, size:number, remotePath:string).',
-				);
-			}
+			this.url = '/' + this.filename;
+			this.size = b;
+			this.remotePath = c;
 		} else if (a instanceof FileRef) {
 			this.fullname = a.fullname;
 			this.filename = a.filename;
@@ -85,10 +61,12 @@ export class FileRef {
 			this.remotePath = a.remotePath;
 			this.hashes = a.hashes;
 		} else {
-			throw new Error('Invalid FileRef constructor arguments: expected a string path or an existing FileRef instance.');
+			throw new Error(
+				'Invalid FileRef constructor arguments: expected (fullname, size:number, remotePath:string) or an existing FileRef instance.',
+			);
 		}
 
-		this.sizeString = (this.size / 2 ** 30).toFixed(1) + ' GB';
+		this.sizeString = formatSize(this.size);
 
 		if (!/^\/[^/]/.test(this.url)) {
 			throw new Error(`FileRef.url must start with a single '/', got: ${this.url}`);
@@ -137,4 +115,14 @@ export class FileRef {
 	clone(): FileRef {
 		return new FileRef(this);
 	}
+}
+
+/**
+ * Formats a file size in the unit that suits it: MB below 1 GB, TB from
+ * 1024 GB, GB in between. Units are binary (1 GB = 2^30 bytes).
+ */
+export function formatSize(bytes: number): string {
+	if (bytes < 2 ** 30) return (bytes / 2 ** 20).toFixed(1) + ' MB';
+	if (bytes < 2 ** 40) return (bytes / 2 ** 30).toFixed(1) + ' GB';
+	return (bytes / 2 ** 40).toFixed(2) + ' TB';
 }

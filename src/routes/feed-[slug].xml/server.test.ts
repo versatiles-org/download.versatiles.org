@@ -14,7 +14,6 @@ function group(slug: string): FileGroupData {
 		title: slug,
 		desc: ['desc'],
 		order: 0,
-		local: true,
 		tileType: 'vector',
 		olderFiles: [],
 	};

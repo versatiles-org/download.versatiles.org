@@ -26,7 +26,6 @@ export interface FileGroupData {
 	/** Description paragraphs; each consumer joins them with its own separator. */
 	desc: string[];
 	order: number;
-	local: boolean;
 	tileType: 'raster' | 'vector';
 	latestFile?: FileRefData;
 	olderFiles: FileRefData[];

@@ -18,9 +18,6 @@ import { FileResponse } from './file_response.js';
  * - For each group, `latestFile` is determined from the file names and may
  *   have its `url` normalised (e.g. date suffix removed).
  * - The remaining entries are kept in `olderFiles` and exposed as "previous versions".
- *
- * The `local` flag indicates whether the latest file of this group should be
- * mirrored to a local volume for fast download.
  */
 export class FileGroup {
 	/** Machine-readable identifier of the group (derived from the file basename). */
@@ -48,12 +45,6 @@ export class FileGroup {
 	order: number;
 
 	/**
-	 * Whether the latest file of this group should be mirrored to a local volume
-	 * (used for hosting "local" copies with better performance).
-	 */
-	local: boolean;
-
-	/**
 	 * The type of tiles contained in this group's files.
 	 * - `'vector'`: Protocol Buffer encoded vector tiles (e.g. MVT/PBF)
 	 * - `'raster'`: Image-based raster tiles (e.g. PNG, JPEG, WebP)
@@ -76,7 +67,6 @@ export class FileGroup {
 		title: string;
 		desc: string[];
 		order: number;
-		local?: boolean;
 		tileType?: 'raster' | 'vector';
 		latestFile?: FileRef;
 		olderFiles?: FileRef[];
@@ -85,7 +75,6 @@ export class FileGroup {
 		this.title = options.title;
 		this.desc = options.desc;
 		this.order = options.order;
-		this.local = options.local ?? false;
 		this.tileType = options.tileType ?? 'vector';
 		this.latestFile = options.latestFile;
 		this.olderFiles = options.olderFiles ?? [];
@@ -135,7 +124,7 @@ export class FileGroup {
  * Groups a flat list of `FileRef`s into logical `FileGroup`s.
  *
  * - The group `slug` is the file name up to its first dot.
- * - Title, description, ordering, `local` and `tileType` of each group come from
+ * - Title, description, ordering and `tileType` of each group come from
  *   the dataset table in `./datasets.ts`.
  * - A file of a dataset that is not in that table is an error: it must not be
  *   published under a placeholder title.
@@ -184,31 +173,6 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 	});
 
 	return groupList;
-}
-
-/**
- * Collects all `FileRef`s from one or more `FileGroup` / `FileRef` inputs,
- * flattening nested arrays and deduplicating by `url`.
- *
- * Used to build the final list of data files to mirror / expose.
- */
-export function collectFiles(...entries: (FileGroup | FileGroup[] | FileRef | FileRef[])[]): FileRef[] {
-	const files = new Map<string, FileRef>();
-	for (const entry of entries) addEntry(entry);
-	return Array.from(files.values());
-
-	function addEntry(entry: FileGroup | FileGroup[] | FileRef | FileRef[]) {
-		if (Array.isArray(entry)) {
-			entry.forEach(addEntry);
-		} else if (entry instanceof FileGroup) {
-			addEntry(entry.olderFiles);
-			if (entry.latestFile) addEntry(entry.latestFile);
-		} else if (entry instanceof FileRef) {
-			files.set(entry.url, entry);
-		} else {
-			throw new Error('Unsupported entry type in collectFiles; expected FileGroup, FileRef or arrays of those.');
-		}
-	}
 }
 
 /**

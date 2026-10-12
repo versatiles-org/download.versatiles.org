@@ -21,7 +21,6 @@ function group(overrides: Partial<FileGroupData> = {}): FileGroupData {
 		title: 'OpenStreetMap',
 		desc: ['A plain description.'],
 		order: 0,
-		local: true,
 		tileType: 'vector',
 		latestFile: fileRef('osm.versatiles'),
 		olderFiles: [fileRef('osm.20260105.versatiles')],

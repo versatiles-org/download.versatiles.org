@@ -62,15 +62,17 @@ and carries the same MD5. After each upload or copy the object is read back and 
 
 ## Bucket layout & naming convention
 
-There is no central catalog file — consumers rely on a predictable key convention plus
-the sidecars:
+`https://download.versatiles.org/catalog.json` lists every dataset with its title,
+description and tile type, its latest release (stable url, size, md5, sha256, size index)
+and all listed releases under their own urls, newest first. Behind it is a predictable key
+convention:
 
 - `https://download.versatiles.org/<slug>.versatiles` — stable "latest" key (overwritten in place)
 - `…/<slug>.<date>.versatiles` — dated archival copies; they are never deleted
 - `…/<file>.md5` and `…/<file>.sha256` — checksum sidecars of every data file
 - `…/<file>.index.json` — size index of the latest release (under its dated and its
   stable key)
-- website assets (`index.html`, `_app/…`, `feed-<slug>.xml`, `urllist_<slug>.tsv`) under
+- website assets (`index.html`, `_app/…`, `catalog.json`, `feed-<slug>.xml`, `urllist_<slug>.tsv`) under
   their own keys
 
 Which datasets exist — their titles, descriptions and order on the page — is defined in

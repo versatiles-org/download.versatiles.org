@@ -6,8 +6,8 @@
  * 2. run `vite build` → `build/` (index.html, `feed-<slug>.xml`, `_app/…` assets),
  * 3. upload `build/` to R2.
  *
- * The checksum sidecars (`<key>.md5` / `.sha256`) and TSV url lists are not part
- * of the SvelteKit build — they are generated from the in-memory hashes and
+ * The checksum sidecars (`<key>.md5` / `.sha256`), TSV url lists and
+ * `catalog.json` are not part of the SvelteKit build — they are generated from the in-memory hashes and
  * uploaded as objects. Data files are mirrored separately (see `../mirror/`);
  * per the atomic-publish ordering, the site is published only after the data is
  * in place.
@@ -21,6 +21,7 @@ import { execSync } from 'child_process';
 import { resolve } from 'path';
 import type { FileGroup } from '../file/file_group.js';
 import { uploadObject, uploadDir } from '../mirror/rclone.js';
+import { buildCatalog } from '../file/catalog.js';
 
 /** Folder of the build output that holds the scripts and styles of the pages. */
 const ASSETS = '_app';
@@ -29,7 +30,8 @@ const ASSETS = '_app';
  * Generates the static site for the given groups and uploads it to R2.
  *
  * `baseURL` is used to turn relative file paths into absolute URLs (in the TSV
- * url lists). Returns the number of generated checksum/url-list objects uploaded.
+ * url lists and the catalog). Returns the number of generated objects uploaded:
+ * checksums, url lists and the catalog.
  */
 export function buildAndUploadSite(fileGroups: FileGroup[], baseURL: string): number {
 	console.log('Building site...');
@@ -43,9 +45,10 @@ export function buildAndUploadSite(fileGroups: FileGroup[], baseURL: string): nu
 	execSync('npx svelte-kit sync', { stdio: 'inherit' });
 	execSync('npx vite build --logLevel warn', { stdio: 'inherit' });
 
-	// 3. Upload the generated checksum sidecars and url lists (not part of the build).
-	const objects = fileGroups.flatMap((group) => group.getResponses(baseURL));
-	console.log(`Uploading ${objects.length} checksum/url-list objects...`);
+	// 3. Upload the generated checksum sidecars and url lists (not part of the build),
+	//    then the catalog, which lists them.
+	const objects = [...fileGroups.flatMap((group) => group.getResponses(baseURL)), buildCatalog(fileGroups, baseURL)];
+	console.log(`Uploading ${objects.length} checksum/url-list/catalog objects...`);
 	for (const object of objects) {
 		uploadObject(object.url, object.content, object.contentType);
 	}

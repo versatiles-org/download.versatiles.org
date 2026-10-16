@@ -64,11 +64,12 @@ describe('buildAndUploadSite', () => {
 			'/osm.versatiles.md5',
 			'/osm.versatiles.sha256',
 			'/urllist_osm.tsv',
+			'/catalog.json',
 			'dir:_app',
 			'/feed-osm.xml',
 			'dir:',
 		]);
-		expect(count).toBe(3); // sidecars + url list (feeds not counted)
+		expect(count).toBe(4); // sidecars + url list + catalog (feeds not counted)
 	});
 
 	it('uploads the assets from the _app folder of the build to the same prefix', () => {
@@ -98,7 +99,13 @@ describe('buildAndUploadSite', () => {
 
 		buildAndUploadSite([group()], 'https://download.versatiles.org/');
 
-		expect(uploads()).toEqual(['/osm.versatiles.md5', '/osm.versatiles.sha256', '/urllist_osm.tsv', 'dir:']);
+		expect(uploads()).toEqual([
+			'/osm.versatiles.md5',
+			'/osm.versatiles.sha256',
+			'/urllist_osm.tsv',
+			'/catalog.json',
+			'dir:',
+		]);
 		fsMock.existsSync.mockReturnValue(true);
 	});
 });

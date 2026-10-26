@@ -40,7 +40,7 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 		title: 'OpenStreetMap + Landcover (Beta)',
 		desc: [
 			'Combined tileset of <a href="https://www.openstreetmap.org/">OpenStreetMap</a> in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a> and global landcover classification based on <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, merged into a single file.',
-			'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a>, © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a>',
+			'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a>, © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium',
 		],
 		order: 5,
 	},
@@ -62,8 +62,8 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 	'landcover-vectors': {
 		title: 'Landcover (Beta)',
 		desc: [
-			'Global landcover classification based on <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>.',
-			'© <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021), available under <a href="http://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
+			'Global land cover for zoom levels 0–10 from <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, in Shortbread’s land and water_polygons layers. To combine it with OpenStreetMap, use the pre-merged <a href="#osm-landcover">OpenStreetMap + Landcover</a>, or see <a href="https://docs.versatiles.org/compendium/specification_shortbread_landcover.html#using-it">how to merge and render it</a>.',
+			'© <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, available under <a href="http://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
 		],
 		order: 30,
 	},

@@ -39,7 +39,7 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 	'osm-landcover': {
 		title: 'OpenStreetMap + Landcover (Beta)',
 		desc: [
-			'Combined tileset of <a href="https://www.openstreetmap.org/">OpenStreetMap</a> in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a> and global landcover classification based on <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, merged into a single file.',
+			'Combined tileset of <a href="https://www.openstreetmap.org/">OpenStreetMap</a> in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a> and global landcover classification based on <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, merged into a single file. Styles only draw the land cover at low zoom levels when it is enabled; see <a href="https://docs.versatiles.org/compendium/specification_shortbread_landcover.html#2-render-at-low-zoom">how to render it</a>.',
 			'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a>, © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium',
 		],
 		order: 5,

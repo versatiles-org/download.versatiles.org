@@ -62,7 +62,7 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 	'landcover-vectors': {
 		title: 'Landcover (Beta)',
 		desc: [
-			'Global land cover for zoom levels 0–10 from <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, in Shortbread’s land and water_polygons layers. To combine it with OpenStreetMap, use the pre-merged <a href="#osm-landcover">OpenStreetMap + Landcover</a>, or see <a href="https://docs.versatiles.org/compendium/specification_shortbread_landcover.html#using-it">how to merge and render it</a>.',
+			'Global land cover for zoom levels 0–10 from <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, in Shortbread’s land and water_polygons layers. To combine it with OpenStreetMap, use the pre-merged OpenStreetMap + Landcover, or see <a href="https://docs.versatiles.org/compendium/specification_shortbread_landcover.html#using-it">how to merge and render it</a>.',
 			'© <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, available under <a href="http://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
 		],
 		order: 30,

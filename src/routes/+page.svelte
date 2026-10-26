@@ -152,6 +152,12 @@
 		text-align: center;
 	}
 
+	/* Description links come from {@html}, so they need :global. Underlined because
+	   the dimmed description makes their colour alone indistinguishable from the text. */
+	.group-desc > :global(a) {
+		text-decoration: underline;
+	}
+
 	.group-desc,
 	header,
 	h1,

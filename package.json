@@ -41,12 +41,12 @@
   "license": "MIT",
   "private": true,
   "dependencies": {
-    "@sveltejs/adapter-static": "^4.0.0",
-    "@sveltejs/kit": "^3.1.0",
-    "@versatiles/container": "^2.0.2",
+    "@sveltejs/adapter-static": "^4.0.1",
+    "@sveltejs/kit": "^3.1.1",
+    "@versatiles/container": "^2.1.0",
     "@versatiles/svelte": "^3.0.1",
-    "sass": "^1.106.1",
-    "svelte": "^5.57.2",
+    "sass": "^1.107.1",
+    "svelte": "^5.57.3",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vite": "^8.3.5",
@@ -54,15 +54,15 @@
   },
   "devDependencies": {
     "@playwright/test": "1.64.1",
-    "@types/node": "^26.6.5",
-    "@typescript-eslint/eslint-plugin": "^8.72.0",
-    "@typescript-eslint/parser": "^8.72.0",
+    "@types/node": "^26.6.6",
+    "@typescript-eslint/eslint-plugin": "^8.72.1",
+    "@typescript-eslint/parser": "^8.72.1",
     "@versatiles/release-tool": "^2.20.0",
     "@vitest/coverage-v8": "^5.0.5",
-    "eslint": "^10.13.0",
+    "eslint": "^10.14.0",
     "npm-check-updates": "^23.1.1",
     "prettier": "^3.9.10",
     "prettier-plugin-svelte": "^4.1.1",
-    "svelte-check": "^4.7.7"
+    "svelte-check": "^4.7.8"
   }
 }

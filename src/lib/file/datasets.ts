@@ -36,14 +36,6 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 		],
 		order: 0,
 	},
-	'osm-landcover': {
-		title: 'OpenStreetMap + Landcover (Beta)',
-		desc: [
-			'Combined tileset of <a href="https://www.openstreetmap.org/">OpenStreetMap</a> in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a> and global landcover classification based on <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, merged into a single file. Styles only draw the land cover at low zoom levels when it is enabled; see <a href="https://docs.versatiles.org/compendium/specification_shortbread_landcover.html#2-render-at-low-zoom">how to render it</a>.',
-			'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a>, © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium',
-		],
-		order: 5,
-	},
 	satellite: {
 		title: 'Satellite Imagery (Alpha)',
 		desc: ['Global satellite imagery composited from <a href="https://versatiles.org/sources/">open data sources</a>.'],
@@ -62,8 +54,8 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 	'landcover-vectors': {
 		title: 'Landcover (Beta)',
 		desc: [
-			'Global land cover for zoom levels 0–10 from <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, in Shortbread’s land and water_polygons layers. To combine it with OpenStreetMap, use the pre-merged OpenStreetMap + Landcover, or see <a href="https://docs.versatiles.org/compendium/specification_shortbread_landcover.html#using-it">how to merge and render it</a>.',
-			'© <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, available under <a href="http://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
+			'Global land cover for zoom levels 0–10 from <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, with OpenStreetMap’s land use burned in, in one layer, landcover, with Shortbread’s kinds. Draw it as a separate source under OpenStreetMap; see <a href="https://github.com/versatiles-org/landcover-vectors#using-it-with-osm">how to use it</a>.',
+			'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap Contributors</a>, available under <a href="https://opendatacommons.org/licenses/odbl/">ODbL</a>. © <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover project 2021</a> / Contains modified Copernicus Sentinel data (2021) processed by ESA WorldCover consortium, available under <a href="http://creativecommons.org/licenses/by/4.0/">CC-BY 4.0</a>',
 		],
 		order: 30,
 	},

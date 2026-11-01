@@ -7,7 +7,6 @@ describe('DATASETS', () => {
 
 		expect(slugs).toEqual([
 			'osm',
-			'osm-landcover',
 			'satellite',
 			'elevation',
 			'landcover-vectors',
@@ -37,7 +36,7 @@ describe('slugOf', () => {
 	it.each([
 		['osm.20260105.versatiles', 'osm'],
 		['satellite.versatiles', 'satellite'],
-		['osm-landcover.20260105.versatiles', 'osm-landcover'],
+		['landcover-vectors.20260105.versatiles', 'landcover-vectors'],
 		['/home/download/osm.versatiles', 'osm'],
 	])('%s → %s', (filename, slug) => {
 		expect(slugOf(filename)).toBe(slug);

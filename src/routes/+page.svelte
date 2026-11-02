@@ -100,6 +100,7 @@
 </main>
 
 <footer>
+	<a href="https://versatiles.org/donate/">Please support VersaTiles</a> ·
 	<a href="https://github.com/versatiles-org/download.versatiles.org/blob/main/src/routes/+page.svelte"
 		>Improve this page on GitHub</a
 	>

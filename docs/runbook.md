@@ -83,6 +83,46 @@ holds for a release above the size limit, until it has been uploaded from a serv
 
 Do it in this order. A file whose dataset is not in the table yet stops every update.
 
+## Renaming a dataset
+
+A rename moves every release to the new slug, and redirects the old URLs. Do steps 1–4
+between two runs of the Update workflow, with none running: with the new key but the old
+files, or the other way around, the updater stops on an unknown file.
+
+1. In [`datasets.ts`](../src/lib/file/datasets.ts), change the key to the new slug, without
+   keeping the old one. Run `npm run check`, commit and push.
+2. On the Storage Box, rename the folder and the files: `<old>.versatiles` and
+   `<old>.<date>.versatiles` to `<new>.…`, together with their `.md5` and `.sha256` sidecars. Then rewrite the filename
+   inside each sidecar (`<hash>  <new>.versatiles`), for example by writing them locally and
+   uploading them with `scp`. `mv` keeps the mtime, so the sidecars stay newer than their
+   data files and the updater keeps using them instead of hashing everything again.
+3. On R2, copy each data file to its new key, `<new>/<new>.versatiles` or
+   `<new>/<new>.<date>.versatiles`. This keeps its md5 and sha256 metadata:
+
+   ```bash
+   rclone copyto --metadata r2:<bucket>/<old-key> r2:<bucket>/<new>/<new>.versatiles
+   rclone lsjson --metadata r2:<bucket>/<new>/<new>.versatiles
+   ```
+
+   Size, `md5` and `sha256` must match the old key. Without that metadata the updater
+   uploads the file again. The copy stays inside R2 and runs at roughly 300 GB an hour,
+   without progress output. `rclone backend list-multipart-uploads r2:<bucket>` shows
+   that one is under way. The size indexes, checksum files, feed and URL list need no
+   copy: the next run writes them.
+
+4. Start a dry run. Every renamed file must be planned as `skip`. Then start the real run.
+5. Add the old slug to `RENAMED` in [`worker/src/index.ts`](../worker/src/index.ts), with a
+   test. The worker then answers every old URL with a `301` to the new key: the data files
+   and their sidecars, `feed-<old>.xml` and `urllist_<old>.tsv`. These are the keys from
+   before each dataset had a folder. For a dataset that already had one, `renamedKey()` has
+   to map `<old>/<old>.…`, `<old>/feed.xml` and `<old>/urllist.tsv` as well. Push this only after step
+   4, because a push deploys the worker at once, and earlier redirects lead to keys that
+   don't exist yet.
+6. Delete the old keys as described [below](#removing-a-release-or-a-dataset), but only once
+   nothing reads them from `cdn.versatiles.cloud`, such as tiles.versatiles.org. That domain
+   serves the same bucket without the worker, so it has no redirects. Until then the old
+   keys cost storage, but they no longer get updates.
+
 ## Removing a release or a dataset
 
 The updater never deletes anything from R2. A file that is removed from the Storage Box

@@ -10,6 +10,8 @@
  *   including `If-Range`, so that a download resumed after the dataset was
  *   replaced restarts instead of being stitched together from two versions
  * - serves permissive CORS so browser `fetch()` works cross-origin
+ * - redirects the keys of renamed datasets (`/osm.versatiles`) to their
+ *   current ones (`/osm-vector/osm-vector.versatiles`)
  *
  * Worker → R2 traffic is free, so serving large data files through the Worker
  * still incurs no egress fee. (Alternatively, data keys can be served by R2's
@@ -31,6 +33,66 @@ const CORS: Record<string, string> = {
 	'access-control-expose-headers': 'content-length, content-range, content-type, etag, accept-ranges',
 	'access-control-max-age': '86400',
 };
+
+/**
+ * Datasets that were renamed and moved into a folder of their own
+ * (versatiles-org/download.versatiles.org#44), by their old slug.
+ */
+const RENAMED: Readonly<Record<string, string>> = {
+	osm: 'osm-vector',
+	satellite: 'satellite-raster',
+	elevation: 'elevation-raster',
+	'landcover-vectors': 'landcover-vector',
+	'hillshade-vectors': 'hillshade-vector',
+	'bathymetry-vectors': 'bathymetry-vector',
+};
+
+/**
+ * The current key of a key from before the rename, or null if `key` is not one:
+ *
+ *   osm.20240101.versatiles.md5  →  osm-vector/osm-vector.20240101.versatiles.md5
+ *   feed-osm.xml                 →  osm-vector/feed.xml
+ *   urllist_osm.tsv              →  osm-vector/urllist.tsv
+ */
+function renamedKey(key: string): string | null {
+	const renamed = (slug: string): string | null => (Object.hasOwn(RENAMED, slug) ? RENAMED[slug] : null);
+
+	// Tried first: `feed-osm.xml` would otherwise read as dataset `feed-osm`.
+	const feed = /^feed-([^/]+)\.xml$/.exec(key);
+	if (feed) {
+		const name = renamed(feed[1]);
+		return name && `${name}/feed.xml`;
+	}
+
+	const list = /^urllist_([^/]+)\.tsv$/.exec(key);
+	if (list) {
+		const name = renamed(list[1]);
+		return name && `${name}/urllist.tsv`;
+	}
+
+	// A data file or one of its sidecars: the slug is the name up to the first dot.
+	const data = /^([^/.]+)(\..+)$/.exec(key);
+	if (data) {
+		const name = renamed(data[1]);
+		return name && `${name}/${name}${data[2]}`;
+	}
+
+	return null;
+}
+
+/**
+ * Permanent redirect to `key` on the same host, keeping the query string. It
+ * carries the CORS headers, without which a browser `fetch()` across origins
+ * would not follow it.
+ */
+function redirect(url: URL, key: string): Response {
+	const location = new URL('/' + key.split('/').map(encodeURIComponent).join('/'), url);
+	location.search = url.search;
+	return new Response(null, {
+		status: 301,
+		headers: { ...CORS, location: location.href, 'cache-control': 'public, max-age=86400' },
+	});
+}
 
 /**
  * Resolves a request URL to an R2 object key, or null if the path is not valid
@@ -60,8 +122,14 @@ export default {
 			});
 		}
 
-		const key = keyForPath(new URL(request.url).pathname);
+		const url = new URL(request.url);
+		const key = keyForPath(url.pathname);
 		if (key === null) return new Response('Bad Request', { status: 400, headers: CORS });
+
+		// Before any lookup: an old key may still exist in the bucket, but it is no
+		// longer updated.
+		const renamed = renamedKey(key);
+		if (renamed !== null) return redirect(url, renamed);
 
 		// HEAD only needs metadata.
 		if (request.method === 'HEAD') {

@@ -319,24 +319,87 @@ describe('cache-control', () => {
 	const SHORT = 'public, max-age=300';
 
 	it.each([
-		['osm.20260105.versatiles', IMMUTABLE],
-		['osm.20260105.versatiles.md5', IMMUTABLE],
-		['osm.20260105.versatiles.sha256', IMMUTABLE],
-		['osm.20260105.versatiles.index.json', IMMUTABLE],
+		['osm-vector/osm-vector.20260105.versatiles', IMMUTABLE],
+		['osm-vector/osm-vector.20260105.versatiles.md5', IMMUTABLE],
+		['osm-vector/osm-vector.20260105.versatiles.sha256', IMMUTABLE],
+		['osm-vector/osm-vector.20260105.versatiles.index.json', IMMUTABLE],
 		['_app/immutable/chunks/abc.js', IMMUTABLE],
 	])('caches content-addressed %s forever', async (key, expected) => {
 		expect(await cacheControlFor(key)).toBe(expected);
 	});
 
 	it.each([
-		['osm.versatiles', SHORT],
-		['osm.versatiles.md5', SHORT],
+		['osm-vector/osm-vector.versatiles', SHORT],
+		['osm-vector/osm-vector.versatiles.md5', SHORT],
 		// Rewritten in place on every release, exactly like the file it describes.
-		['osm.versatiles.index.json', SHORT],
-		['satellite.versatiles.index.json', SHORT],
+		['osm-vector/osm-vector.versatiles.index.json', SHORT],
+		['satellite-raster/satellite-raster.versatiles.index.json', SHORT],
 		['index.html', SHORT],
-		['feed-osm.xml', SHORT],
+		['osm-vector/feed.xml', SHORT],
 	])('revalidates mutable %s', async (key, expected) => {
 		expect(await cacheControlFor(key)).toBe(expected);
+	});
+});
+
+describe('renamed datasets', () => {
+	/** The Location the worker sends for a path, with every old key still in the bucket. */
+	async function locationFor(path: string, init?: RequestInit): Promise<string | null> {
+		const key = decodeURIComponent(path.slice(1));
+		const response = await fetchWorker(`https://d.example${path}`, { [key]: { body: 'old' } }, init);
+		expect(response.status).toBe(301);
+		return response.headers.get('location');
+	}
+
+	it.each([
+		['/osm.versatiles', '/osm-vector/osm-vector.versatiles'],
+		['/osm.20240101.versatiles', '/osm-vector/osm-vector.20240101.versatiles'],
+		['/osm.20240101.versatiles.md5', '/osm-vector/osm-vector.20240101.versatiles.md5'],
+		['/osm.versatiles.sha256', '/osm-vector/osm-vector.versatiles.sha256'],
+		['/osm.versatiles.index.json', '/osm-vector/osm-vector.versatiles.index.json'],
+		['/satellite.versatiles', '/satellite-raster/satellite-raster.versatiles'],
+		['/elevation.versatiles', '/elevation-raster/elevation-raster.versatiles'],
+		['/landcover-vectors.versatiles', '/landcover-vector/landcover-vector.versatiles'],
+		['/hillshade-vectors.versatiles', '/hillshade-vector/hillshade-vector.versatiles'],
+		['/bathymetry-vectors.versatiles', '/bathymetry-vector/bathymetry-vector.versatiles'],
+		['/feed-osm.xml', '/osm-vector/feed.xml'],
+		['/feed-landcover-vectors.xml', '/landcover-vector/feed.xml'],
+		['/urllist_osm.tsv', '/osm-vector/urllist.tsv'],
+		['/urllist_bathymetry-vectors.tsv', '/bathymetry-vector/urllist.tsv'],
+	])('redirects %s to %s, although the old key still exists', async (path, target) => {
+		expect(await locationFor(path)).toBe(`https://d.example${target}`);
+	});
+
+	it('redirects HEAD as well', async () => {
+		expect(await locationFor('/osm.versatiles', { method: 'HEAD' })).toBe(
+			'https://d.example/osm-vector/osm-vector.versatiles',
+		);
+	});
+
+	it('keeps the query string', async () => {
+		expect(await locationFor('/osm.versatiles?x=1')).toBe('https://d.example/osm-vector/osm-vector.versatiles?x=1');
+	});
+
+	it('carries CORS, so a cross-origin fetch() follows it', async () => {
+		const response = await fetchWorker('https://d.example/osm.versatiles', {});
+		expect(response.headers.get('access-control-allow-origin')).toBe('*');
+	});
+
+	it('still answers a preflight with 204', async () => {
+		const response = await fetchWorker('https://d.example/osm.versatiles', {}, { method: 'OPTIONS' });
+		expect(response.status).toBe(204);
+	});
+
+	it.each([
+		'osm-vector/osm-vector.versatiles',
+		'osm-vector/feed.xml',
+		'feed-osm-landcover.xml',
+		'urllist_osm-landcover.tsv',
+		'osm2.versatiles',
+		'index.html',
+		'catalog.json',
+		'_app/immutable/chunks/abc.js',
+	])('serves %s without a redirect', async (key) => {
+		const response = await fetchWorker(`https://d.example/${key}`, { [key]: { body: 'x' } });
+		expect(response.status).toBe(200);
 	});
 });

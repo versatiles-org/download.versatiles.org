@@ -234,6 +234,8 @@ After a deploy / cutover, confirm:
 - [ ] `https://download.versatiles.org/<slug>/<slug>.versatiles` streams the bytes directly (HTTP 200, **no redirect**)
 - [ ] HTTP range/resume works: `curl -r 0-1023 …/<slug>/<slug>.versatiles` returns `206 Partial Content`
 - [ ] sidecars resolve: `…/<slug>/<slug>.versatiles.md5` and `.sha256`
+- [ ] old URLs redirect: `…/osm.versatiles` and `…/osm.20240101.versatiles` answer `301` to
+      `…/osm-vector/osm-vector.versatiles` and `…/osm-vector/osm-vector.20240101.versatiles`
 - [ ] browser `fetch()` works cross-origin (CORS headers present)
 - [ ] `Content-Type` of `.versatiles` objects is `application/octet-stream`
 

@@ -58,7 +58,8 @@ function rcloneReturns(readBack: { Size: number; Metadata?: Record<string, strin
 }
 
 describe('uploadDataFile', () => {
-	const file = () => dataFile('/home/osm/osm-vector.20240701.versatiles', '/osm-vector.20240701.versatiles', 'new');
+	const file = () =>
+		dataFile('/home/osm/osm-vector.20240701.versatiles', '/osm-vector/osm-vector.20240701.versatiles', 'new');
 
 	it('uploads from the Storage Box to the flat key, recording the checksums', () => {
 		rcloneReturns({ Size: 2 ** 30, Metadata: { md5: 'new' } });
@@ -69,7 +70,7 @@ describe('uploadDataFile', () => {
 		// SFTP source is home-relative (no /home prefix); R2 dest is the flat key.
 		expect(args.slice(-2)).toEqual([
 			'hetzner:osm/osm-vector.20240701.versatiles',
-			'r2:downloads/osm-vector.20240701.versatiles',
+			'r2:downloads/osm-vector/osm-vector.20240701.versatiles',
 		]);
 		expect(args).toContain('md5=new');
 		expect(args).toContain('sha256=sha-new');
@@ -78,7 +79,7 @@ describe('uploadDataFile', () => {
 
 	it('throws when the upload fails', () => {
 		rcloneReturns(null, 1);
-		expect(() => uploadDataFile(file())).toThrow(/rclone failed to upload osm-vector.20240701.versatiles/);
+		expect(() => uploadDataFile(file())).toThrow(/rclone failed to upload osm-vector\/osm-vector.20240701.versatiles/);
 	});
 
 	it('throws when the object cannot be read back', () => {
@@ -103,8 +104,9 @@ describe('uploadDataFile', () => {
 });
 
 describe('copyDataFile', () => {
-	const release = () => dataFile('/home/osm/osm-vector.20240701.versatiles', '/osm-vector.20240701.versatiles', 'abc');
-	const stable = () => dataFile('/home/osm/osm-vector.20240701.versatiles', '/osm-vector.versatiles', 'abc');
+	const release = () =>
+		dataFile('/home/osm/osm-vector.20240701.versatiles', '/osm-vector/osm-vector.20240701.versatiles', 'abc');
+	const stable = () => dataFile('/home/osm/osm-vector.20240701.versatiles', '/osm-vector/osm-vector.versatiles', 'abc');
 
 	it('copies between two keys of the bucket, never from the Storage Box', () => {
 		rcloneReturns({ Size: 2 ** 30, Metadata: { md5: 'abc' } });
@@ -113,8 +115,8 @@ describe('copyDataFile', () => {
 
 		const args = copytoArgs()!;
 		expect(args.slice(-2)).toEqual([
-			'r2:downloads/osm-vector.20240701.versatiles',
-			'r2:downloads/osm-vector.versatiles',
+			'r2:downloads/osm-vector/osm-vector.20240701.versatiles',
+			'r2:downloads/osm-vector/osm-vector.versatiles',
 		]);
 		expect(args).toContain('--metadata');
 		expect(args.some((arg) => arg.startsWith('hetzner:'))).toBe(false);
@@ -123,27 +125,27 @@ describe('copyDataFile', () => {
 	it('throws when the copy fails', () => {
 		rcloneReturns(null, 1);
 		expect(() => copyDataFile(release(), stable())).toThrow(
-			/rclone failed to copy osm-vector.20240701.versatiles to osm-vector.versatiles/,
+			/rclone failed to copy osm-vector\/osm-vector.20240701.versatiles to osm-vector\/osm-vector.versatiles/,
 		);
 	});
 
 	it('throws when the copy lost the checksum metadata', () => {
 		rcloneReturns({ Size: 2 ** 30 });
-		expect(() => copyDataFile(release(), stable())).toThrow(/osm-vector.versatiles carries md5 "null"/);
+		expect(() => copyDataFile(release(), stable())).toThrow(/osm-vector\/osm-vector\.versatiles carries md5 "null"/);
 	});
 });
 
 describe('remoteObject', () => {
 	it('returns size and checksums of an object', () => {
 		rcloneReturns({ Size: 5, Metadata: { md5: 'abc', sha256: 'def' } });
-		expect(remoteObject('/osm-vector.versatiles')).toEqual({ size: 5, md5: 'abc', sha256: 'def' });
-		expect(remoteMd5('/osm-vector.versatiles')).toBe('abc');
+		expect(remoteObject('/osm-vector/osm-vector.versatiles')).toEqual({ size: 5, md5: 'abc', sha256: 'def' });
+		expect(remoteMd5('/osm-vector/osm-vector.versatiles')).toBe('abc');
 	});
 
 	it('returns null when the object cannot be read', () => {
 		rcloneReturns(null);
-		expect(remoteObject('/osm-vector.versatiles')).toBeNull();
-		expect(remoteMd5('/osm-vector.versatiles')).toBeNull();
+		expect(remoteObject('/osm-vector/osm-vector.versatiles')).toBeNull();
+		expect(remoteMd5('/osm-vector/osm-vector.versatiles')).toBeNull();
 	});
 });
 
@@ -152,22 +154,27 @@ describe('listRemoteDataFiles', () => {
 		cp.spawnSync.mockReturnValue({
 			status: 0,
 			stdout: JSON.stringify([
-				{ Path: 'osm-vector.versatiles', Size: 100, Metadata: { md5: 'abc', sha256: 'def', mtime: 'x' } },
-				{ Path: 'satellite-raster.versatiles', Size: 200, Metadata: { 'content-type': 'application/octet-stream' } },
-				{ Path: 'elevation-raster.versatiles', Size: 300 },
+				{ Path: 'osm-vector/osm-vector.versatiles', Size: 100, Metadata: { md5: 'abc', sha256: 'def', mtime: 'x' } },
+				{
+					Path: 'satellite-raster/satellite-raster.versatiles',
+					Size: 200,
+					Metadata: { 'content-type': 'application/octet-stream' },
+				},
+				{ Path: 'elevation-raster/elevation-raster.versatiles', Size: 300 },
 			]),
 		});
 
 		expect(listRemoteDataFiles()).toEqual(
 			new Map([
-				['/osm-vector.versatiles', { size: 100, md5: 'abc', sha256: 'def' }],
-				['/satellite-raster.versatiles', { size: 200, md5: null, sha256: null }],
-				['/elevation-raster.versatiles', { size: 300, md5: null, sha256: null }],
+				['/osm-vector/osm-vector.versatiles', { size: 100, md5: 'abc', sha256: 'def' }],
+				['/satellite-raster/satellite-raster.versatiles', { size: 200, md5: null, sha256: null }],
+				['/elevation-raster/elevation-raster.versatiles', { size: 300, md5: null, sha256: null }],
 			]),
 		);
 		expect(cp.spawnSync).toHaveBeenCalledTimes(1);
 		expect(cp.spawnSync.mock.calls[0][1]).toEqual([
 			'lsjson',
+			'--recursive',
 			'--files-only',
 			'--metadata',
 			'--include',
@@ -212,13 +219,13 @@ describe('copyObject', () => {
 	it('copies between two keys of the bucket, keeping the metadata', () => {
 		cp.spawnSync.mockReturnValue({ status: 0, stdout: '' });
 
-		copyObject('/osm-vector.20260105.versatiles.index.json', '/osm-vector.versatiles.index.json');
+		copyObject('/osm-vector/osm-vector.20260105.versatiles.index.json', '/osm-vector/osm-vector.versatiles.index.json');
 
 		expect(cp.spawnSync.mock.calls[0][1]).toEqual([
 			'copyto',
 			'--metadata',
-			'r2:downloads/osm-vector.20260105.versatiles.index.json',
-			'r2:downloads/osm-vector.versatiles.index.json',
+			'r2:downloads/osm-vector/osm-vector.20260105.versatiles.index.json',
+			'r2:downloads/osm-vector/osm-vector.versatiles.index.json',
 		]);
 	});
 

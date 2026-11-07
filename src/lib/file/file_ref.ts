@@ -1,4 +1,5 @@
 import { basename } from 'path';
+import { slugOf } from './datasets.js';
 import { FileResponse } from './file_response.js';
 
 /**
@@ -9,7 +10,8 @@ import { FileResponse } from './file_response.js';
  * A `FileRef` has several perspectives on the same file:
  * - `remotePath` / `fullname`: the absolute path on the Storage Box
  * - `filename`: the basename
- * - `url`: the path/key under which the file is exposed (R2 key / HTTP path)
+ * - `url`: the path/key under which the file is exposed (R2 key / HTTP path),
+ *   in a folder named after its dataset (`/osm-vector/osm-vector.20261027.versatiles`)
  *
  * Construction:
  *
@@ -50,7 +52,7 @@ export class FileRef {
 		if (typeof a === 'string' && typeof b === 'number' && typeof c === 'string') {
 			this.fullname = a;
 			this.filename = basename(a);
-			this.url = '/' + this.filename;
+			this.url = `/${slugOf(this.filename)}/${this.filename}`;
 			this.size = b;
 			this.remotePath = c;
 		} else if (a instanceof FileRef) {

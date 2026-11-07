@@ -148,5 +148,5 @@ test('opens the dialog belonging to the row that was clicked', async ({ page }) 
 	await rowFor(page, OTHER_FILE).getByTitle('Convert to other format').click();
 
 	await expect(page.locator('dialog[open]')).toHaveCount(1);
-	expect(await commandText(page.locator('dialog[open]'))).toContain('/satellite-raster.versatiles');
+	expect(await commandText(page.locator('dialog[open]'))).toContain('/satellite-raster/satellite-raster.versatiles');
 });

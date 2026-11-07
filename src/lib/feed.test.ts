@@ -1,12 +1,13 @@
 import { describe, it, expect } from 'vitest';
 import { buildRssFeed, escapeXml } from './feed.js';
 import type { FileGroupData, FileRefData } from './data.js';
+import { slugOf } from './file/datasets.js';
 
 function fileRef(filename: string, overrides: Partial<FileRefData> = {}): FileRefData {
 	return {
 		fullname: `/home/download/${filename}`,
 		filename,
-		url: `/${filename}`,
+		url: `/${slugOf(filename)}/${filename}`,
 		size: 2 ** 30,
 		sizeString: '1.0 GB',
 		remotePath: `/home/download/${filename}`,
@@ -60,7 +61,7 @@ describe('buildRssFeed', () => {
 		);
 
 		expect(contentsOf(feed, 'item')).toHaveLength(2);
-		expect(feed).toContain('<link>https://download.versatiles.org/osm-vector.20260105.versatiles</link>');
+		expect(feed).toContain('<link>https://download.versatiles.org/osm-vector/osm-vector.20260105.versatiles</link>');
 	});
 
 	it('omits items when a group has no older versions', () => {

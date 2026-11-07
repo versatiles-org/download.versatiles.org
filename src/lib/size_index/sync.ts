@@ -4,14 +4,14 @@
  * Each index sits next to the data file it describes, alongside the `.md5` /
  * `.sha256` sidecars:
  *
- *   /osm-vector.versatiles              →  /osm-vector.versatiles.index.json
- *   /osm-vector.20260105.versatiles     →  /osm-vector.20260105.versatiles.index.json
+ *   /osm-vector/osm-vector.versatiles              →  /osm-vector/osm-vector.versatiles.index.json
+ *   /osm-vector/osm-vector.20260105.versatiles     →  /osm-vector/osm-vector.20260105.versatiles.index.json
  *
  * Building an index takes roughly 20 minutes per planet-sized container, so an
  * index is only rebuilt when the data it describes has changed. Change detection
  * uses the **md5 recorded in the index object's metadata**, not the mere presence
  * of the object: each dataset is also published under a stable, undated key
- * (`/osm-vector.versatiles`, `/satellite-raster.versatiles`), and those keys are overwritten in
+ * (`/osm-vector/osm-vector.versatiles`, `/satellite-raster/satellite-raster.versatiles`), and those keys are overwritten in
  * place on every release. A presence check would therefore pin a stale index
  * onto exactly the URLs the site links to.
  *

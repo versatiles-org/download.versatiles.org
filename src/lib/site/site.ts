@@ -3,7 +3,7 @@
  *
  * The site is a SvelteKit app prerendered with `adapter-static`:
  * 1. write the file groups to `data/fileGroups.json` (consumed by the routes),
- * 2. run `vite build` → `build/` (index.html, `feed-<slug>.xml`, `_app/…` assets),
+ * 2. run `vite build` → `build/` (index.html, `<slug>/feed.xml`, `_app/…` assets),
  * 3. upload `build/` to R2.
  *
  * The checksum sidecars (`<key>.md5` / `.sha256`), TSV url lists and
@@ -62,14 +62,14 @@ export function buildAndUploadSite(fileGroups: FileGroup[], baseURL: string): nu
 	// 5. Upload the RSS feeds, as objects rather than with the directory: rclone
 	//    would derive `text/xml` from the `.xml` extension.
 	for (const group of fileGroups) {
-		const feedPath = resolve(buildDir, `feed-${group.slug}.xml`);
+		const feedPath = resolve(buildDir, group.slug, 'feed.xml');
 		if (existsSync(feedPath)) {
-			uploadObject(`/feed-${group.slug}.xml`, readFileSync(feedPath, 'utf-8'), 'application/rss+xml');
+			uploadObject(`/${group.slug}/feed.xml`, readFileSync(feedPath, 'utf-8'), 'application/rss+xml');
 		}
 	}
 
 	// 6. Upload the pages last: index.html advertises everything above.
-	uploadDir(buildDir, '', [`/${ASSETS}/**`, '/feed-*.xml']);
+	uploadDir(buildDir, '', [`/${ASSETS}/**`, '/*/feed.xml']);
 
 	console.log('Site published.');
 	return objects.length;

@@ -1,6 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { hex2base64, groupFiles, FileGroup } from './file_group.js';
 import { FileRef } from './file_ref.js';
+import { slugOf } from './datasets.js';
 
 describe('hex2base64', () => {
 	it('converts hex to standard base64 with padding', () => {
@@ -69,7 +70,7 @@ describe('groupFiles', () => {
 		const ref = Object.create(FileRef.prototype) as FileRef;
 		ref.fullname = `/data/${filename}`;
 		ref.filename = filename;
-		ref.url = `/${filename}`;
+		ref.url = `/${slugOf(filename)}/${filename}`;
 		(ref as { size: number }).size = size;
 		(ref as { sizeString: string }).sizeString = (size / 2 ** 30).toFixed(1) + ' GB';
 		ref.remotePath = `/home/test/${filename}`;
@@ -127,7 +128,7 @@ describe('groupFiles', () => {
 		const groups = groupFiles(files);
 
 		expect(groups[0].latestFile).toBeDefined();
-		expect(groups[0].latestFile!.url).toBe('/osm-vector.versatiles');
+		expect(groups[0].latestFile!.url).toBe('/osm-vector/osm-vector.versatiles');
 	});
 
 	it('refuses a file of an unknown dataset instead of publishing a placeholder', () => {

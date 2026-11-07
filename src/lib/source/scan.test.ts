@@ -50,7 +50,7 @@ describe('getRemoteFiles', () => {
 		]);
 		expect(files[0].file.size).toBe(12345);
 		expect(files[0].file.filename).toBe('osm-vector.20240101.versatiles');
-		expect(files[0].file.url).toBe('/osm-vector.20240101.versatiles');
+		expect(files[0].file.url).toBe('/osm-vector/osm-vector.20240101.versatiles');
 		expect(ssh.sshExecSync).toHaveBeenCalledTimes(1);
 		expect(ssh.sshExecSync.mock.calls[0][0]).toEqual(['ls', '-lR', '--time-style=+%s', '/home']);
 	});

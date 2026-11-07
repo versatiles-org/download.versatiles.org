@@ -26,16 +26,16 @@ describe('buildCatalog', () => {
 		expect(datasets).toHaveLength(1);
 		expect(datasets[0]).toMatchObject({ slug: 'osm-vector', tileType: 'vector' });
 		expect(datasets[0].latest).toEqual({
-			url: `${BASE}osm-vector.versatiles`,
+			url: `${BASE}osm-vector/osm-vector.versatiles`,
 			size: 200,
 			md5: 'bb',
 			sha256: 'bbbb',
 			date: '2026-02-01',
-			index: `${BASE}osm-vector.versatiles.index.json`,
+			index: `${BASE}osm-vector/osm-vector.versatiles.index.json`,
 		});
 		expect(datasets[0].versions.map((v: { url: string; date: string }) => [v.url, v.date])).toEqual([
-			[`${BASE}osm-vector.20260201.versatiles`, '2026-02-01'],
-			[`${BASE}osm-vector.20260101.versatiles`, '2026-01-01'],
+			[`${BASE}osm-vector/osm-vector.20260201.versatiles`, '2026-02-01'],
+			[`${BASE}osm-vector/osm-vector.20260101.versatiles`, '2026-01-01'],
 		]);
 	});
 

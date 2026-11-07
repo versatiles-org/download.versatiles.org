@@ -90,13 +90,13 @@ disappears from the site at the next update, but its object, its checksum files 
 size index stay on R2 and remain downloadable by URL. To remove them as well:
 
 ```bash
-rclone deletefile r2:<bucket>/<file>.versatiles
-rclone deletefile r2:<bucket>/<file>.versatiles.md5
-rclone deletefile r2:<bucket>/<file>.versatiles.sha256
-rclone deletefile r2:<bucket>/<file>.versatiles.index.json   # latest releases only
+rclone deletefile r2:<bucket>/<slug>/<file>.versatiles
+rclone deletefile r2:<bucket>/<slug>/<file>.versatiles.md5
+rclone deletefile r2:<bucket>/<slug>/<file>.versatiles.sha256
+rclone deletefile r2:<bucket>/<slug>/<file>.versatiles.index.json   # latest releases only
 ```
 
-For a whole dataset, also delete `feed-<slug>.xml` and `urllist_<slug>.tsv`, and remove
+For a whole dataset, also delete `<slug>/feed.xml` and `<slug>/urllist.tsv`, and remove
 its entry from `datasets.ts`.
 
 ## Replacing credentials

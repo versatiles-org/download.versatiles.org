@@ -7,7 +7,7 @@
  * 1. upload the new files under their own keys, each followed at once by its
  *    `.md5` / `.sha256` objects;
  * 2. build the size index of the latest release from that key;
- * 3. only then replace the stable key (`/osm-vector.versatiles`) by a copy within R2,
+ * 3. only then replace the stable key (`/osm-vector/osm-vector.versatiles`) by a copy within R2,
  *    followed at once by its checksum objects and a copy of the index.
  *
  * So the stable URL — the one the site and the tile server use — switches to a
@@ -15,7 +15,7 @@
  * objects change within seconds of each other. The ~20 minute index build
  * happens beforehand, against the dated key nobody links to yet.
  *
- * A dataset that is published under an undated key only (`/satellite-raster.versatiles`)
+ * A dataset that is published under an undated key only (`/satellite-raster/satellite-raster.versatiles`)
  * is overwritten in place by step 1. Its checksums still follow immediately;
  * its size index lags by the build time, because it can only be built from the
  * object once it is there.

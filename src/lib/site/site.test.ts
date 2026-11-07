@@ -65,12 +65,12 @@ describe('buildAndUploadSite', () => {
 		const count = buildAndUploadSite([group()], 'https://download.versatiles.org/');
 
 		expect(uploads()).toEqual([
-			'/osm-vector.versatiles.md5',
-			'/osm-vector.versatiles.sha256',
-			'/urllist_osm-vector.tsv',
+			'/osm-vector/osm-vector.versatiles.md5',
+			'/osm-vector/osm-vector.versatiles.sha256',
+			'/osm-vector/urllist.tsv',
 			'/catalog.json',
 			'dir:_app',
-			'/feed-osm-vector.xml',
+			'/osm-vector/feed.xml',
 			'dir:',
 		]);
 		expect(count).toBe(4); // sidecars + url list + catalog (feeds not counted)
@@ -87,7 +87,7 @@ describe('buildAndUploadSite', () => {
 	it('uploads each feed once, with the RSS content type', () => {
 		buildAndUploadSite([group()], 'https://download.versatiles.org/');
 
-		const feeds = rclone.uploadObject.mock.calls.filter((call) => call[0] === '/feed-osm-vector.xml');
+		const feeds = rclone.uploadObject.mock.calls.filter((call) => call[0] === '/osm-vector/feed.xml');
 		expect(feeds).toHaveLength(1);
 		expect(feeds[0][2]).toBe('application/rss+xml');
 
@@ -95,7 +95,7 @@ describe('buildAndUploadSite', () => {
 		const [dir, prefix, exclude] = rclone.uploadDir.mock.calls[1];
 		expect(String(dir)).toMatch(/build$/);
 		expect(prefix).toBe('');
-		expect(exclude).toEqual(['/_app/**', '/feed-*.xml']);
+		expect(exclude).toEqual(['/_app/**', '/*/feed.xml']);
 	});
 
 	it('copes with a build that has no assets folder or feed', () => {
@@ -104,9 +104,9 @@ describe('buildAndUploadSite', () => {
 		buildAndUploadSite([group()], 'https://download.versatiles.org/');
 
 		expect(uploads()).toEqual([
-			'/osm-vector.versatiles.md5',
-			'/osm-vector.versatiles.sha256',
-			'/urllist_osm-vector.tsv',
+			'/osm-vector/osm-vector.versatiles.md5',
+			'/osm-vector/osm-vector.versatiles.sha256',
+			'/osm-vector/urllist.tsv',
 			'/catalog.json',
 			'dir:',
 		]);

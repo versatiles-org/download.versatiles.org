@@ -8,7 +8,7 @@ describe('FileRef', () => {
 		expect(fileRef.fullname).toBe('/home/osm/osm-vector.versatiles');
 		expect(fileRef.filename).toBe('osm-vector.versatiles');
 		expect(fileRef.size).toBe(500);
-		expect(fileRef.url).toBe('/osm-vector.versatiles');
+		expect(fileRef.url).toBe('/osm-vector/osm-vector.versatiles');
 		expect(fileRef.remotePath).toBe('/home/osm/osm-vector.versatiles');
 	});
 
@@ -41,10 +41,10 @@ describe('FileRef', () => {
 		const fileRef = new FileRef('/path/file.versatiles', 200, '/path/file.versatiles');
 		fileRef.hashes = { md5: 'abc', sha256: 'xyz' };
 		expect(fileRef.getResponseMd5File()).toStrictEqual(
-			new FileResponse('/file.versatiles.md5', 'abc file.versatiles\n'),
+			new FileResponse('/file/file.versatiles.md5', 'abc file.versatiles\n'),
 		);
 		expect(fileRef.getResponseSha256File()).toStrictEqual(
-			new FileResponse('/file.versatiles.sha256', 'xyz file.versatiles\n'),
+			new FileResponse('/file/file.versatiles.sha256', 'xyz file.versatiles\n'),
 		);
 	});
 

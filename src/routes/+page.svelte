@@ -36,7 +36,7 @@
 				rel="alternate"
 				type="application/rss+xml"
 				title="Versatiles data releases: {group.slug}"
-				href="/feed-{group.slug}.xml"
+				href="/{group.slug}/feed.xml"
 			/>
 		{/if}
 	{/each}
@@ -67,8 +67,8 @@
 					<!-- rel="external": served straight from R2 (via the Worker) in
 					     production, so no SvelteKit route exists. Tells the prerender
 					     crawler not to follow them and emit spurious 404 logs. -->
-					<a rel="external" href="/urllist_{group.slug}.tsv">URL list</a>
-					<a href="/feed-{group.slug}.xml">RSS</a>
+					<a rel="external" href="/{group.slug}/urllist.tsv">URL list</a>
+					<a href="/{group.slug}/feed.xml">RSS</a>
 				</p>
 			</div>
 

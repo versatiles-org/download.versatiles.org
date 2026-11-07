@@ -117,7 +117,7 @@ export function zoomLevels(index: SizeIndex): number[] {
 const cache = new Map<string, SizeIndex | null>();
 
 /**
- * Loads the size index belonging to a data file url (e.g. `/osm-vector.versatiles`).
+ * Loads the size index belonging to a data file url (e.g. `/osm-vector/osm-vector.versatiles`).
  *
  * Returns `null` when the dataset has no index — older versions are not indexed,
  * and a newly added dataset has none until the pipeline has built one — so

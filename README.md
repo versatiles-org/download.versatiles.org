@@ -67,13 +67,17 @@ description and tile type, its latest release (stable url, size, md5, sha256, si
 and all listed releases under their own urls, newest first. Behind it is a predictable key
 convention:
 
-- `https://download.versatiles.org/<slug>.versatiles` — stable "latest" key (overwritten in place)
-- `…/<slug>.<date>.versatiles` — dated archival copies; they are never deleted
-- `…/<file>.md5` and `…/<file>.sha256` — checksum sidecars of every data file
-- `…/<file>.index.json` — size index of the latest release (under its dated and its
-  stable key)
-- website assets (`index.html`, `_app/…`, `catalog.json`, `feed-<slug>.xml`, `urllist_<slug>.tsv`) under
-  their own keys
+Each dataset has a folder named after its slug:
+
+- `https://download.versatiles.org/<slug>/<slug>.versatiles` — stable "latest" key
+  (overwritten in place)
+- `…/<slug>/<slug>.<date>.versatiles` — dated archival copies; they are never deleted
+- `…/<slug>/<file>.md5` and `…/<slug>/<file>.sha256` — checksum sidecars of every data file
+- `…/<slug>/<file>.index.json` — size index of the latest release (under its dated and
+  its stable key)
+- `…/<slug>/feed.xml` and `…/<slug>/urllist.tsv` — RSS feed of its releases and TSV url
+  list of its latest one
+- website assets (`index.html`, `_app/…`, `catalog.json`) at the root
 
 Which datasets exist — their titles, descriptions and order on the page — is defined in
 [`src/lib/file/datasets.ts`](src/lib/file/datasets.ts). A `.versatiles` file on the
@@ -227,9 +231,9 @@ deployed by CI whenever a push to `main` changes it; see
 After a deploy / cutover, confirm:
 
 - [ ] `https://download.versatiles.org/` returns the HTML index (Worker `/ → index.html`)
-- [ ] `https://download.versatiles.org/<slug>.versatiles` streams the bytes directly (HTTP 200, **no redirect**)
-- [ ] HTTP range/resume works: `curl -r 0-1023 …/<slug>.versatiles` returns `206 Partial Content`
-- [ ] sidecars resolve: `…/<slug>.versatiles.md5` and `.sha256`
+- [ ] `https://download.versatiles.org/<slug>/<slug>.versatiles` streams the bytes directly (HTTP 200, **no redirect**)
+- [ ] HTTP range/resume works: `curl -r 0-1023 …/<slug>/<slug>.versatiles` returns `206 Partial Content`
+- [ ] sidecars resolve: `…/<slug>/<slug>.versatiles.md5` and `.sha256`
 - [ ] browser `fetch()` works cross-origin (CORS headers present)
 - [ ] `Content-Type` of `.versatiles` objects is `application/octet-stream`
 

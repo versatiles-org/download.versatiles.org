@@ -2,7 +2,7 @@ import { describe, it, expect } from 'vitest';
 import { buildCommand } from './command.js';
 import type { BBox } from './size_index/estimate.js';
 
-const SOURCE = 'https://download.versatiles.org/osm-vector.versatiles';
+const SOURCE = 'https://download.versatiles.org/osm-vector/osm-vector.versatiles';
 const BERLIN: BBox = [13, 52.3, 13.8, 52.7];
 
 /** The options an untouched dialog produces: whole world, full zoom range. */

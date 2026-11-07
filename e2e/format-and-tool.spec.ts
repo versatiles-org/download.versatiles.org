@@ -8,7 +8,7 @@
 import { test, expect, openDialog, commandText, option, waitForSizeIndex } from './fixtures.js';
 
 const FILE = 'osm-vector.versatiles';
-const SOURCE = 'https://download.versatiles.org/osm-vector.versatiles';
+const SOURCE = 'https://download.versatiles.org/osm-vector/osm-vector.versatiles';
 
 /** `buildCommand` joins its parts with a trailing backslash and two spaces. */
 const JOIN = ' \\\n  ';

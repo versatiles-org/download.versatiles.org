@@ -109,8 +109,8 @@ describe('run', () => {
 		const previous = file('osm-vector.20260413.versatiles', 60 * GB);
 		const release = file('osm-vector.20260608.versatiles', 62 * GB);
 		given([previous, release], {
-			'/osm-vector.20260413.versatiles': uploaded(previous),
-			'/osm-vector.versatiles': uploaded(previous),
+			'/osm-vector/osm-vector.20260413.versatiles': uploaded(previous),
+			'/osm-vector/osm-vector.versatiles': uploaded(previous),
 		});
 
 		await run();
@@ -118,8 +118,8 @@ describe('run', () => {
 		expect(generateHashes).toHaveBeenCalled();
 		// Only the new release crosses the network; its stable key is made inside R2.
 		expect(executed()).toEqual({
-			uploads: ['/osm-vector.20260608.versatiles'],
-			copies: ['/osm-vector.20260608.versatiles -> /osm-vector.versatiles'],
+			uploads: ['/osm-vector/osm-vector.20260608.versatiles'],
+			copies: ['/osm-vector/osm-vector.20260608.versatiles -> /osm-vector/osm-vector.versatiles'],
 		});
 
 		const groups = publishedGroups();
@@ -135,9 +135,9 @@ describe('run', () => {
 		const release = file('osm-vector.20260608.versatiles', 62 * GB);
 		const satellite = file('satellite-raster.versatiles', 1600 * GB);
 		given([release, satellite], {
-			'/osm-vector.20260608.versatiles': uploaded(release),
-			'/osm-vector.versatiles': uploaded(release),
-			'/satellite-raster.versatiles': uploaded(satellite),
+			'/osm-vector/osm-vector.20260608.versatiles': uploaded(release),
+			'/osm-vector/osm-vector.versatiles': uploaded(release),
+			'/satellite-raster/satellite-raster.versatiles': uploaded(satellite),
 		});
 
 		await run();
@@ -169,7 +169,7 @@ describe('run', () => {
 
 		await run();
 
-		expect(executed().uploads).toEqual(['/satellite-raster.versatiles']);
+		expect(executed().uploads).toEqual(['/satellite-raster/satellite-raster.versatiles']);
 	});
 
 	describe('lock', () => {
@@ -213,8 +213,8 @@ describe('run', () => {
 			const previous = file('osm-vector.20260413.versatiles', 60 * GB);
 			const release = file('osm-vector.20260608.versatiles', 62 * GB);
 			given([previous, release], {
-				'/osm-vector.20260413.versatiles': uploaded(previous),
-				'/osm-vector.versatiles': uploaded(previous),
+				'/osm-vector/osm-vector.20260413.versatiles': uploaded(previous),
+				'/osm-vector/osm-vector.versatiles': uploaded(previous),
 			});
 
 			await run({ dryRun: true });
@@ -247,7 +247,7 @@ describe('run', () => {
 
 		it('reports an outdated size index of data that is otherwise up to date', async () => {
 			const satellite = file('satellite-raster.versatiles', 1600 * GB);
-			given([satellite], { '/satellite-raster.versatiles': uploaded(satellite) });
+			given([satellite], { '/satellite-raster/satellite-raster.versatiles': uploaded(satellite) });
 			vi.mocked(isCurrent).mockReturnValue(false);
 
 			await run({ dryRun: true });
@@ -290,7 +290,7 @@ describe('run', () => {
 			const satellite = file('satellite-raster.versatiles', 1700 * GB, 'new');
 			const elevation = file('elevation-raster.versatiles', 400 * GB);
 			given([release, satellite, elevation], {
-				'/satellite-raster.versatiles': { size: 1600 * GB, md5: 'md5-old', sha256: 'sha-old' },
+				'/satellite-raster/satellite-raster.versatiles': { size: 1600 * GB, md5: 'md5-old', sha256: 'sha-old' },
 			});
 
 			const error = await run().catch((e: unknown) => e);
@@ -309,7 +309,7 @@ describe('run', () => {
 			// The small upload was executed, and the site was published before failing.
 			expect(executed()).toEqual({
 				uploads: [release.url],
-				copies: ['/osm-vector.20260608.versatiles -> /osm-vector.versatiles'],
+				copies: ['/osm-vector/osm-vector.20260608.versatiles -> /osm-vector/osm-vector.versatiles'],
 			});
 			expect(buildAndUploadSite).toHaveBeenCalled();
 		});
@@ -318,7 +318,7 @@ describe('run', () => {
 			const satellite = file('satellite-raster.versatiles', 1700 * GB, 'new');
 			const elevation = file('elevation-raster.versatiles', 400 * GB);
 			given([satellite, elevation], {
-				'/satellite-raster.versatiles': { size: 1600 * GB, md5: 'md5-old', sha256: 'sha-old' },
+				'/satellite-raster/satellite-raster.versatiles': { size: 1600 * GB, md5: 'md5-old', sha256: 'sha-old' },
 			});
 
 			await run().catch(() => {});

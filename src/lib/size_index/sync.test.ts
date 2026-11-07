@@ -35,17 +35,17 @@ describe('ensureSizeIndex', () => {
 	});
 
 	it('builds and uploads an index with the source md5 as metadata', async () => {
-		const built = await ensureSizeIndex(file('/osm-vector.20260105.versatiles', 'abc'), BASE);
+		const built = await ensureSizeIndex(file('/osm-vector/osm-vector.20260105.versatiles', 'abc'), BASE);
 
 		expect(built).toBe(true);
 		expect(builder.buildSizeIndex).toHaveBeenCalledTimes(1);
 		expect(builder.buildSizeIndex.mock.calls[0][0]).toBe(
-			'https://download.versatiles.org/osm-vector.20260105.versatiles',
+			'https://download.versatiles.org/osm-vector/osm-vector.20260105.versatiles',
 		);
 
 		expect(rclone.uploadObject).toHaveBeenCalledTimes(1);
 		const [url, content, contentType, metadata] = rclone.uploadObject.mock.calls[0];
-		expect(url).toBe('/osm-vector.20260105.versatiles.index.json');
+		expect(url).toBe('/osm-vector/osm-vector.20260105.versatiles.index.json');
 		expect(JSON.parse(content as string)).toEqual({ levels: { '0': 42 } });
 		expect(contentType).toBe('application/json');
 		expect(metadata).toEqual({ md5: 'abc' });
@@ -54,10 +54,10 @@ describe('ensureSizeIndex', () => {
 	it('skips when the stored md5 already matches', async () => {
 		rclone.remoteMd5.mockReturnValue('abc');
 
-		const built = await ensureSizeIndex(file('/osm-vector.versatiles', 'abc'), BASE);
+		const built = await ensureSizeIndex(file('/osm-vector/osm-vector.versatiles', 'abc'), BASE);
 
 		expect(built).toBe(false);
-		expect(rclone.remoteMd5).toHaveBeenCalledWith('/osm-vector.versatiles.index.json');
+		expect(rclone.remoteMd5).toHaveBeenCalledWith('/osm-vector/osm-vector.versatiles.index.json');
 		expect(builder.buildSizeIndex).not.toHaveBeenCalled();
 		expect(rclone.uploadObject).not.toHaveBeenCalled();
 	});
@@ -66,7 +66,7 @@ describe('ensureSizeIndex', () => {
 		// The index on R2 describes the previous release of the same key.
 		rclone.remoteMd5.mockReturnValue('old-md5');
 
-		const built = await ensureSizeIndex(file('/satellite-raster.versatiles', 'new-md5'), BASE);
+		const built = await ensureSizeIndex(file('/satellite-raster/satellite-raster.versatiles', 'new-md5'), BASE);
 
 		expect(built).toBe(true);
 		expect(rclone.uploadObject.mock.calls[0][3]).toEqual({ md5: 'new-md5' });
@@ -75,14 +75,16 @@ describe('ensureSizeIndex', () => {
 	it('uploads nothing when the build fails', async () => {
 		builder.buildSizeIndex.mockRejectedValueOnce(new Error('range request failed'));
 
-		await expect(ensureSizeIndex(file('/osm-vector.versatiles', 'abc'), BASE)).rejects.toThrow('range request failed');
+		await expect(ensureSizeIndex(file('/osm-vector/osm-vector.versatiles', 'abc'), BASE)).rejects.toThrow(
+			'range request failed',
+		);
 		expect(rclone.uploadObject).not.toHaveBeenCalled();
 	});
 });
 
 describe('copySizeIndex', () => {
-	const release = file('/osm-vector.20260105.versatiles', 'abc');
-	const stable = file('/osm-vector.versatiles', 'abc');
+	const release = file('/osm-vector/osm-vector.20260105.versatiles', 'abc');
+	const stable = file('/osm-vector/osm-vector.versatiles', 'abc');
 
 	beforeEach(() => {
 		vi.clearAllMocks();
@@ -93,8 +95,8 @@ describe('copySizeIndex', () => {
 		expect(copySizeIndex(release, stable)).toBe(true);
 
 		expect(rclone.copyObject).toHaveBeenCalledWith(
-			'/osm-vector.20260105.versatiles.index.json',
-			'/osm-vector.versatiles.index.json',
+			'/osm-vector/osm-vector.20260105.versatiles.index.json',
+			'/osm-vector/osm-vector.versatiles.index.json',
 		);
 		expect(builder.buildSizeIndex).not.toHaveBeenCalled();
 		expect(rclone.uploadObject).not.toHaveBeenCalled();
@@ -110,13 +112,13 @@ describe('copySizeIndex', () => {
 		rclone.remoteMd5.mockReturnValue('abc');
 
 		expect(copySizeIndex(release, stable)).toBe(false);
-		expect(rclone.remoteMd5).toHaveBeenCalledWith('/osm-vector.versatiles.index.json');
+		expect(rclone.remoteMd5).toHaveBeenCalledWith('/osm-vector/osm-vector.versatiles.index.json');
 		expect(rclone.copyObject).not.toHaveBeenCalled();
 	});
 });
 
 describe('indexUrl', () => {
 	it('appends the sidecar suffix', () => {
-		expect(indexUrl('/osm-vector.versatiles')).toBe('/osm-vector.versatiles.index.json');
+		expect(indexUrl('/osm-vector/osm-vector.versatiles')).toBe('/osm-vector/osm-vector.versatiles.index.json');
 	});
 });

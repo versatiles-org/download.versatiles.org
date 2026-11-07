@@ -25,7 +25,7 @@ describe('planMirror', () => {
 		const osm = file('osm-vector.20260608.versatiles', 60 * GB);
 		const plan = planMirror(
 			[osm],
-			remote({ '/osm-vector.20260608.versatiles': object(60 * GB, 'osm-vector.20260608.versatiles') }),
+			remote({ '/osm-vector/osm-vector.20260608.versatiles': object(60 * GB, 'osm-vector.20260608.versatiles') }),
 		);
 
 		expect(plan.actions).toEqual([{ type: 'skip', file: osm }]);
@@ -42,7 +42,7 @@ describe('planMirror', () => {
 
 	it('uploads a file whose md5 differs', () => {
 		const osm = file('osm-vector.versatiles', 60 * GB, 'new');
-		const plan = planMirror([osm], remote({ '/osm-vector.versatiles': object(60 * GB, 'old') }));
+		const plan = planMirror([osm], remote({ '/osm-vector/osm-vector.versatiles': object(60 * GB, 'old') }));
 
 		expect(plan.actions).toEqual([{ type: 'upload', file: osm }]);
 	});
@@ -51,14 +51,20 @@ describe('planMirror', () => {
 		// The md5 is metadata written at the start of an upload; a size mismatch
 		// means the object is not the file it claims to be.
 		const osm = file('osm-vector.versatiles', 60 * GB);
-		const plan = planMirror([osm], remote({ '/osm-vector.versatiles': object(59 * GB, 'osm-vector.versatiles') }));
+		const plan = planMirror(
+			[osm],
+			remote({ '/osm-vector/osm-vector.versatiles': object(59 * GB, 'osm-vector.versatiles') }),
+		);
 
 		expect(plan.actions).toEqual([{ type: 'upload', file: osm }]);
 	});
 
 	it('uploads an object that has no checksum metadata', () => {
 		const osm = file('osm-vector.versatiles', 60 * GB);
-		const plan = planMirror([osm], remote({ '/osm-vector.versatiles': { size: 60 * GB, md5: null, sha256: null } }));
+		const plan = planMirror(
+			[osm],
+			remote({ '/osm-vector/osm-vector.versatiles': { size: 60 * GB, md5: null, sha256: null } }),
+		);
 
 		expect(plan.actions).toEqual([{ type: 'upload', file: osm }]);
 	});
@@ -85,7 +91,7 @@ describe('planMirror', () => {
 			const satellite = file('satellite-raster.versatiles', 1600 * GB);
 			const plan = planMirror(
 				[satellite],
-				remote({ '/satellite-raster.versatiles': object(1600 * GB, 'satellite-raster.versatiles') }),
+				remote({ '/satellite-raster/satellite-raster.versatiles': object(1600 * GB, 'satellite-raster.versatiles') }),
 				options,
 			);
 
@@ -97,7 +103,7 @@ describe('planMirror', () => {
 			const satellite = file('satellite-raster.versatiles', 1700 * GB, 'new');
 			const plan = planMirror(
 				[satellite],
-				remote({ '/satellite-raster.versatiles': object(1600 * GB, 'old') }),
+				remote({ '/satellite-raster/satellite-raster.versatiles': object(1600 * GB, 'old') }),
 				options,
 			);
 
@@ -106,7 +112,7 @@ describe('planMirror', () => {
 			// Described as R2 serves it — not as the Storage Box has it.
 			const [current] = plan.published;
 			expect(current).not.toBe(satellite);
-			expect(current.url).toBe('/satellite-raster.versatiles');
+			expect(current.url).toBe('/satellite-raster/satellite-raster.versatiles');
 			expect(current.size).toBe(1600 * GB);
 			expect(current.md5).toBe('md5-old');
 			expect(current.sha256).toBe('sha-old');
@@ -125,7 +131,7 @@ describe('planMirror', () => {
 			const elevation = file('elevation-raster.versatiles', 400 * GB);
 			const plan = planMirror(
 				[elevation],
-				remote({ '/elevation-raster.versatiles': { size: 400 * GB, md5: null, sha256: null } }),
+				remote({ '/elevation-raster/elevation-raster.versatiles': { size: 400 * GB, md5: null, sha256: null } }),
 				options,
 			);
 
@@ -141,17 +147,17 @@ describe('planMirror', () => {
 			const plan = planMirror(
 				[osm, satellite, hillshade],
 				remote({
-					'/satellite-raster.versatiles': object(1600 * GB, 'old'),
-					'/hillshade-vector.versatiles': object(105 * GB, 'hillshade-vector.versatiles'),
+					'/satellite-raster/satellite-raster.versatiles': object(1600 * GB, 'old'),
+					'/hillshade-vector/hillshade-vector.versatiles': object(105 * GB, 'hillshade-vector.versatiles'),
 				}),
 				options,
 			);
 
 			expect(plan.actions.map((action) => action.type)).toEqual(['upload', 'defer', 'skip']);
 			expect(plan.published.map((f) => f.url)).toEqual([
-				'/osm-vector.20260608.versatiles',
-				'/satellite-raster.versatiles',
-				'/hillshade-vector.versatiles',
+				'/osm-vector/osm-vector.20260608.versatiles',
+				'/satellite-raster/satellite-raster.versatiles',
+				'/hillshade-vector/hillshade-vector.versatiles',
 			]);
 		});
 
@@ -162,15 +168,15 @@ describe('planMirror', () => {
 
 			const plan = planMirror(
 				[previous, next],
-				remote({ '/osm-vector.20260413.versatiles': object(60 * GB, 'osm-vector.20260413.versatiles') }),
+				remote({ '/osm-vector/osm-vector.20260413.versatiles': object(60 * GB, 'osm-vector.20260413.versatiles') }),
 				{ maxUploadBytes: 61 * GB },
 			);
 
 			expect(deferredFiles(plan)).toEqual([next]);
 			const [group] = groupFiles(plan.published);
-			expect(group.latestFile?.url).toBe('/osm-vector.versatiles');
+			expect(group.latestFile?.url).toBe('/osm-vector/osm-vector.versatiles');
 			expect(group.latestFile?.md5).toBe(previous.md5);
-			expect(group.olderFiles.map((f) => f.url)).toEqual(['/osm-vector.20260413.versatiles']);
+			expect(group.olderFiles.map((f) => f.url)).toEqual(['/osm-vector/osm-vector.20260413.versatiles']);
 		});
 	});
 });
@@ -183,12 +189,12 @@ describe('planStableCopies', () => {
 		const groups = groupFiles([previous, release]);
 		const copies = planStableCopies(
 			groups,
-			remote({ '/osm-vector.versatiles': object(60 * GB, 'osm-vector.20260413.versatiles') }),
+			remote({ '/osm-vector/osm-vector.versatiles': object(60 * GB, 'osm-vector.20260413.versatiles') }),
 		);
 
 		expect(copies).toHaveLength(1);
 		expect(copies[0].from).toBe(release);
-		expect(copies[0].to.url).toBe('/osm-vector.versatiles');
+		expect(copies[0].to.url).toBe('/osm-vector/osm-vector.versatiles');
 		expect(copies[0].to.md5).toBe(release.md5);
 	});
 
@@ -199,7 +205,7 @@ describe('planStableCopies', () => {
 	it('copies nothing when the stable key already holds the latest release', () => {
 		const copies = planStableCopies(
 			groupFiles([previous, release]),
-			remote({ '/osm-vector.versatiles': object(62 * GB, 'osm-vector.20260608.versatiles') }),
+			remote({ '/osm-vector/osm-vector.versatiles': object(62 * GB, 'osm-vector.20260608.versatiles') }),
 		);
 
 		expect(copies).toEqual([]);
@@ -208,7 +214,7 @@ describe('planStableCopies', () => {
 	it('copies again when the stable key has the right md5 but the wrong size', () => {
 		const copies = planStableCopies(
 			groupFiles([release]),
-			remote({ '/osm-vector.versatiles': object(61 * GB, 'osm-vector.20260608.versatiles') }),
+			remote({ '/osm-vector/osm-vector.versatiles': object(61 * GB, 'osm-vector.20260608.versatiles') }),
 		);
 
 		expect(copies).toHaveLength(1);
@@ -231,8 +237,8 @@ describe('describePlan', () => {
 		const plan = planMirror(
 			[release, satellite, elevation, hillshade],
 			remote({
-				'/satellite-raster.versatiles': object(1600 * GB, 'old'),
-				'/hillshade-vector.versatiles': object(105 * GB, 'hillshade-vector.versatiles'),
+				'/satellite-raster/satellite-raster.versatiles': object(1600 * GB, 'old'),
+				'/hillshade-vector/hillshade-vector.versatiles': object(105 * GB, 'hillshade-vector.versatiles'),
 			}),
 			{ maxUploadBytes: 80 * GB },
 		);

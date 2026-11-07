@@ -97,7 +97,7 @@ export class FileGroup {
 		const url = new URL(file.url, baseURL).href;
 
 		return new FileResponse(
-			`/urllist_${this.slug}.tsv`,
+			`/${this.slug}/urllist.tsv`,
 			`TsvHttpData-1.0\n${url}\t${file.size}\t${hex2base64(file.md5)}\n`,
 		);
 	}
@@ -105,7 +105,7 @@ export class FileGroup {
 	 * Returns all virtual responses associated with this group:
 	 *
 	 * - `.md5` and `.sha256` checksum files for all versions
-	 * - a TSV url list (`/urllist_<slug>.tsv`) for the latest version
+	 * - a TSV url list (`/<slug>/urllist.tsv`) for the latest version
 	 */
 	getResponses(baseURL: string): FileResponse[] {
 		const result: FileResponse[] = this.olderFiles.flatMap((f) => [f.getResponseMd5File(), f.getResponseSha256File()]);
@@ -168,7 +168,7 @@ export function groupFiles(files: FileRef[]): FileGroup[] {
 			group.olderFiles.shift();
 		} else {
 			group.latestFile.url = newUrl;
-			group.latestFile.filename = newUrl.replace(/^\/+/, '');
+			group.latestFile.filename = newUrl.replace(/^.*\//, '');
 		}
 	});
 

@@ -56,8 +56,8 @@ test('the landing page', async ({ page }) => {
 	await test.step('links each group to its url list and feed', async () => {
 		for (const { slug } of GROUPS) {
 			const links = page.locator(`h2#${slug} + .group-desc .group-links`);
-			await expect.soft(links.getByRole('link', { name: 'URL list' })).toHaveAttribute('href', `/urllist_${slug}.tsv`);
-			await expect.soft(links.getByRole('link', { name: 'RSS' })).toHaveAttribute('href', `/feed-${slug}.xml`);
+			await expect.soft(links.getByRole('link', { name: 'URL list' })).toHaveAttribute('href', `/${slug}/urllist.tsv`);
+			await expect.soft(links.getByRole('link', { name: 'RSS' })).toHaveAttribute('href', `/${slug}/feed.xml`);
 		}
 	});
 
@@ -65,7 +65,7 @@ test('the landing page', async ({ page }) => {
 		// Only groups with older versions get a feed; osm-vector is the only such group in
 		// the fixture data.
 		await expect.soft(page.locator('link[rel="alternate"][type="application/rss+xml"]')).toHaveCount(1);
-		await expect.soft(page.locator('link[rel="alternate"]')).toHaveAttribute('href', '/feed-osm-vector.xml');
+		await expect.soft(page.locator('link[rel="alternate"]')).toHaveAttribute('href', '/osm-vector/feed.xml');
 	});
 
 	await test.step('shows the latest file of each group with its hashes and size', async () => {
@@ -73,15 +73,15 @@ test('the landing page', async ({ page }) => {
 
 		await expect
 			.soft(row.getByRole('link', { name: LATEST_OSM, exact: true }))
-			.toHaveAttribute('href', `/${LATEST_OSM}`);
-		await expect.soft(row.getByRole('link', { name: '58.1 GB' })).toHaveAttribute('href', `/${LATEST_OSM}`);
+			.toHaveAttribute('href', `/osm-vector/${LATEST_OSM}`);
+		await expect.soft(row.getByRole('link', { name: '58.1 GB' })).toHaveAttribute('href', `/osm-vector/${LATEST_OSM}`);
 
 		// Located by attribute rather than by role: below 500px the row drops the two
 		// checksum links with `display: none`, which takes them out of the
 		// accessibility tree. Whether they are *shown* is a responsive question and
 		// is asserted there; here it is only that they point at the right files.
-		await expect.soft(row.locator('a[href$=".md5"]')).toHaveAttribute('href', `/${LATEST_OSM}.md5`);
-		await expect.soft(row.locator('a[href$=".sha256"]')).toHaveAttribute('href', `/${LATEST_OSM}.sha256`);
+		await expect.soft(row.locator('a[href$=".md5"]')).toHaveAttribute('href', `/osm-vector/${LATEST_OSM}.md5`);
+		await expect.soft(row.locator('a[href$=".sha256"]')).toHaveAttribute('href', `/osm-vector/${LATEST_OSM}.sha256`);
 	});
 
 	await test.step('opens with no dialog on screen', async () => {

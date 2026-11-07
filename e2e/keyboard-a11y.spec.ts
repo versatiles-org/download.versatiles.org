@@ -9,7 +9,7 @@
 import { test, expect, openDialog, openDialogByKeyboard, commandText } from './fixtures.js';
 import type { Page } from '@playwright/test';
 
-const FILE = 'osm.versatiles';
+const FILE = 'osm-vector.versatiles';
 
 /** Where the focus is, described well enough to assert on. */
 function focused(page: Page) {
@@ -76,12 +76,12 @@ test('moves between formats with the arrow keys', async ({ page }) => {
 	await page.keyboard.press('ArrowRight');
 
 	await expect(dialog.locator('input[name$="-format"][value="pmtiles"]')).toBeChecked();
-	expect(await commandText(dialog)).toContain('"osm.pmtiles"');
+	expect(await commandText(dialog)).toContain('"osm-vector.pmtiles"');
 
 	await page.keyboard.press('ArrowRight');
 
 	await expect(dialog.locator('input[name$="-format"][value="mbtiles"]')).toBeChecked();
-	expect(await commandText(dialog)).toContain('"osm.mbtiles"');
+	expect(await commandText(dialog)).toContain('"osm-vector.mbtiles"');
 });
 
 test('moves between tools with the arrow keys', async ({ page }) => {

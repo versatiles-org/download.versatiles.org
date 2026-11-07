@@ -30,7 +30,7 @@ const { writeFileSync, unlinkSync } = await import('fs');
 
 const MD5 = 'a'.repeat(32);
 const SHA = 'b'.repeat(64);
-const PATH = '/home/osm/osm.versatiles';
+const PATH = '/home/osm/osm-vector.versatiles';
 
 /** A scanned data file modified at `mtime`, with sidecars modified at the given times. */
 function scanned(

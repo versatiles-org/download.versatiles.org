@@ -13,7 +13,7 @@
 import { test, expect, openDialog, expectInViewport, rowFor, option, hasWebGL2 } from './fixtures.js';
 import type { Page } from '@playwright/test';
 
-const FILE = 'osm.versatiles';
+const FILE = 'osm-vector.versatiles';
 
 /** The dialog's sheet breakpoint, in px at the default root font size. */
 const SHEET_BELOW = 704;

@@ -3,7 +3,7 @@
  *
  * This table is the one place to edit when a dataset is added: a `.versatiles`
  * file on the Storage Box belongs to the dataset named by the part of its file
- * name before the first dot (`osm.20260105.versatiles` → `osm`), and only files
+ * name before the first dot (`osm-vector.20260105.versatiles` → `osm-vector`), and only files
  * of a dataset listed here are published. Any other file stops the run — see
  * `assertKnownDatasets()` — so that a stray or misnamed file never reaches the
  * public page.
@@ -28,7 +28,7 @@ export interface Dataset {
 
 /** All published datasets, by slug. */
 export const DATASETS: Readonly<Record<string, Dataset>> = {
-	osm: {
+	'osm-vector': {
 		title: 'OpenStreetMap',
 		desc: [
 			'Full planet tileset with zoom levels 0-14 in <a href="https://shortbread-tiles.org/schema/">Shortbread Schema</a>.',
@@ -36,13 +36,13 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 		],
 		order: 0,
 	},
-	satellite: {
+	'satellite-raster': {
 		title: 'Satellite Imagery (Alpha)',
 		desc: ['Global satellite imagery composited from <a href="https://versatiles.org/sources/">open data sources</a>.'],
 		order: 10,
 		tileType: 'raster',
 	},
-	elevation: {
+	'elevation-raster': {
 		title: 'Elevation Data (Beta)',
 		desc: [
 			'Global elevation data encoded as raster tiles.',
@@ -51,7 +51,7 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 		order: 20,
 		tileType: 'raster',
 	},
-	'landcover-vectors': {
+	'landcover-vector': {
 		title: 'Landcover (Beta)',
 		desc: [
 			'Global land cover for zoom levels 0–10 from <a href="https://esa-worldcover.org/en/data-access">ESA WorldCover 2021</a>, with OpenStreetMap’s land use burned in, in one layer, landcover, with Shortbread’s kinds. Draw it as a separate source under OpenStreetMap; see <a href="https://github.com/versatiles-org/landcover-vectors#using-it-with-osm">how to use it</a>.',
@@ -59,7 +59,7 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 		],
 		order: 30,
 	},
-	'hillshade-vectors': {
+	'hillshade-vector': {
 		title: 'Hillshading (Alpha)',
 		desc: [
 			'Hillshade contours based on <a href="https://github.com/tilezen/joerd">Mapzen Terrain Tiles</a>.',
@@ -67,7 +67,7 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 		],
 		order: 40,
 	},
-	'bathymetry-vectors': {
+	'bathymetry-vector': {
 		title: 'Bathymetry (Alpha)',
 		desc: [
 			'Ocean depth contours derived from the <a href="https://www.gebco.net/data_and_products/historical_data_sets/#gebco_2021">GEBCO 2021 Grid</a>, processed with <a href="https://www.naturalearthdata.com/">Natural Earth</a> by <a href="https://opendem.info">OpenDEM</a>.',

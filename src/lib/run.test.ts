@@ -98,7 +98,7 @@ describe('run', () => {
 	});
 
 	it('stops before hashing when a file belongs to no known dataset', async () => {
-		given([file('osm.20260608.versatiles', 62 * GB), file('test.versatiles', GB)]);
+		given([file('osm-vector.20260608.versatiles', 62 * GB), file('test.versatiles', GB)]);
 
 		await expect(run()).rejects.toThrow(/belongs to no known dataset:\n - test\.versatiles\n/);
 		expect(generateHashes).not.toHaveBeenCalled();
@@ -106,11 +106,11 @@ describe('run', () => {
 	});
 
 	it('mirrors a new release with a copy to its stable key, then publishes the site', async () => {
-		const previous = file('osm.20260413.versatiles', 60 * GB);
-		const release = file('osm.20260608.versatiles', 62 * GB);
+		const previous = file('osm-vector.20260413.versatiles', 60 * GB);
+		const release = file('osm-vector.20260608.versatiles', 62 * GB);
 		given([previous, release], {
-			'/osm.20260413.versatiles': uploaded(previous),
-			'/osm.versatiles': uploaded(previous),
+			'/osm-vector.20260413.versatiles': uploaded(previous),
+			'/osm-vector.versatiles': uploaded(previous),
 		});
 
 		await run();
@@ -118,8 +118,8 @@ describe('run', () => {
 		expect(generateHashes).toHaveBeenCalled();
 		// Only the new release crosses the network; its stable key is made inside R2.
 		expect(executed()).toEqual({
-			uploads: ['/osm.20260608.versatiles'],
-			copies: ['/osm.20260608.versatiles -> /osm.versatiles'],
+			uploads: ['/osm-vector.20260608.versatiles'],
+			copies: ['/osm-vector.20260608.versatiles -> /osm-vector.versatiles'],
 		});
 
 		const groups = publishedGroups();
@@ -132,12 +132,12 @@ describe('run', () => {
 	});
 
 	it('plans no transfer when R2 is up to date', async () => {
-		const release = file('osm.20260608.versatiles', 62 * GB);
-		const satellite = file('satellite.versatiles', 1600 * GB);
+		const release = file('osm-vector.20260608.versatiles', 62 * GB);
+		const satellite = file('satellite-raster.versatiles', 1600 * GB);
 		given([release, satellite], {
-			'/osm.20260608.versatiles': uploaded(release),
-			'/osm.versatiles': uploaded(release),
-			'/satellite.versatiles': uploaded(satellite),
+			'/osm-vector.20260608.versatiles': uploaded(release),
+			'/osm-vector.versatiles': uploaded(release),
+			'/satellite-raster.versatiles': uploaded(satellite),
 		});
 
 		await run();
@@ -147,7 +147,7 @@ describe('run', () => {
 	});
 
 	it('should mirror the data before uploading the site (atomic publish)', async () => {
-		given([file('osm.20260608.versatiles', 62 * GB)]);
+		given([file('osm-vector.20260608.versatiles', 62 * GB)]);
 
 		await run();
 
@@ -157,7 +157,7 @@ describe('run', () => {
 	});
 
 	it('stops before publishing the site when the mirror fails', async () => {
-		given([file('osm.20260608.versatiles', 62 * GB)]);
+		given([file('osm-vector.20260608.versatiles', 62 * GB)]);
 		vi.mocked(executeMirror).mockRejectedValueOnce(new Error('rclone failed'));
 
 		await expect(run()).rejects.toThrow('rclone failed');
@@ -165,16 +165,16 @@ describe('run', () => {
 	});
 
 	it('uploads files of any size when there is no limit', async () => {
-		given([file('satellite.versatiles', 1600 * GB)]);
+		given([file('satellite-raster.versatiles', 1600 * GB)]);
 
 		await run();
 
-		expect(executed().uploads).toEqual(['/satellite.versatiles']);
+		expect(executed().uploads).toEqual(['/satellite-raster.versatiles']);
 	});
 
 	describe('lock', () => {
 		it('holds the lock from before the scan until the site is published', async () => {
-			given([file('osm.20260608.versatiles', 62 * GB)]);
+			given([file('osm-vector.20260608.versatiles', 62 * GB)]);
 
 			await run();
 
@@ -194,7 +194,7 @@ describe('run', () => {
 		});
 
 		it('releases the lock when the run fails', async () => {
-			given([file('osm.20260608.versatiles', 62 * GB)]);
+			given([file('osm-vector.20260608.versatiles', 62 * GB)]);
 			vi.mocked(executeMirror).mockRejectedValueOnce(new Error('rclone failed'));
 
 			await expect(run()).rejects.toThrow('rclone failed');
@@ -210,11 +210,11 @@ describe('run', () => {
 				.join('\n');
 
 		it('prints the plan and changes nothing', async () => {
-			const previous = file('osm.20260413.versatiles', 60 * GB);
-			const release = file('osm.20260608.versatiles', 62 * GB);
+			const previous = file('osm-vector.20260413.versatiles', 60 * GB);
+			const release = file('osm-vector.20260608.versatiles', 62 * GB);
 			given([previous, release], {
-				'/osm.20260413.versatiles': uploaded(previous),
-				'/osm.versatiles': uploaded(previous),
+				'/osm-vector.20260413.versatiles': uploaded(previous),
+				'/osm-vector.versatiles': uploaded(previous),
 			});
 
 			await run({ dryRun: true });
@@ -226,9 +226,9 @@ describe('run', () => {
 			expect(output()).toContain(
 				[
 					'Dry run — this is what an update would do:',
-					' - upload osm.20260608.versatiles (62.0 GB)',
-					' - index  osm.20260608.versatiles — build the size index',
-					' - copy   osm.20260608.versatiles -> osm.versatiles within R2',
+					' - upload osm-vector.20260608.versatiles (62.0 GB)',
+					' - index  osm-vector.20260608.versatiles — build the size index',
+					' - copy   osm-vector.20260608.versatiles -> osm-vector.versatiles within R2',
 					' - 1 data file unchanged',
 					' - build and upload the site',
 					'Nothing was changed.',
@@ -238,7 +238,7 @@ describe('run', () => {
 
 		it('is switched on by DRY_RUN', async () => {
 			vi.stubEnv('DRY_RUN', '1');
-			given([file('osm.20260608.versatiles', 62 * GB)]);
+			given([file('osm-vector.20260608.versatiles', 62 * GB)]);
 
 			await run();
 
@@ -246,39 +246,39 @@ describe('run', () => {
 		});
 
 		it('reports an outdated size index of data that is otherwise up to date', async () => {
-			const satellite = file('satellite.versatiles', 1600 * GB);
-			given([satellite], { '/satellite.versatiles': uploaded(satellite) });
+			const satellite = file('satellite-raster.versatiles', 1600 * GB);
+			given([satellite], { '/satellite-raster.versatiles': uploaded(satellite) });
 			vi.mocked(isCurrent).mockReturnValue(false);
 
 			await run({ dryRun: true });
 
-			expect(output()).toContain(' - index  satellite.versatiles — build the size index');
+			expect(output()).toContain(' - index  satellite-raster.versatiles — build the size index');
 		});
 
 		it('names files whose checksums would have to be computed first', async () => {
-			const release = file('osm.20260608.versatiles', 62 * GB);
+			const release = file('osm-vector.20260608.versatiles', 62 * GB);
 			const unhashed = new FileRef(
-				'/home/download/elevation.versatiles',
+				'/home/download/elevation-raster.versatiles',
 				400 * GB,
-				'/home/download/elevation.versatiles',
+				'/home/download/elevation-raster.versatiles',
 			);
 			given([release, unhashed]);
 			vi.mocked(generateHashes).mockResolvedValue([unhashed]);
 
 			await run({ dryRun: true });
 
-			expect(output()).toContain(' - upload osm.20260608.versatiles');
-			expect(output()).toContain(' - hash   elevation.versatiles (400.0 GB) — compute its checksums first');
+			expect(output()).toContain(' - upload osm-vector.20260608.versatiles');
+			expect(output()).toContain(' - hash   elevation-raster.versatiles (400.0 GB) — compute its checksums first');
 			// It took no part in the plan.
-			expect(output()).not.toContain('upload elevation.versatiles');
+			expect(output()).not.toContain('upload elevation-raster.versatiles');
 		});
 
 		it('reports deferred uploads without failing', async () => {
 			vi.stubEnv('MAX_UPLOAD_GB', '80');
-			given([file('elevation.versatiles', 400 * GB)]);
+			given([file('elevation-raster.versatiles', 400 * GB)]);
 
 			await expect(run({ dryRun: true })).resolves.toBeUndefined();
-			expect(output()).toContain(' - defer  elevation.versatiles (400.0 GB)');
+			expect(output()).toContain(' - defer  elevation-raster.versatiles (400.0 GB)');
 		});
 	});
 
@@ -286,11 +286,11 @@ describe('run', () => {
 		beforeEach(() => vi.stubEnv('MAX_UPLOAD_GB', '80'));
 
 		it('does everything else, then fails naming the skipped uploads', async () => {
-			const release = file('osm.20260608.versatiles', 62 * GB);
-			const satellite = file('satellite.versatiles', 1700 * GB, 'new');
-			const elevation = file('elevation.versatiles', 400 * GB);
+			const release = file('osm-vector.20260608.versatiles', 62 * GB);
+			const satellite = file('satellite-raster.versatiles', 1700 * GB, 'new');
+			const elevation = file('elevation-raster.versatiles', 400 * GB);
 			given([release, satellite, elevation], {
-				'/satellite.versatiles': { size: 1600 * GB, md5: 'md5-old', sha256: 'sha-old' },
+				'/satellite-raster.versatiles': { size: 1600 * GB, md5: 'md5-old', sha256: 'sha-old' },
 			});
 
 			const error = await run().catch((e: unknown) => e);
@@ -300,8 +300,8 @@ describe('run', () => {
 			expect((error as Error).message).toBe(
 				[
 					'Update complete, but 2 uploads greater than 80 GB were skipped:',
-					' - satellite.versatiles (1.66 TB)',
-					' - elevation.versatiles (400.0 GB)',
+					' - satellite-raster.versatiles (1.66 TB)',
+					' - elevation-raster.versatiles (400.0 GB)',
 					'Uploads greater than 80 GB have to be handled on a real server: run `npm run once` there, without MAX_UPLOAD_GB.',
 				].join('\n'),
 			);
@@ -309,36 +309,36 @@ describe('run', () => {
 			// The small upload was executed, and the site was published before failing.
 			expect(executed()).toEqual({
 				uploads: [release.url],
-				copies: ['/osm.20260608.versatiles -> /osm.versatiles'],
+				copies: ['/osm-vector.20260608.versatiles -> /osm-vector.versatiles'],
 			});
 			expect(buildAndUploadSite).toHaveBeenCalled();
 		});
 
 		it('publishes what R2 serves for a deferred file, and nothing for one that is not there', async () => {
-			const satellite = file('satellite.versatiles', 1700 * GB, 'new');
-			const elevation = file('elevation.versatiles', 400 * GB);
+			const satellite = file('satellite-raster.versatiles', 1700 * GB, 'new');
+			const elevation = file('elevation-raster.versatiles', 400 * GB);
 			given([satellite, elevation], {
-				'/satellite.versatiles': { size: 1600 * GB, md5: 'md5-old', sha256: 'sha-old' },
+				'/satellite-raster.versatiles': { size: 1600 * GB, md5: 'md5-old', sha256: 'sha-old' },
 			});
 
 			await run().catch(() => {});
 
 			const groups = publishedGroups();
-			expect(groups.map((group) => group.slug)).toEqual(['satellite']);
+			expect(groups.map((group) => group.slug)).toEqual(['satellite-raster']);
 			expect(groups[0].latestFile?.size).toBe(1600 * GB);
 			expect(groups[0].latestFile?.md5).toBe('md5-old');
 			expect(executed().uploads).toEqual([]);
 		});
 
 		it('fails without publishing an empty site when nothing can be published', async () => {
-			given([file('elevation.versatiles', 400 * GB)]);
+			given([file('elevation-raster.versatiles', 400 * GB)]);
 
 			await expect(run()).rejects.toThrow('none of the remote files can be published');
 			expect(buildAndUploadSite).not.toHaveBeenCalled();
 		});
 
 		it('succeeds when nothing exceeds the limit', async () => {
-			given([file('osm.20260608.versatiles', 62 * GB)]);
+			given([file('osm-vector.20260608.versatiles', 62 * GB)]);
 
 			await expect(run()).resolves.toBeUndefined();
 		});

@@ -12,20 +12,20 @@ import { groupFiles } from './lib/file/file_group.js';
 // FileRef instances matching the production data. OSM has dated versions; the
 // other groups have single non-dated files.
 const fakeFiles: FileRef[] = [
-	makeRef('osm.20260105.versatiles', 58.1),
-	makeRef('osm.20251006.versatiles', 59.6),
-	makeRef('osm.20250728.versatiles', 56.2),
-	makeRef('osm.20250407.versatiles', 55.1),
-	makeRef('osm.20250106.versatiles', 53.8),
-	makeRef('osm.20241007.versatiles', 55.6),
-	makeRef('osm.20240701.versatiles', 54.8),
-	makeRef('osm.20240325.versatiles', 53.7),
-	makeRef('osm.20240101.versatiles', 51.8),
-	makeRef('satellite.versatiles', 723.3),
-	makeRef('elevation.versatiles', 412.0),
-	makeRef('landcover-vectors.versatiles', 0.8),
-	makeRef('hillshade-vectors.versatiles', 105.4),
-	makeRef('bathymetry-vectors.versatiles', 0.7),
+	makeRef('osm-vector.20260105.versatiles', 58.1),
+	makeRef('osm-vector.20251006.versatiles', 59.6),
+	makeRef('osm-vector.20250728.versatiles', 56.2),
+	makeRef('osm-vector.20250407.versatiles', 55.1),
+	makeRef('osm-vector.20250106.versatiles', 53.8),
+	makeRef('osm-vector.20241007.versatiles', 55.6),
+	makeRef('osm-vector.20240701.versatiles', 54.8),
+	makeRef('osm-vector.20240325.versatiles', 53.7),
+	makeRef('osm-vector.20240101.versatiles', 51.8),
+	makeRef('satellite-raster.versatiles', 723.3),
+	makeRef('elevation-raster.versatiles', 412.0),
+	makeRef('landcover-vector.versatiles', 0.8),
+	makeRef('hillshade-vector.versatiles', 105.4),
+	makeRef('bathymetry-vector.versatiles', 0.7),
 ];
 
 // Assign dummy hashes so serialisation includes them.

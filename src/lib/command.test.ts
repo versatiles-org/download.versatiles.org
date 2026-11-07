@@ -2,23 +2,29 @@ import { describe, it, expect } from 'vitest';
 import { buildCommand } from './command.js';
 import type { BBox } from './size_index/estimate.js';
 
-const SOURCE = 'https://download.versatiles.org/osm.versatiles';
+const SOURCE = 'https://download.versatiles.org/osm-vector.versatiles';
 const BERLIN: BBox = [13, 52.3, 13.8, 52.7];
 
 /** The options an untouched dialog produces: whole world, full zoom range. */
 function untouched(overrides = {}) {
-	return { tool: 'versatiles' as const, source: SOURCE, output: 'osm.versatiles', zoomCeiling: 14, ...overrides };
+	return {
+		tool: 'versatiles' as const,
+		source: SOURCE,
+		output: 'osm-vector.versatiles',
+		zoomCeiling: 14,
+		...overrides,
+	};
 }
 
 describe('buildCommand', () => {
 	it('emits no narrowing flags when nothing is selected', () => {
-		expect(buildCommand(untouched())).toBe(`versatiles convert \\\n  "${SOURCE}" \\\n  "osm.versatiles"`);
+		expect(buildCommand(untouched())).toBe(`versatiles convert \\\n  "${SOURCE}" \\\n  "osm-vector.versatiles"`);
 	});
 
 	it('quotes source and output so shell metacharacters are safe', () => {
 		const command = buildCommand(untouched());
 		expect(command).toContain(`"${SOURCE}"`);
-		expect(command).toContain('"osm.versatiles"');
+		expect(command).toContain('"osm-vector.versatiles"');
 	});
 
 	it('joins continuation lines with a backslash', () => {
@@ -70,10 +76,10 @@ describe('buildCommand', () => {
 
 	describe('docker', () => {
 		it('mounts the working directory and writes into it', () => {
-			const command = buildCommand(untouched({ tool: 'docker', output: 'osm.pmtiles' }));
+			const command = buildCommand(untouched({ tool: 'docker', output: 'osm-vector.pmtiles' }));
 			expect(command).toContain('docker run -it --rm -v $(pwd):/data');
 			expect(command).toContain('versatiles/versatiles:latest convert');
-			expect(command).toContain('"/data/osm.pmtiles"');
+			expect(command).toContain('"/data/osm-vector.pmtiles"');
 		});
 
 		it('leaves the source url unprefixed', () => {

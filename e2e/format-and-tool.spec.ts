@@ -7,8 +7,8 @@
  */
 import { test, expect, openDialog, commandText, option, waitForSizeIndex } from './fixtures.js';
 
-const FILE = 'osm.versatiles';
-const SOURCE = 'https://download.versatiles.org/osm.versatiles';
+const FILE = 'osm-vector.versatiles';
+const SOURCE = 'https://download.versatiles.org/osm-vector.versatiles';
 
 /** `buildCommand` joins its parts with a trailing backslash and two spaces. */
 const JOIN = ' \\\n  ';
@@ -33,7 +33,7 @@ for (const format of ['versatiles', 'pmtiles', 'mbtiles', 'tar']) {
 		await option(dialog, 'format', format).click();
 
 		await expect(option(dialog, 'format', format)).toHaveClass(/active/);
-		expect(await commandText(dialog)).toContain(`"osm.${format}"`);
+		expect(await commandText(dialog)).toContain(`"osm-vector.${format}"`);
 	});
 }
 
@@ -65,7 +65,7 @@ test('carries the format through to the docker output path', async ({ page }) =>
 	await option(dialog, 'tool', 'docker').click();
 	await option(dialog, 'format', 'mbtiles').click();
 
-	expect(await commandText(dialog)).toContain('"/data/osm.mbtiles"');
+	expect(await commandText(dialog)).toContain('"/data/osm-vector.mbtiles"');
 });
 
 test('swaps the install hint with the tool', async ({ page }) => {

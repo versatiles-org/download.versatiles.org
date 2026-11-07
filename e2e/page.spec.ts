@@ -3,29 +3,29 @@
  * dialogs are on screen before they are asked for.
  *
  * The counts are hard-coded because the fixture data is: `generate_testdata.ts`
- * always produces the same six groups, with osm the only one carrying older
+ * always produces the same six groups, with osm-vector the only one carrying older
  * versions.
  */
 import { test, expect, rowFor } from './fixtures.js';
 
 const GROUPS = [
-	{ slug: 'osm', tileType: 'vector' },
-	{ slug: 'satellite', tileType: 'raster' },
-	{ slug: 'elevation', tileType: 'raster' },
-	{ slug: 'landcover-vectors', tileType: 'vector' },
-	{ slug: 'hillshade-vectors', tileType: 'vector' },
-	{ slug: 'bathymetry-vectors', tileType: 'vector' },
+	{ slug: 'osm-vector', tileType: 'vector' },
+	{ slug: 'satellite-raster', tileType: 'raster' },
+	{ slug: 'elevation-raster', tileType: 'raster' },
+	{ slug: 'landcover-vector', tileType: 'vector' },
+	{ slug: 'hillshade-vector', tileType: 'vector' },
+	{ slug: 'bathymetry-vector', tileType: 'vector' },
 ];
 
 /**
- * The promoted copy of the newest osm file: `groupFiles()` clones the newest
+ * The promoted copy of the newest osm-vector file: `groupFiles()` clones the newest
  * entry and strips its date, so the group's headline row is the undated alias
  * while every dated version — including the one it was cloned from — stays in
  * `olderFiles`.
  */
-const LATEST_OSM = 'osm.versatiles';
+const LATEST_OSM = 'osm-vector.versatiles';
 
-/** Dated osm versions behind the disclosure, the newest one included. */
+/** Dated osm-vector versions behind the disclosure, the newest one included. */
 const OLDER_OSM_COUNT = 9;
 
 /*
@@ -62,10 +62,10 @@ test('the landing page', async ({ page }) => {
 	});
 
 	await test.step('advertises the feed of every group that has one', async () => {
-		// Only groups with older versions get a feed; osm is the only such group in
+		// Only groups with older versions get a feed; osm-vector is the only such group in
 		// the fixture data.
 		await expect.soft(page.locator('link[rel="alternate"][type="application/rss+xml"]')).toHaveCount(1);
-		await expect.soft(page.locator('link[rel="alternate"]')).toHaveAttribute('href', '/feed-osm.xml');
+		await expect.soft(page.locator('link[rel="alternate"]')).toHaveAttribute('href', '/feed-osm-vector.xml');
 	});
 
 	await test.step('shows the latest file of each group with its hashes and size', async () => {

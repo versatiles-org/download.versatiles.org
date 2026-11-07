@@ -13,7 +13,7 @@
 import { test, expect, openDialog, commandText, option, waitForSizeIndex, hasWebGL2 } from './fixtures.js';
 import type { Locator } from '@playwright/test';
 
-const FILE = 'osm.versatiles';
+const FILE = 'osm-vector.versatiles';
 
 /** Bounds of the viewer's country, which the place search pre-selects. See `playwright.config.ts`. */
 const UNITED_KINGDOM = '-13.7,49.9,1.78,60.85';

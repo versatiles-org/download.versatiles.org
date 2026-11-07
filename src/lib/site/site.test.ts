@@ -24,10 +24,14 @@ describe('buildAndUploadSite', () => {
 	beforeEach(() => vi.clearAllMocks());
 
 	function group(): FileGroup {
-		const file = new FileRef('/home/download/osm/osm.versatiles', 2 ** 30, '/home/download/osm/osm.versatiles');
+		const file = new FileRef(
+			'/home/download/osm/osm-vector.versatiles',
+			2 ** 30,
+			'/home/download/osm/osm-vector.versatiles',
+		);
 		file.hashes = { md5: 'abc', sha256: 'def' };
 		return new FileGroup({
-			slug: 'osm',
+			slug: 'osm-vector',
 			title: 'OpenStreetMap',
 			desc: ['d'],
 			order: 0,
@@ -53,7 +57,7 @@ describe('buildAndUploadSite', () => {
 		buildAndUploadSite([group()], 'https://download.versatiles.org/');
 
 		expect(String(fsMock.writeFileSync.mock.calls[0][0])).toMatch(/data\/fileGroups\.json$/);
-		expect(String(fsMock.writeFileSync.mock.calls[0][1])).toContain('"slug":"osm"');
+		expect(String(fsMock.writeFileSync.mock.calls[0][1])).toContain('"slug":"osm-vector"');
 		expect(cpMock.execSync).toHaveBeenCalledWith(expect.stringContaining('vite build'), expect.anything());
 	});
 
@@ -61,12 +65,12 @@ describe('buildAndUploadSite', () => {
 		const count = buildAndUploadSite([group()], 'https://download.versatiles.org/');
 
 		expect(uploads()).toEqual([
-			'/osm.versatiles.md5',
-			'/osm.versatiles.sha256',
-			'/urllist_osm.tsv',
+			'/osm-vector.versatiles.md5',
+			'/osm-vector.versatiles.sha256',
+			'/urllist_osm-vector.tsv',
 			'/catalog.json',
 			'dir:_app',
-			'/feed-osm.xml',
+			'/feed-osm-vector.xml',
 			'dir:',
 		]);
 		expect(count).toBe(4); // sidecars + url list + catalog (feeds not counted)
@@ -83,7 +87,7 @@ describe('buildAndUploadSite', () => {
 	it('uploads each feed once, with the RSS content type', () => {
 		buildAndUploadSite([group()], 'https://download.versatiles.org/');
 
-		const feeds = rclone.uploadObject.mock.calls.filter((call) => call[0] === '/feed-osm.xml');
+		const feeds = rclone.uploadObject.mock.calls.filter((call) => call[0] === '/feed-osm-vector.xml');
 		expect(feeds).toHaveLength(1);
 		expect(feeds[0][2]).toBe('application/rss+xml');
 
@@ -100,9 +104,9 @@ describe('buildAndUploadSite', () => {
 		buildAndUploadSite([group()], 'https://download.versatiles.org/');
 
 		expect(uploads()).toEqual([
-			'/osm.versatiles.md5',
-			'/osm.versatiles.sha256',
-			'/urllist_osm.tsv',
+			'/osm-vector.versatiles.md5',
+			'/osm-vector.versatiles.sha256',
+			'/urllist_osm-vector.tsv',
 			'/catalog.json',
 			'dir:',
 		]);

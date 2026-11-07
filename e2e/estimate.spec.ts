@@ -7,7 +7,7 @@
  */
 import { test, expect, openDialog, waitForSizeIndex, SIZE_INDEX, type TestOptions } from './fixtures.js';
 
-const FILE = 'osm.versatiles';
+const FILE = 'osm-vector.versatiles';
 
 /** sum(4^z for z in 0..6) * 1024 — the whole fixture container. */
 const FULL = '5.33 MB';

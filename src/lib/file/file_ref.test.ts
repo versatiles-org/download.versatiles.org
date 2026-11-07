@@ -4,16 +4,16 @@ import { FileResponse } from './file_response.js';
 
 describe('FileRef', () => {
 	it('should create a remote FileRef with a remotePath', () => {
-		const fileRef = new FileRef('/home/osm/osm.versatiles', 500, '/home/osm/osm.versatiles');
-		expect(fileRef.fullname).toBe('/home/osm/osm.versatiles');
-		expect(fileRef.filename).toBe('osm.versatiles');
+		const fileRef = new FileRef('/home/osm/osm-vector.versatiles', 500, '/home/osm/osm-vector.versatiles');
+		expect(fileRef.fullname).toBe('/home/osm/osm-vector.versatiles');
+		expect(fileRef.filename).toBe('osm-vector.versatiles');
 		expect(fileRef.size).toBe(500);
-		expect(fileRef.url).toBe('/osm.versatiles');
-		expect(fileRef.remotePath).toBe('/home/osm/osm.versatiles');
+		expect(fileRef.url).toBe('/osm-vector.versatiles');
+		expect(fileRef.remotePath).toBe('/home/osm/osm-vector.versatiles');
 	});
 
 	it('should clone a FileRef object', () => {
-		const fileRef = new FileRef('/home/osm/osm.versatiles', 500, '/home/osm/osm.versatiles');
+		const fileRef = new FileRef('/home/osm/osm-vector.versatiles', 500, '/home/osm/osm-vector.versatiles');
 		const clonedFileRef = fileRef.clone();
 		expect(clonedFileRef).not.toBe(fileRef); // Ensure it's a new object
 		expect(clonedFileRef).toEqual(fileRef); // Ensure the content is the same

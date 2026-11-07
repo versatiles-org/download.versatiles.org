@@ -7,7 +7,7 @@
  */
 import { test, expect, openDialog, commandText, clipboardHistory, option } from './fixtures.js';
 
-const FILE = 'osm.versatiles';
+const FILE = 'osm-vector.versatiles';
 
 test.describe('with a clipboard', () => {
 	test.beforeEach(async ({ page }) => {
@@ -47,7 +47,7 @@ test.describe('with a clipboard', () => {
 		const history = await clipboardHistory(page);
 		expect(history).toHaveLength(2);
 		expect(history[1]).toBe(await commandText(dialog));
-		expect(history[1]).toContain('"/data/osm.pmtiles"');
+		expect(history[1]).toContain('"/data/osm-vector.pmtiles"');
 	});
 });
 

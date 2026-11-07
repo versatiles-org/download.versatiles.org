@@ -12,8 +12,8 @@
  */
 import { test, expect, openDialog, commandText, rowFor, expectInViewport } from './fixtures.js';
 
-const FILE = 'osm.versatiles';
-const OTHER_FILE = 'satellite.versatiles';
+const FILE = 'osm-vector.versatiles';
+const OTHER_FILE = 'satellite-raster.versatiles';
 
 /** Smallest dialog that could plausibly hold the controls and the result bar. */
 const MIN_WIDTH = 320;
@@ -132,7 +132,7 @@ test('restores page scrolling however it is closed', async ({ page }) => {
 test('keeps each file’s dialog independent', async ({ page }) => {
 	const first = await openDialog(page, FILE);
 	await first.getByText('.pmtiles').click();
-	expect(await commandText(first)).toContain('osm.pmtiles');
+	expect(await commandText(first)).toContain('osm-vector.pmtiles');
 	await first.locator('.close-btn').click();
 	await expect(first).toBeHidden();
 
@@ -140,7 +140,7 @@ test('keeps each file’s dialog independent', async ({ page }) => {
 	// per instance — otherwise choosing a format in one silently clears it in all
 	// the others.
 	const second = await openDialog(page, OTHER_FILE);
-	expect(await commandText(second)).toContain('satellite.versatiles');
+	expect(await commandText(second)).toContain('satellite-raster.versatiles');
 	await expect(second.locator('label').filter({ hasText: '.versatiles' }).first()).toHaveClass(/active/);
 });
 
@@ -148,5 +148,5 @@ test('opens the dialog belonging to the row that was clicked', async ({ page }) 
 	await rowFor(page, OTHER_FILE).getByTitle('Convert to other format').click();
 
 	await expect(page.locator('dialog[open]')).toHaveCount(1);
-	expect(await commandText(page.locator('dialog[open]'))).toContain('/satellite.versatiles');
+	expect(await commandText(page.locator('dialog[open]'))).toContain('/satellite-raster.versatiles');
 });

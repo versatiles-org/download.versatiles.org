@@ -17,7 +17,7 @@ export interface CommandOptions {
 	tool: Tool;
 	/** Absolute url of the source container. */
 	source: string;
-	/** Output file name, e.g. `osm.pmtiles`. */
+	/** Output file name, e.g. `osm-vector.pmtiles`. */
 	output: string;
 	/** Restrict to an area; omitted for the whole world. */
 	bbox?: BBox;

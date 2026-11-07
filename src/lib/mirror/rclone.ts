@@ -6,8 +6,8 @@
  * files are transferred is decided by `./plan.ts`; this module performs single
  * operations:
  *
- *   /home/osm/osm.20240701.versatiles  ──upload──▶  r2:<bucket>/osm.20240701.versatiles
- *   r2:<bucket>/osm.20240701.versatiles  ──copy──▶  r2:<bucket>/osm.versatiles
+ *   /home/osm/osm-vector.20240701.versatiles  ──upload──▶  r2:<bucket>/osm-vector.20240701.versatiles
+ *   r2:<bucket>/osm-vector.20240701.versatiles  ──copy──▶  r2:<bucket>/osm-vector.versatiles
  *
  * The stable "latest" key is a copy made inside R2, so the bytes of a release
  * cross the network once, not twice.
@@ -146,7 +146,7 @@ export interface RemoteObject {
 
 /**
  * Lists the `.versatiles` data files in the bucket with their size and the
- * checksums recorded in their metadata, keyed by url (`/osm.versatiles`).
+ * checksums recorded in their metadata, keyed by url (`/osm-vector.versatiles`).
  *
  * One listing for the whole bucket, rather than one request per file, so that
  * "not on R2" is a fact read from a complete answer. Asking per file cannot

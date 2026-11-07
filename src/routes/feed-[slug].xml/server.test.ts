@@ -26,9 +26,9 @@ function get(slug: string): Response {
 
 describe('entries', () => {
 	it('generates one prerender entry per group', () => {
-		data.loadFileGroups.mockReturnValue([group('osm'), group('satellite')]);
+		data.loadFileGroups.mockReturnValue([group('osm-vector'), group('satellite-raster')]);
 
-		expect(entries()).toEqual([{ slug: 'osm' }, { slug: 'satellite' }]);
+		expect(entries()).toEqual([{ slug: 'osm-vector' }, { slug: 'satellite-raster' }]);
 	});
 
 	it('generates nothing before any data has been written', () => {
@@ -40,16 +40,16 @@ describe('entries', () => {
 
 describe('GET', () => {
 	it('serves the feed for a known slug', async () => {
-		data.loadFileGroups.mockReturnValue([group('osm')]);
-		const response = get('osm');
+		data.loadFileGroups.mockReturnValue([group('osm-vector')]);
+		const response = get('osm-vector');
 
 		expect(response.status).toBe(200);
 		expect(response.headers.get('content-type')).toBe('application/rss+xml');
-		expect(await response.text()).toContain('<title>Versatiles data releases: osm</title>');
+		expect(await response.text()).toContain('<title>Versatiles data releases: osm-vector</title>');
 	});
 
 	it('returns 404 for an unknown slug', () => {
-		data.loadFileGroups.mockReturnValue([group('osm')]);
+		data.loadFileGroups.mockReturnValue([group('osm-vector')]);
 
 		expect(get('nope').status).toBe(404);
 	});

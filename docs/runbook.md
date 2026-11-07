@@ -30,8 +30,9 @@ without activity for 60 days, and re-enables them with a button on the workflow'
 
 ## Uploading a large file from a server
 
-Needed for any upload above the workflow's limit — today satellite, elevation and
-hillshade-vectors. Use a host that can run for a day or more without interruption.
+Needed for any upload above the workflow's limit — today satellite-raster,
+elevation-raster and hillshade-vector. Use a host that can run for a day or more without
+interruption.
 
 1. Make sure no Update workflow is running, and none is about to start. The lock file only
    keeps runs on the same machine apart.
@@ -63,7 +64,7 @@ file that was in transit starts from the beginning.
 
 1. Put the file on the Storage Box, inside `STORAGE_ROOT`. Name it
    `<slug>.<YYYYMMDD>.versatiles` to keep earlier releases available as well (as for
-   `osm`), or `<slug>.versatiles` to replace the dataset in place.
+   `osm-vector`), or `<slug>.versatiles` to replace the dataset in place.
 2. Optionally put `<file>.md5` and `<file>.sha256` next to it, in `md5sum` / `sha256sum`
    format. Without them the updater computes both on the Storage Box, which reads the
    whole file twice and takes a long time for a large one. A sidecar that is older than

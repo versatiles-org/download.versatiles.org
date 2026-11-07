@@ -4,7 +4,7 @@ import { groupFiles } from '../file/file_group.js';
 import { planMirror, planStableCopies } from './plan.js';
 import type { RemoteObject } from './rclone.js';
 
-/** Every operation on R2, in the order it happened, e.g. `upload /osm.versatiles`. */
+/** Every operation on R2, in the order it happened, e.g. `upload /osm-vector.versatiles`. */
 const log: string[] = [];
 
 vi.mock('./rclone.js', () => ({
@@ -47,101 +47,106 @@ describe('executeMirror', () => {
 	});
 
 	it('rolls out a new release: own key, checksums, index, and only then the stable key', async () => {
-		const previous = file('osm.20260413.versatiles', 60 * GB);
-		const release = file('osm.20260608.versatiles', 62 * GB);
+		const previous = file('osm-vector.20260413.versatiles', 60 * GB);
+		const release = file('osm-vector.20260608.versatiles', 62 * GB);
 
 		await execute([previous, release], {
-			'/osm.20260413.versatiles': uploaded(previous),
-			'/osm.versatiles': uploaded(previous),
+			'/osm-vector.20260413.versatiles': uploaded(previous),
+			'/osm-vector.versatiles': uploaded(previous),
 		});
 
 		expect(log).toEqual([
-			'upload /osm.20260608.versatiles',
-			'put /osm.20260608.versatiles.md5',
-			'put /osm.20260608.versatiles.sha256',
-			'index /osm.20260608.versatiles',
-			'copy /osm.20260608.versatiles -> /osm.versatiles',
-			'put /osm.versatiles.md5',
-			'put /osm.versatiles.sha256',
-			'copy-index /osm.20260608.versatiles -> /osm.versatiles',
+			'upload /osm-vector.20260608.versatiles',
+			'put /osm-vector.20260608.versatiles.md5',
+			'put /osm-vector.20260608.versatiles.sha256',
+			'index /osm-vector.20260608.versatiles',
+			'copy /osm-vector.20260608.versatiles -> /osm-vector.versatiles',
+			'put /osm-vector.versatiles.md5',
+			'put /osm-vector.versatiles.sha256',
+			'copy-index /osm-vector.20260608.versatiles -> /osm-vector.versatiles',
 		]);
 		expect(ensureSizeIndex).toHaveBeenCalledWith(release, BASE);
 	});
 
 	it('uploads the checksums of the stable key with the stable file name', async () => {
-		const release = file('osm.20260608.versatiles', 62 * GB);
+		const release = file('osm-vector.20260608.versatiles', 62 * GB);
 
 		await execute([release]);
 
-		const stableMd5 = vi.mocked(uploadObject).mock.calls.find(([url]) => url === '/osm.versatiles.md5');
-		expect(stableMd5?.[1]).toBe(`${release.md5} osm.versatiles\n`);
+		const stableMd5 = vi.mocked(uploadObject).mock.calls.find(([url]) => url === '/osm-vector.versatiles.md5');
+		expect(stableMd5?.[1]).toBe(`${release.md5} osm-vector.versatiles\n`);
 	});
 
 	it('overwrites an undated dataset in place and follows up with checksums, then the index', async () => {
-		const satellite = file('satellite.versatiles', 1700 * GB, 'new');
+		const satellite = file('satellite-raster.versatiles', 1700 * GB, 'new');
 
-		await execute([satellite], { '/satellite.versatiles': { size: 1600 * GB, md5: 'md5-old', sha256: 'sha-old' } });
+		await execute([satellite], {
+			'/satellite-raster.versatiles': { size: 1600 * GB, md5: 'md5-old', sha256: 'sha-old' },
+		});
 
 		expect(log).toEqual([
-			'upload /satellite.versatiles',
-			'put /satellite.versatiles.md5',
-			'put /satellite.versatiles.sha256',
-			'index /satellite.versatiles',
+			'upload /satellite-raster.versatiles',
+			'put /satellite-raster.versatiles.md5',
+			'put /satellite-raster.versatiles.sha256',
+			'index /satellite-raster.versatiles',
 		]);
 	});
 
 	it('only checks the indices when the data is up to date', async () => {
-		const release = file('osm.20260608.versatiles', 62 * GB);
-		const satellite = file('satellite.versatiles', 1600 * GB);
+		const release = file('osm-vector.20260608.versatiles', 62 * GB);
+		const satellite = file('satellite-raster.versatiles', 1600 * GB);
 
 		await execute([release, satellite], {
-			'/osm.20260608.versatiles': uploaded(release),
-			'/osm.versatiles': uploaded(release),
-			'/satellite.versatiles': uploaded(satellite),
+			'/osm-vector.20260608.versatiles': uploaded(release),
+			'/osm-vector.versatiles': uploaded(release),
+			'/satellite-raster.versatiles': uploaded(satellite),
 		});
 
 		expect(log).toEqual([
-			'index /osm.20260608.versatiles',
-			'copy-index /osm.20260608.versatiles -> /osm.versatiles',
-			'index /satellite.versatiles',
+			'index /osm-vector.20260608.versatiles',
+			'copy-index /osm-vector.20260608.versatiles -> /osm-vector.versatiles',
+			'index /satellite-raster.versatiles',
 		]);
 	});
 
 	it('finishes one dataset before starting the next', async () => {
-		const osm = file('osm.20260608.versatiles', 62 * GB);
-		const landcover = file('landcover-vectors.20260608.versatiles', 2 * GB);
+		const osm = file('osm-vector.20260608.versatiles', 62 * GB);
+		const landcover = file('landcover-vector.20260608.versatiles', 2 * GB);
 
 		await execute([landcover, osm]);
 
 		const firstLandcover = log.findIndex((entry) => entry.includes('landcover'));
-		const lastOsm = log.findLastIndex((entry) => entry.includes('/osm.'));
+		const lastOsm = log.findLastIndex((entry) => entry.includes('/osm-vector.'));
 		expect(lastOsm).toBeLessThan(firstLandcover);
 	});
 
 	it('does not transfer a deferred file and leaves its stable key alone', async () => {
-		const previous = file('osm.20260413.versatiles', 60 * GB);
-		const release = file('osm.20260608.versatiles', 62 * GB);
+		const previous = file('osm-vector.20260413.versatiles', 60 * GB);
+		const release = file('osm-vector.20260608.versatiles', 62 * GB);
 
 		await execute(
 			[previous, release],
-			{ '/osm.20260413.versatiles': uploaded(previous), '/osm.versatiles': uploaded(previous) },
+			{ '/osm-vector.20260413.versatiles': uploaded(previous), '/osm-vector.versatiles': uploaded(previous) },
 			61 * GB,
 		);
 
 		// The previous release stays the latest; only its indices are checked.
-		expect(log).toEqual(['index /osm.20260413.versatiles', 'copy-index /osm.20260413.versatiles -> /osm.versatiles']);
+		expect(log).toEqual([
+			'index /osm-vector.20260413.versatiles',
+			'copy-index /osm-vector.20260413.versatiles -> /osm-vector.versatiles',
+		]);
 		expect(uploadDataFile).not.toHaveBeenCalled();
 	});
 
 	it('stops at the first failure, before the stable key is touched', async () => {
 		vi.mocked(ensureSizeIndex).mockRejectedValueOnce(new Error('index build failed'));
 
-		await expect(execute([file('osm.20260608.versatiles', 62 * GB)])).rejects.toThrow('index build failed');
+		await expect(execute([file('osm-vector.20260608.versatiles', 62 * GB)])).rejects.toThrow('index build failed');
 
 		expect(log).toEqual([
-			'upload /osm.20260608.versatiles',
-			'put /osm.20260608.versatiles.md5',
-			'put /osm.20260608.versatiles.sha256',
+			'upload /osm-vector.20260608.versatiles',
+			'put /osm-vector.20260608.versatiles.md5',
+			'put /osm-vector.20260608.versatiles.sha256',
 		]);
 	});
 });

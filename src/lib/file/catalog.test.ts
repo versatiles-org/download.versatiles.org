@@ -13,7 +13,10 @@ function file(name: string, size: number, md5: string): FileRef {
 
 describe('buildCatalog', () => {
 	it('lists the latest release under its stable url and every release under its own', () => {
-		const groups = groupFiles([file('osm.20260101.versatiles', 100, 'aa'), file('osm.20260201.versatiles', 200, 'bb')]);
+		const groups = groupFiles([
+			file('osm-vector.20260101.versatiles', 100, 'aa'),
+			file('osm-vector.20260201.versatiles', 200, 'bb'),
+		]);
 		const response = buildCatalog(groups, BASE);
 
 		expect(response.url).toBe('/catalog.json');
@@ -21,29 +24,29 @@ describe('buildCatalog', () => {
 
 		const { datasets } = JSON.parse(response.content);
 		expect(datasets).toHaveLength(1);
-		expect(datasets[0]).toMatchObject({ slug: 'osm', tileType: 'vector' });
+		expect(datasets[0]).toMatchObject({ slug: 'osm-vector', tileType: 'vector' });
 		expect(datasets[0].latest).toEqual({
-			url: `${BASE}osm.versatiles`,
+			url: `${BASE}osm-vector.versatiles`,
 			size: 200,
 			md5: 'bb',
 			sha256: 'bbbb',
 			date: '2026-02-01',
-			index: `${BASE}osm.versatiles.index.json`,
+			index: `${BASE}osm-vector.versatiles.index.json`,
 		});
 		expect(datasets[0].versions.map((v: { url: string; date: string }) => [v.url, v.date])).toEqual([
-			[`${BASE}osm.20260201.versatiles`, '2026-02-01'],
-			[`${BASE}osm.20260101.versatiles`, '2026-01-01'],
+			[`${BASE}osm-vector.20260201.versatiles`, '2026-02-01'],
+			[`${BASE}osm-vector.20260101.versatiles`, '2026-01-01'],
 		]);
 	});
 
 	it('gives an undated file no date', () => {
-		const { datasets } = JSON.parse(buildCatalog(groupFiles([file('osm.versatiles', 1, 'cc')]), BASE).content);
+		const { datasets } = JSON.parse(buildCatalog(groupFiles([file('osm-vector.versatiles', 1, 'cc')]), BASE).content);
 		expect(datasets[0].latest.date).toBeNull();
 		expect(datasets[0].versions).toEqual([]);
 	});
 
 	it('is deterministic', () => {
-		const groups = groupFiles([file('osm.20260101.versatiles', 100, 'aa')]);
+		const groups = groupFiles([file('osm-vector.20260101.versatiles', 100, 'aa')]);
 		expect(buildCatalog(groups, BASE).content).toBe(buildCatalog(groups, BASE).content);
 	});
 });

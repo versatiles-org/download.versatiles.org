@@ -116,9 +116,9 @@ describe('loadSizeIndex', () => {
 		const fetchMock = vi.fn(async () => new Response(JSON.stringify({ levels: { '0': 5 } })));
 		vi.stubGlobal('fetch', fetchMock);
 
-		const index = await loadSizeIndex('/osm.versatiles');
+		const index = await loadSizeIndex('/osm-vector.versatiles');
 
-		expect(fetchMock).toHaveBeenCalledWith('/osm.versatiles.index.json');
+		expect(fetchMock).toHaveBeenCalledWith('/osm-vector.versatiles.index.json');
 		expect(index).toEqual({ levels: { '0': 5 } });
 	});
 
@@ -127,7 +127,7 @@ describe('loadSizeIndex', () => {
 			'fetch',
 			vi.fn(async () => new Response('Not Found', { status: 404 })),
 		);
-		expect(await loadSizeIndex('/osm.20240101.versatiles')).toBeNull();
+		expect(await loadSizeIndex('/osm-vector.20240101.versatiles')).toBeNull();
 	});
 
 	it('returns null when the request fails', async () => {
@@ -137,15 +137,15 @@ describe('loadSizeIndex', () => {
 				throw new Error('offline');
 			}),
 		);
-		expect(await loadSizeIndex('/osm.versatiles')).toBeNull();
+		expect(await loadSizeIndex('/osm-vector.versatiles')).toBeNull();
 	});
 
 	it('caches hits and misses so reopening the dialog costs nothing', async () => {
 		const fetchMock = vi.fn(async () => new Response(JSON.stringify({ levels: { '0': 5 } })));
 		vi.stubGlobal('fetch', fetchMock);
 
-		await loadSizeIndex('/osm.versatiles');
-		await loadSizeIndex('/osm.versatiles');
+		await loadSizeIndex('/osm-vector.versatiles');
+		await loadSizeIndex('/osm-vector.versatiles');
 		expect(fetchMock).toHaveBeenCalledTimes(1);
 
 		vi.stubGlobal(

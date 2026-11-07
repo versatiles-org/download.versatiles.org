@@ -20,11 +20,11 @@ const EPOCH_LISTING = [
 	'',
 	'/home/osm:',
 	'total 100',
-	'-rw-r--r-- 1 u u 67890 1700000200 osm.20240701.versatiles',
-	'-rw-r--r-- 1 u u 99 1700000300 osm.20240701.versatiles.md5',
-	'-rw-r--r-- 1 u u 131 1700000100 osm.20240701.versatiles.sha256',
-	'-rw-r--r-- 1 u u 12345 1600000000 osm.20240101.versatiles',
-	'lrwxrwxrwx 1 u u 23 1700000000 osm.versatiles -> osm.20240701.versatiles',
+	'-rw-r--r-- 1 u u 67890 1700000200 osm-vector.20240701.versatiles',
+	'-rw-r--r-- 1 u u 99 1700000300 osm-vector.20240701.versatiles.md5',
+	'-rw-r--r-- 1 u u 131 1700000100 osm-vector.20240701.versatiles.sha256',
+	'-rw-r--r-- 1 u u 12345 1600000000 osm-vector.20240101.versatiles',
+	'lrwxrwxrwx 1 u u 23 1700000000 osm-vector.versatiles -> osm-vector.20240701.versatiles',
 ];
 
 describe('getRemoteFiles', () => {
@@ -45,12 +45,12 @@ describe('getRemoteFiles', () => {
 
 		// Sorted by remote path.
 		expect(files.map((f) => f.file.remotePath)).toEqual([
-			'/home/osm/osm.20240101.versatiles',
-			'/home/osm/osm.20240701.versatiles',
+			'/home/osm/osm-vector.20240101.versatiles',
+			'/home/osm/osm-vector.20240701.versatiles',
 		]);
 		expect(files[0].file.size).toBe(12345);
-		expect(files[0].file.filename).toBe('osm.20240101.versatiles');
-		expect(files[0].file.url).toBe('/osm.20240101.versatiles');
+		expect(files[0].file.filename).toBe('osm-vector.20240101.versatiles');
+		expect(files[0].file.url).toBe('/osm-vector.20240101.versatiles');
 		expect(ssh.sshExecSync).toHaveBeenCalledTimes(1);
 		expect(ssh.sshExecSync.mock.calls[0][0]).toEqual(['ls', '-lR', '--time-style=+%s', '/home']);
 	});
@@ -71,10 +71,10 @@ describe('getRemoteFiles', () => {
 		ssh.sshExecSync.mockReturnValue(
 			ok([
 				'/home/a:',
-				'-rw-r--r-- 1 u u 10 1700000000 osm.versatiles',
+				'-rw-r--r-- 1 u u 10 1700000000 osm-vector.versatiles',
 				'',
 				'/home/b:',
-				'-rw-r--r-- 1 u u 99 1700000000 osm.versatiles.md5',
+				'-rw-r--r-- 1 u u 99 1700000000 osm-vector.versatiles.md5',
 			]),
 		);
 
@@ -102,8 +102,8 @@ describe('getRemoteFiles', () => {
 			.mockReturnValueOnce(
 				ok([
 					'/home/osm:',
-					'-rw-r--r-- 1 u u 67890 Jan 1 12:00 osm.20240701.versatiles',
-					'-rw-r--r-- 1 u u 99 Jan 1 2024 osm.20240701.versatiles.md5',
+					'-rw-r--r-- 1 u u 67890 Jan 1 12:00 osm-vector.20240701.versatiles',
+					'-rw-r--r-- 1 u u 99 Jan 1 2024 osm-vector.20240701.versatiles.md5',
 				]),
 			);
 

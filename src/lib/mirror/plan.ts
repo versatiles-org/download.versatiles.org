@@ -3,7 +3,7 @@
  * file on the Storage Box — and what will therefore exist on R2 afterwards.
  *
  * Every file is compared with the object under its own key
- * (`/osm.20260608.versatiles`, `/satellite.versatiles`):
+ * (`/osm-vector.20260608.versatiles`, `/satellite-raster.versatiles`):
  *
  * | R2 object                         | size vs. limit | action                               |
  * | --------------------------------- | -------------- | ------------------------------------ |
@@ -27,8 +27,8 @@
  * - a deferred file with nothing usable on R2 is left out;
  * - everything else is the scanned file.
  *
- * **Stable keys.** A dated release (`/osm.20260608.versatiles`) is also published
- * under an undated key (`/osm.versatiles`). That second object is a copy made
+ * **Stable keys.** A dated release (`/osm-vector.20260608.versatiles`) is also published
+ * under an undated key (`/osm-vector.versatiles`). That second object is a copy made
  * inside R2 from the first, planned by `planStableCopies()` once the published
  * files are grouped. No bytes leave R2 for it, so the size limit does not apply.
  *

@@ -56,7 +56,7 @@ describe('run_once', () => {
 		const { DeferredUploadsError } = await import('./lib/mirror/plan.js');
 		const { FileRef } = await import('./lib/file/file_ref.js');
 		const deferred = new DeferredUploadsError(
-			[new FileRef('/home/satellite.versatiles', 2 ** 40, '/home/x')],
+			[new FileRef('/home/satellite-raster.versatiles', 2 ** 40, '/home/x')],
 			80 * 2 ** 30,
 		);
 

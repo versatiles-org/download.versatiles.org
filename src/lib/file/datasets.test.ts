@@ -6,12 +6,12 @@ describe('DATASETS', () => {
 		const slugs = Object.keys(DATASETS).sort((a, b) => DATASETS[a].order - DATASETS[b].order);
 
 		expect(slugs).toEqual([
-			'osm',
-			'satellite',
-			'elevation',
-			'landcover-vectors',
-			'hillshade-vectors',
-			'bathymetry-vectors',
+			'osm-vector',
+			'satellite-raster',
+			'elevation-raster',
+			'landcover-vector',
+			'hillshade-vector',
+			'bathymetry-vector',
 		]);
 	});
 
@@ -28,16 +28,16 @@ describe('DATASETS', () => {
 	it('marks the raster datasets', () => {
 		const raster = Object.keys(DATASETS).filter((slug) => DATASETS[slug].tileType === 'raster');
 
-		expect(raster.sort()).toEqual(['elevation', 'satellite']);
+		expect(raster.sort()).toEqual(['elevation-raster', 'satellite-raster']);
 	});
 });
 
 describe('slugOf', () => {
 	it.each([
-		['osm.20260105.versatiles', 'osm'],
-		['satellite.versatiles', 'satellite'],
-		['landcover-vectors.20260105.versatiles', 'landcover-vectors'],
-		['/home/download/osm.versatiles', 'osm'],
+		['osm-vector.20260105.versatiles', 'osm-vector'],
+		['satellite-raster.versatiles', 'satellite-raster'],
+		['landcover-vector.20260105.versatiles', 'landcover-vector'],
+		['/home/download/osm-vector.versatiles', 'osm-vector'],
 	])('%s → %s', (filename, slug) => {
 		expect(slugOf(filename)).toBe(slug);
 	});
@@ -45,7 +45,7 @@ describe('slugOf', () => {
 
 describe('datasetOf', () => {
 	it('finds a published dataset', () => {
-		expect(datasetOf('osm')?.title).toBe('OpenStreetMap');
+		expect(datasetOf('osm-vector')?.title).toBe('OpenStreetMap');
 	});
 
 	it('does not mistake inherited object properties for datasets', () => {
@@ -56,7 +56,12 @@ describe('datasetOf', () => {
 
 describe('unknownFiles', () => {
 	it('returns the files that belong to no published dataset', () => {
-		const files = ['osm.20260105.versatiles', 'test.versatiles', 'satellite.versatiles', 'osm2.versatiles'];
+		const files = [
+			'osm-vector.20260105.versatiles',
+			'test.versatiles',
+			'satellite-raster.versatiles',
+			'osm2.versatiles',
+		];
 
 		expect(unknownFiles(files)).toEqual(['test.versatiles', 'osm2.versatiles']);
 	});
@@ -64,11 +69,13 @@ describe('unknownFiles', () => {
 
 describe('assertKnownDatasets', () => {
 	it('passes when every file belongs to a published dataset', () => {
-		expect(() => assertKnownDatasets(['osm.20260105.versatiles', 'satellite.versatiles'])).not.toThrow();
+		expect(() => assertKnownDatasets(['osm-vector.20260105.versatiles', 'satellite-raster.versatiles'])).not.toThrow();
 	});
 
 	it('names every unknown file and says what to do', () => {
-		expect(() => assertKnownDatasets(['osm.versatiles', 'test.versatiles', 'backup.20260101.versatiles'])).toThrow(
+		expect(() =>
+			assertKnownDatasets(['osm-vector.versatiles', 'test.versatiles', 'backup.20260101.versatiles']),
+		).toThrow(
 			[
 				'Found files on the Storage Box that belong to no known dataset:',
 				' - test.versatiles',

@@ -49,7 +49,7 @@ describe('FileGroup', () => {
 describe('groupFiles', () => {
 	describe('description', () => {
 		it('keeps the lines separate instead of pre-joining them', () => {
-			const [group] = groupFiles([createMockFileRef('osm.20260105.versatiles', 2 ** 30)]);
+			const [group] = groupFiles([createMockFileRef('osm-vector.20260105.versatiles', 2 ** 30)]);
 
 			// Joining here with `<br>` once made four of the six RSS feeds invalid
 			// XML. Each consumer picks its own separator instead.
@@ -59,7 +59,7 @@ describe('groupFiles', () => {
 		});
 
 		it('leaves a single-line description as a one-element array', () => {
-			const [group] = groupFiles([createMockFileRef('satellite.versatiles', 2 ** 30)]);
+			const [group] = groupFiles([createMockFileRef('satellite-raster.versatiles', 2 ** 30)]);
 
 			expect(group!.desc).toHaveLength(1);
 		});
@@ -81,53 +81,53 @@ describe('groupFiles', () => {
 
 	it('groups files by slug', () => {
 		const files = [
-			createMockFileRef('osm.20240101.versatiles', 1000),
-			createMockFileRef('osm.20240201.versatiles', 2000),
+			createMockFileRef('osm-vector.20240101.versatiles', 1000),
+			createMockFileRef('osm-vector.20240201.versatiles', 2000),
 		];
 
 		const groups = groupFiles(files);
 
 		expect(groups.length).toBe(1);
-		expect(groups[0].slug).toBe('osm');
+		expect(groups[0].slug).toBe('osm-vector');
 		expect(groups[0].olderFiles.length).toBe(2);
 	});
 
 	it('assigns correct metadata to known groups', () => {
-		const groups = groupFiles([createMockFileRef('osm.20240101.versatiles', 1000)]);
+		const groups = groupFiles([createMockFileRef('osm-vector.20240101.versatiles', 1000)]);
 		expect(groups[0].title).toBe('OpenStreetMap');
 		expect(groups[0].order).toBe(0);
 		expect(groups[0].tileType).toBe('vector');
 	});
 
 	it('marks raster datasets with tileType raster', () => {
-		const groups = groupFiles([createMockFileRef('satellite.versatiles', 1000)]);
-		expect(groups[0].slug).toBe('satellite');
+		const groups = groupFiles([createMockFileRef('satellite-raster.versatiles', 1000)]);
+		expect(groups[0].slug).toBe('satellite-raster');
 		expect(groups[0].tileType).toBe('raster');
 	});
 
 	it('sorts groups by order', () => {
 		const files = [
-			createMockFileRef('hillshade-vectors.20240101.versatiles', 1000),
-			createMockFileRef('osm.20240101.versatiles', 2000),
-			createMockFileRef('landcover-vectors.20240101.versatiles', 3000),
+			createMockFileRef('hillshade-vector.20240101.versatiles', 1000),
+			createMockFileRef('osm-vector.20240101.versatiles', 2000),
+			createMockFileRef('landcover-vector.20240101.versatiles', 3000),
 		];
 
 		const groups = groupFiles(files);
 
-		expect(groups.map((g) => g.slug)).toEqual(['osm', 'landcover-vectors', 'hillshade-vectors']);
+		expect(groups.map((g) => g.slug)).toEqual(['osm-vector', 'landcover-vector', 'hillshade-vector']);
 	});
 
 	it('sets latestFile from most recent file and normalizes the url', () => {
 		const files = [
-			createMockFileRef('osm.20240101.versatiles', 1000),
-			createMockFileRef('osm.20240301.versatiles', 3000),
-			createMockFileRef('osm.20240201.versatiles', 2000),
+			createMockFileRef('osm-vector.20240101.versatiles', 1000),
+			createMockFileRef('osm-vector.20240301.versatiles', 3000),
+			createMockFileRef('osm-vector.20240201.versatiles', 2000),
 		];
 
 		const groups = groupFiles(files);
 
 		expect(groups[0].latestFile).toBeDefined();
-		expect(groups[0].latestFile!.url).toBe('/osm.versatiles');
+		expect(groups[0].latestFile!.url).toBe('/osm-vector.versatiles');
 	});
 
 	it('refuses a file of an unknown dataset instead of publishing a placeholder', () => {

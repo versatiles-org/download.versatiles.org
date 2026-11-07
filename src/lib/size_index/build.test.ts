@@ -4,7 +4,7 @@ import { buildNode, buildSizeIndex, type BlockData } from './build.js';
 import { estimateDownloadSize } from './estimate.js';
 
 /**
- * A whole-world z0 extract of `bathymetry-vectors`, 39 KB.
+ * A whole-world z0 extract of `bathymetry-vector`, 39 KB.
  *
  * Deliberately a *global* extract rather than a bbox one: an index built from a
  * bbox extract spreads its mean over the whole grid, so the totals it reports

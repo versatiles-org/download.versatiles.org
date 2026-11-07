@@ -17,13 +17,13 @@ function fileRef(filename: string, overrides: Partial<FileRefData> = {}): FileRe
 
 function group(overrides: Partial<FileGroupData> = {}): FileGroupData {
 	return {
-		slug: 'osm',
+		slug: 'osm-vector',
 		title: 'OpenStreetMap',
 		desc: ['A plain description.'],
 		order: 0,
 		tileType: 'vector',
-		latestFile: fileRef('osm.versatiles'),
-		olderFiles: [fileRef('osm.20260105.versatiles')],
+		latestFile: fileRef('osm-vector.versatiles'),
+		olderFiles: [fileRef('osm-vector.20260105.versatiles')],
 		...overrides,
 	};
 }
@@ -45,22 +45,22 @@ describe('escapeXml', () => {
 	});
 
 	it('leaves ordinary text untouched', () => {
-		expect(escapeXml('osm.20260105.versatiles')).toBe('osm.20260105.versatiles');
+		expect(escapeXml('osm-vector.20260105.versatiles')).toBe('osm-vector.20260105.versatiles');
 	});
 });
 
 describe('buildRssFeed', () => {
 	it('titles the channel after the group', () => {
-		expect(buildRssFeed(group())).toContain('<title>Versatiles data releases: osm</title>');
+		expect(buildRssFeed(group())).toContain('<title>Versatiles data releases: osm-vector</title>');
 	});
 
 	it('emits one item per older version', () => {
 		const feed = buildRssFeed(
-			group({ olderFiles: [fileRef('osm.20260105.versatiles'), fileRef('osm.20251006.versatiles')] }),
+			group({ olderFiles: [fileRef('osm-vector.20260105.versatiles'), fileRef('osm-vector.20251006.versatiles')] }),
 		);
 
 		expect(contentsOf(feed, 'item')).toHaveLength(2);
-		expect(feed).toContain('<link>https://download.versatiles.org/osm.20260105.versatiles</link>');
+		expect(feed).toContain('<link>https://download.versatiles.org/osm-vector.20260105.versatiles</link>');
 	});
 
 	it('omits items when a group has no older versions', () => {
@@ -68,7 +68,7 @@ describe('buildRssFeed', () => {
 	});
 
 	it('identifies each item by name and checksum', () => {
-		expect(buildRssFeed(group())).toContain(`<guid>osm.20260105.versatiles;${'a'.repeat(32)}</guid>`);
+		expect(buildRssFeed(group())).toContain(`<guid>osm-vector.20260105.versatiles;${'a'.repeat(32)}</guid>`);
 	});
 });
 

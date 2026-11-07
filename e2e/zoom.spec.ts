@@ -10,7 +10,7 @@ import { test, expect, openDialog, commandText, waitForSizeIndex, type TestOptio
 import type { Locator, Page } from '@playwright/test';
 import { FIXTURE_ZOOM_CEILING, DEFAULT_MAX_ZOOM } from './fixtures.js';
 
-const FILE = 'osm.versatiles';
+const FILE = 'osm-vector.versatiles';
 
 function lowest(dialog: Locator): Locator {
 	return dialog.getByLabel('Lowest zoom level');

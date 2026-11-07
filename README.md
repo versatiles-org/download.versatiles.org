@@ -199,8 +199,8 @@ While any of them is missing the workflow only prints a warning.
 
 ### On a server, for large uploads
 
-A file above the limit — today satellite, elevation and hillshade-vectors — is uploaded
-from a persistent host, which has no time limit:
+A file above the limit — today satellite-raster, elevation-raster and hillshade-vector — is
+uploaded from a persistent host, which has no time limit:
 
 ```bash
 cp .env.sample .env    # fill it in; leave MAX_UPLOAD_GB unset

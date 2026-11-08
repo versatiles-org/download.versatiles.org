@@ -9,6 +9,7 @@ describe('DATASETS', () => {
 			'osm-vector',
 			'satellite-raster',
 			'elevation-raster',
+			'hillshade-raster',
 			'landcover-vector',
 			'hillshade-vector',
 			'bathymetry-vector',
@@ -28,7 +29,7 @@ describe('DATASETS', () => {
 	it('marks the raster datasets', () => {
 		const raster = Object.keys(DATASETS).filter((slug) => DATASETS[slug].tileType === 'raster');
 
-		expect(raster.sort()).toEqual(['elevation-raster', 'satellite-raster']);
+		expect(raster.sort()).toEqual(['elevation-raster', 'hillshade-raster', 'satellite-raster']);
 	});
 });
 

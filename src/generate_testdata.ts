@@ -23,6 +23,7 @@ const fakeFiles: FileRef[] = [
 	makeRef('osm-vector.20240101.versatiles', 51.8),
 	makeRef('satellite-raster.versatiles', 723.3),
 	makeRef('elevation-raster.versatiles', 412.0),
+	makeRef('hillshade-raster.versatiles', 180.0),
 	makeRef('landcover-vector.versatiles', 0.8),
 	makeRef('hillshade-vector.versatiles', 105.4),
 	makeRef('bathymetry-vector.versatiles', 0.7),

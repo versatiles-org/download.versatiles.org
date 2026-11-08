@@ -51,6 +51,15 @@ export const DATASETS: Readonly<Record<string, Dataset>> = {
 		order: 20,
 		tileType: 'raster',
 	},
+	'hillshade-raster': {
+		title: 'Hillshading, raster (Beta)',
+		desc: [
+			'Global hillshading for zoom levels 0–12, computed from the elevation data as transparent raster tiles. Lay it over a basemap as a raster layer; see <a href="https://github.com/versatiles-org/elevation#hillshade">how to use it</a>.',
+			'© <a href="https://mapterhorn.com/attribution">Mapterhorn</a>',
+		],
+		order: 25,
+		tileType: 'raster',
+	},
 	'landcover-vector': {
 		title: 'Landcover (Beta)',
 		desc: [

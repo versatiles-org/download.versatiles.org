@@ -10,6 +10,7 @@
  *   including `If-Range`, so that a download resumed after the dataset was
  *   replaced restarts instead of being stitched together from two versions
  * - serves permissive CORS so browser `fetch()` works cross-origin
+ * - keeps everything except HTML pages out of search engines (`x-robots-tag`)
  * - redirects the keys of renamed datasets (`/osm.versatiles`) to their
  *   current ones (`/osm-vector/osm-vector.versatiles`)
  *
@@ -258,6 +259,9 @@ function baseHeaders(object: R2Object, key: string): Headers {
 	headers.set('etag', object.httpEtag);
 	headers.set('accept-ranges', 'bytes');
 	headers.set('cache-control', cacheControlFor(key));
+	// Only the HTML pages belong in search results. Google otherwise reports the
+	// data files, checksums, feeds and URL lists as soft 404s or thin pages.
+	if (!key.endsWith('.html')) headers.set('x-robots-tag', 'noindex');
 	return headers;
 }
 

@@ -123,6 +123,19 @@ describe('GET', () => {
 		expect(response.headers.get('etag')).toBe('"etag-index.html"');
 	});
 
+	it('lets search engines index HTML pages', async () => {
+		const response = await fetchWorker('https://d.example/', INDEX);
+
+		expect(response.headers.get('x-robots-tag')).toBeNull();
+	});
+
+	it('keeps data files and their sidecars out of search engines', async () => {
+		const objects = { 'osm-vector/osm-vector.20260413.versatiles.sha256': { body: 'x' } };
+		const response = await fetchWorker('https://d.example/osm-vector/osm-vector.20260413.versatiles.sha256', objects);
+
+		expect(response.headers.get('x-robots-tag')).toBe('noindex');
+	});
+
 	it('answers a range request with 206 and content-range', async () => {
 		const objects = { 'f.versatiles': { body: '0123456789', range: { offset: 2, length: 3 } } };
 		const response = await fetchWorker('https://d.example/f.versatiles', objects, {

@@ -1,11 +1,11 @@
 <script lang="ts">
-	import type { FileRefData } from './data.js';
+	import type { PageFileData } from './data.js';
 	import type { SizeIndex } from './size_index/types.js';
 	import { onMount } from 'svelte';
 	import { buildCommand, type Format, type Tool } from './command.js';
 	import { estimateDownloadSize, formatBytes, loadSizeIndex, zoomLevels, type BBox } from './size_index/estimate.js';
 
-	let { file }: { file: FileRefData } = $props();
+	let { file }: { file: PageFileData } = $props();
 
 	/**
 	 * Whether this component has hydrated.

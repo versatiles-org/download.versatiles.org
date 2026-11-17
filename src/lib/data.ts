@@ -32,6 +32,22 @@ export interface FileGroupData {
 }
 
 /**
+ * The fields of a file that the download page renders.
+ *
+ * Whatever the page's `load` returns is serialised into the prerendered HTML for
+ * hydration, and search engines crawl URL-like strings found there. So the
+ * Storage Box paths (`fullname`, `remotePath`) must not reach it: Google turned
+ * them into 404s like `/home/osm-vector/osm-vector.versatiles`.
+ */
+export type PageFileData = Pick<FileRefData, 'filename' | 'url' | 'sizeString'>;
+
+/** A file group as the download page receives it. */
+export interface PageGroupData extends Omit<FileGroupData, 'latestFile' | 'olderFiles'> {
+	latestFile?: PageFileData;
+	olderFiles: PageFileData[];
+}
+
+/**
  * Loads the file groups from the JSON data file written by the pipeline.
  * Returns an empty array when the file does not exist (e.g. during `vite dev`
  * before `generate_testdata`).

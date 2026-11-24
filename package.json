@@ -42,27 +42,27 @@
   "private": true,
   "dependencies": {
     "@sveltejs/adapter-static": "^4.0.1",
-    "@sveltejs/kit": "^3.1.1",
-    "@versatiles/container": "^2.1.0",
-    "@versatiles/svelte": "^3.0.1",
-    "sass": "^1.107.1",
-    "svelte": "^5.57.3",
+    "@sveltejs/kit": "^3.4.0",
+    "@versatiles/container": "^2.1.2",
+    "@versatiles/svelte": "^4.0.3",
+    "sass": "^1.108.2",
+    "svelte": "^5.59.1",
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
-    "vite": "^8.3.5",
-    "vitest": "^5.0.5"
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
   },
   "devDependencies": {
-    "@playwright/test": "1.64.1",
+    "@playwright/test": "1.65.1",
     "@types/node": "^26.6.6",
-    "@typescript-eslint/eslint-plugin": "^8.72.1",
-    "@typescript-eslint/parser": "^8.72.1",
-    "@versatiles/release-tool": "^2.20.0",
-    "@vitest/coverage-v8": "^5.0.5",
-    "eslint": "^10.14.0",
+    "@typescript-eslint/eslint-plugin": "^8.74.0",
+    "@typescript-eslint/parser": "^8.74.0",
+    "@versatiles/release-tool": "^2.23.0",
+    "@vitest/coverage-v8": "^5.1.1",
+    "eslint": "^10.15.0",
     "npm-check-updates": "^23.1.1",
-    "prettier": "^3.9.10",
-    "prettier-plugin-svelte": "^4.1.1",
+    "prettier": "^3.10.1",
+    "prettier-plugin-svelte": "^4.2.0",
     "svelte-check": "^4.7.8"
   }
 }

@@ -51,8 +51,9 @@
 		<header class="small">
 			<p>
 				All files are
-				<a href="https://github.com/versatiles-org/versatiles-spec/blob/main/v02/readme.md">VersaTiles v02 containers</a
-				>. Please use this download service only to download these files.
+				<a href="https://github.com/versatiles-org/versatiles-spec/blob/main/v02/readme.md">
+					VersaTiles v02 containers
+				</a>. Please use this download service only to download these files.
 			</p>
 		</header>
 
@@ -101,9 +102,9 @@
 
 <footer>
 	<a href="https://versatiles.org/donate/">Please support VersaTiles</a> ·
-	<a href="https://github.com/versatiles-org/download.versatiles.org/blob/main/src/routes/+page.svelte"
-		>Improve this page on GitHub</a
-	>
+	<a href="https://github.com/versatiles-org/download.versatiles.org/blob/main/src/routes/+page.svelte">
+		Improve this page on GitHub
+	</a>
 </footer>
 
 <style>

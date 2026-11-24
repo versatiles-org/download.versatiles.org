@@ -271,8 +271,10 @@
 								class="install-link"
 								href="https://docs.versatiles.org/guides/install_versatiles.html"
 								target="_blank"
-								rel="noopener noreferrer">How to install the versatiles binary &#x2197;</a
+								rel="noopener noreferrer"
 							>
+								How to install the versatiles binary &#x2197;
+							</a>
 						{:else}
 							<span class="install-note">Nothing to install — docker pulls the image on first run.</span>
 						{/if}

@@ -198,7 +198,7 @@ jobs:
             echo "### Update (limit: ${MAX_UPLOAD_GB} GB, dry run: ${DRY_RUN})"
             echo
             echo '```'
-            grep -E '^ - (upload|defer|copy|index|hash) |^ - [0-9]+ data files? unchanged' "$RUNNER_TEMP/update.log" || echo '(no plan was printed)'
+            grep -E '^ - (skip|upload|defer|copy|index|hash|delete) |^ - [0-9]+ data files? unchanged' "$RUNNER_TEMP/update.log" || echo '(no plan was printed)'
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
 

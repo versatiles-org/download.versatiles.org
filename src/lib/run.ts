@@ -9,6 +9,10 @@
  * - per dataset, uploads what changed, refreshes the `*.index.json` size index
  *   and copies the latest release to its stable key within R2
  * - builds the static site (HTML, RSS, sidecars, url lists) and uploads it to R2
+ * - deletes from R2 the releases older than the newest `RELEASES_KEPT`
+ *
+ * On the Storage Box it only ever writes missing `.md5` and `.sha256` sidecars;
+ * it changes or deletes nothing else there.
  *
  * Atomic publish: the data files are mirrored **before** the site is uploaded,
  * and the site is built from the files the plan says will be on R2 — so it never
@@ -21,7 +25,7 @@ import { loadConfig, type Config } from './config.js';
 import { acquireLock } from './lock.js';
 import { preflight } from './preflight.js';
 import { getRemoteFiles } from './source/scan.js';
-import { assertKnownDatasets } from './file/datasets.js';
+import { RELEASES_KEPT, assertKnownDatasets, releasesBeyondLimit } from './file/datasets.js';
 import { groupFiles, type FileGroup } from './file/file_group.js';
 import type { FileRef } from './file/file_ref.js';
 import { generateHashes } from './file/hashes.js';
@@ -29,13 +33,14 @@ import {
 	DeferredUploadsError,
 	deferredFiles,
 	describePlan,
+	planDeletions,
 	planMirror,
 	planStableCopies,
 	releaseOf,
 	type MirrorPlan,
 } from './mirror/plan.js';
 import { executeMirror } from './mirror/execute.js';
-import { listRemoteDataFiles } from './mirror/rclone.js';
+import { deleteRelease, listRemoteDataFiles } from './mirror/rclone.js';
 import { isCurrent } from './size_index/sync.js';
 import { buildAndUploadSite } from './site/site.js';
 
@@ -60,9 +65,11 @@ export interface RunOptions {
  * 6. Group the published files into `FileGroup`s and derive metadata.
  * 7. Per dataset: upload the changed files with their checksums, build the size
  *    index of the latest release, then copy that release to its stable key.
- * 8. Build the static site and upload it to R2 (last).
+ * 8. Build the static site and upload it to R2.
+ * 9. Delete the releases beyond the newest `RELEASES_KEPT` from R2 (last, so
+ *    the site never links to a deleted file).
  *
- * A dry run stops after step 6 and prints the plan instead.
+ * A dry run stops after step 6 and prints the plan, deletions included, instead.
  *
  * Throws:
  * - If the configuration is incomplete or invalid, or a connection check fails —
@@ -108,10 +115,18 @@ async function update(config: Config, dryRun: boolean): Promise<void> {
 	// on something that must not be published.
 	assertKnownDatasets(scanned.map(({ file }) => file.filename));
 
+	// Publish only the newest releases of each dataset. The older ones stay on the
+	// Storage Box as they are and are not hashed, uploaded or listed.
+	const beyondLimit = new Set(releasesBeyondLimit(scanned.map(({ file }) => file.filename)));
+	for (const filename of beyondLimit) {
+		console.log(` - skip   ${filename} — older than the newest ${RELEASES_KEPT} releases`);
+	}
+	const kept = scanned.filter(({ file }) => !beyondLimit.has(file.filename));
+
 	// Download or compute MD5/SHA256 sidecars for each file. A dry run only reads
 	// the sidecars that exist; files without them cannot be planned yet.
-	const unhashed = await generateHashes(scanned, { compute: !dryRun });
-	const files = scanned.map(({ file }) => file).filter((file) => file.hashes);
+	const unhashed = await generateHashes(kept, { compute: !dryRun });
+	const files = kept.map(({ file }) => file).filter((file) => file.hashes);
 
 	// Decide what to do with each file before transferring anything.
 	const remote = listRemoteDataFiles();
@@ -121,10 +136,11 @@ async function update(config: Config, dryRun: boolean): Promise<void> {
 	// represented by the version R2 still serves, or not at all.
 	const fileGroups = groupFiles(plan.published);
 	const copies = planStableCopies(fileGroups, remote);
+	const deletions = planDeletions(plan.published, remote);
 
 	if (dryRun) {
 		console.log('Dry run — this is what an update would do:');
-		console.log(describePlan(plan, copies, pendingIndices(fileGroups, plan)));
+		console.log(describePlan(plan, copies, pendingIndices(fileGroups, plan), deletions));
 		for (const file of unhashed) {
 			console.log(
 				` - hash   ${file.filename} (${file.sizeString}) — compute its checksums first; what follows is not known yet`,
@@ -138,14 +154,17 @@ async function update(config: Config, dryRun: boolean): Promise<void> {
 	if (fileGroups.length === 0) throw Error('none of the remote files can be published');
 
 	console.log('Mirroring data files to R2...');
-	console.log(describePlan(plan, copies));
+	console.log(describePlan(plan, copies, [], deletions));
 
 	// Mirror the data files to R2 *before* publishing the site (atomic publish).
 	// Dataset by dataset: uploads, checksums, size index, then the stable key.
 	await executeMirror(fileGroups, plan, copies, baseURL);
 
-	// Build the static site (index.html, RSS, sidecars, url lists) and upload last.
+	// Build the static site (index.html, RSS, sidecars, url lists) and upload it.
 	buildAndUploadSite(fileGroups, baseURL);
+
+	// Only now that the site no longer lists them, delete the old releases.
+	for (const { url } of deletions) deleteRelease(url);
 
 	// Everything else is done; now report what this run was not allowed to do.
 	const deferred = deferredFiles(plan);

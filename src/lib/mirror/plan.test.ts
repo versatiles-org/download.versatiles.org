@@ -2,7 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { FileRef } from '../file/file_ref.js';
 import { groupFiles } from '../file/file_group.js';
 import type { RemoteObject } from './rclone.js';
-import { DeferredUploadsError, deferredFiles, describePlan, planMirror, planStableCopies } from './plan.js';
+import {
+	DeferredUploadsError,
+	deferredFiles,
+	describePlan,
+	planDeletions,
+	planMirror,
+	planStableCopies,
+} from './plan.js';
 
 const GB = 2 ** 30;
 
@@ -267,5 +274,84 @@ describe('DeferredUploadsError', () => {
 		const error = new DeferredUploadsError([file('a.versatiles', 2 * GB)], 1.5 * GB);
 
 		expect(error.message).toContain('greater than 1.5 GB');
+	});
+});
+
+describe('planDeletions', () => {
+	const osm = (date: string) => file(`osm-vector.${date}.versatiles`, 60 * GB, date);
+	const dates = ['20240101', '20250106', '20260105', '20260413', '20260608', '20261027'];
+	/** R2 holding each of `dates` as uploaded, plus the stable key. */
+	const onR2 = (list: string[]) =>
+		remote({
+			...Object.fromEntries(list.map((date) => [osm(date).url, object(60 * GB, date)])),
+			'/osm-vector/osm-vector.versatiles': object(60 * GB, list[list.length - 1]),
+		});
+
+	it('deletes the releases beyond the newest RELEASES_KEPT, newest first', () => {
+		const published = dates.slice(2).map(osm);
+
+		expect(planDeletions(published, onR2(dates))).toEqual([
+			{ url: '/osm-vector/osm-vector.20250106.versatiles', size: 60 * GB },
+			{ url: '/osm-vector/osm-vector.20240101.versatiles', size: 60 * GB },
+		]);
+	});
+
+	it('keeps the newest releases on R2 even when the scan found none of them', () => {
+		expect(planDeletions([osm('20240101')], onR2(dates))).toEqual([
+			{ url: '/osm-vector/osm-vector.20250106.versatiles', size: 60 * GB },
+		]);
+	});
+
+	it('never deletes a release the site will list', () => {
+		// The site lists 20240101 although R2 holds four newer releases.
+		const published = [osm('20240101'), osm('20261027')];
+
+		expect(planDeletions(published, onR2(dates)).map((d) => d.url)).toEqual([
+			'/osm-vector/osm-vector.20250106.versatiles',
+		]);
+	});
+
+	it('counts a newer release that this run uploads', () => {
+		const published = [...dates.slice(3), '20270101'].map(osm);
+
+		expect(planDeletions(published, onR2(dates)).map((d) => d.url)).toEqual([
+			'/osm-vector/osm-vector.20260105.versatiles',
+			'/osm-vector/osm-vector.20250106.versatiles',
+			'/osm-vector/osm-vector.20240101.versatiles',
+		]);
+	});
+
+	it('only ever deletes dated releases of known datasets in their own folder', () => {
+		const r2 = remote({
+			'/osm-vector/osm-vector.versatiles': object(GB, 'stable'),
+			'/osm.20200101.versatiles': object(GB, 'root'),
+			'/osm-vector/osm.20200101.versatiles': object(GB, 'other name'),
+			'/other/other.20200101.versatiles': object(GB, 'unknown dataset'),
+			'/osm-vector/osm-vector.2020010.versatiles': object(GB, 'seven digits'),
+			...Object.fromEntries(
+				['20200101', ...dates].map((date) => [
+					`/satellite-raster/satellite-raster.${date}.versatiles`,
+					object(GB, date),
+				]),
+			),
+		});
+
+		expect(planDeletions([], r2).map((d) => d.url)).toEqual([
+			'/satellite-raster/satellite-raster.20250106.versatiles',
+			'/satellite-raster/satellite-raster.20240101.versatiles',
+			'/satellite-raster/satellite-raster.20200101.versatiles',
+		]);
+	});
+
+	it('deletes nothing from a dataset with RELEASES_KEPT releases or fewer', () => {
+		expect(planDeletions([], onR2(dates.slice(2)))).toEqual([]);
+	});
+
+	it('is described in the plan', () => {
+		const deletions = [{ url: '/osm-vector/osm-vector.20240101.versatiles', size: 56 * GB }];
+
+		expect(describePlan({ actions: [], published: [] }, [], [], deletions)).toContain(
+			' - delete osm-vector.20240101.versatiles (56.0 GB) from R2 with its checksums and size index — older than the newest 4 releases',
+		);
 	});
 });

@@ -125,9 +125,20 @@ files, or the other way around, the updater stops on an unknown file.
 
 ## Removing a release or a dataset
 
-The updater never deletes anything from R2. A file that is removed from the Storage Box
-disappears from the site at the next update, but its object, its checksum files and its
-size index stay on R2 and remain downloadable by URL. To remove them as well:
+The updater publishes only the newest `RELEASES_KEPT` (4) releases of each dataset. When a
+new release pushes the oldest one past the limit, the next update removes it from the site
+and then deletes it from R2, with its checksum files and size index. The dry run lists
+these deletions. Older releases on the Storage Box stay there: the updater never changes or
+deletes anything on the Storage Box except writing missing `.md5` and `.sha256` sidecars.
+
+To be safe, the updater deletes only dated releases (`<slug>/<slug>.<YYYYMMDD>.versatiles`)
+of datasets in `datasets.ts`. It counts the newest four over what R2 holds as well as what
+it scanned, so an incomplete scan cannot remove a current release. It never deletes a file
+the site lists, and it deletes only after the new site is uploaded.
+
+Anything else is removed by hand: a release among the newest four that has been taken off
+the Storage Box, a stable key, or a whole dataset. Its object, checksum files and size index
+otherwise stay on R2 and remain downloadable by URL. To remove a release from R2:
 
 ```bash
 rclone deletefile r2:<bucket>/<slug>/<file>.versatiles

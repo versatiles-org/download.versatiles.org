@@ -1,5 +1,38 @@
 import { describe, it, expect } from 'vitest';
-import { DATASETS, assertKnownDatasets, datasetOf, slugOf, unknownFiles } from './datasets.js';
+import {
+	DATASETS,
+	RELEASES_KEPT,
+	assertKnownDatasets,
+	datasetOf,
+	releasesBeyondLimit,
+	slugOf,
+	unknownFiles,
+} from './datasets.js';
+
+describe('releasesBeyondLimit', () => {
+	it('keeps the newest RELEASES_KEPT releases of each dataset', () => {
+		expect(RELEASES_KEPT).toBe(4);
+		const osm = ['20240101', '20261027', '20250106', '20260413', '20260608', '20260105'].map(
+			(date) => `osm-vector.${date}.versatiles`,
+		);
+
+		expect(releasesBeyondLimit([...osm, 'satellite-raster.versatiles'])).toEqual([
+			'osm-vector.20250106.versatiles',
+			'osm-vector.20240101.versatiles',
+		]);
+	});
+
+	it('compares file names, not paths', () => {
+		const files = ['b/osm-vector.20240101.versatiles', 'a/osm-vector.20200101.versatiles'];
+		const more = ['osm-vector.20250101.versatiles', 'osm-vector.20250201.versatiles', 'osm-vector.20250301.versatiles'];
+
+		expect(releasesBeyondLimit([...files, ...more])).toEqual(['a/osm-vector.20200101.versatiles']);
+	});
+
+	it('keeps every file of a dataset with RELEASES_KEPT releases or fewer', () => {
+		expect(releasesBeyondLimit(['elevation-raster.versatiles', 'landcover-vector.20260101.versatiles'])).toEqual([]);
+	});
+});
 
 describe('DATASETS', () => {
 	it('lists the published datasets in display order', () => {

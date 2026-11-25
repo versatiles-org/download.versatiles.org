@@ -15,6 +15,7 @@ const {
 	uploadObject,
 	uploadDir,
 	listRemoteDataFiles,
+	deleteRelease,
 } = await import('./rclone.js');
 
 /** Builds a remote data FileRef with a given destination url and md5. */
@@ -265,5 +266,37 @@ describe('uploadDir', () => {
 	it('throws when the copy fails', () => {
 		cp.spawnSync.mockReturnValue({ status: 1 });
 		expect(() => uploadDir('/repo/build')).toThrow(/rclone failed to upload \/repo\/build/);
+	});
+});
+
+describe('deleteRelease', () => {
+	it('deletes the data file and its companions by exact name, in its folder only', () => {
+		cp.spawnSync.mockReturnValue({ status: 0 });
+
+		deleteRelease('/osm-vector/osm-vector.20240101.versatiles');
+
+		expect(cp.spawnSync.mock.calls).toHaveLength(1);
+		expect(cp.spawnSync.mock.calls[0][1]).toEqual([
+			'delete',
+			'--include',
+			'/osm-vector.20240101.versatiles',
+			'--include',
+			'/osm-vector.20240101.versatiles.md5',
+			'--include',
+			'/osm-vector.20240101.versatiles.sha256',
+			'--include',
+			'/osm-vector.20240101.versatiles.index.json',
+			'r2:downloads/osm-vector',
+		]);
+	});
+
+	it('refuses a key outside a dataset folder', () => {
+		expect(() => deleteRelease('/osm-vector.20240101.versatiles')).toThrow(/not a release in a dataset folder/);
+		expect(cp.spawnSync).not.toHaveBeenCalled();
+	});
+
+	it('throws when the deletion fails', () => {
+		cp.spawnSync.mockReturnValue({ status: 1 });
+		expect(() => deleteRelease('/osm-vector/osm-vector.20240101.versatiles')).toThrow(/rclone failed to delete/);
 	});
 });

@@ -32,11 +32,17 @@
  * inside R2 from the first, planned by `planStableCopies()` once the published
  * files are grouped. No bytes leave R2 for it, so the size limit does not apply.
  *
+ * **Old releases.** Only the newest `RELEASES_KEPT` releases of a dataset are
+ * published. `planDeletions()` picks the older ones still on R2 for deletion,
+ * which happens after the site is uploaded, so the site never links to a
+ * deleted file.
+ *
  * This module only decides. It is a pure function of the scan and a listing of
  * the bucket, which is what makes a dry run possible.
  */
+import { RELEASES_KEPT, datasetOf } from '../file/datasets.js';
 import type { FileGroup } from '../file/file_group.js';
-import { FileRef } from '../file/file_ref.js';
+import { FileRef, formatSize } from '../file/file_ref.js';
 import type { RemoteObject } from './rclone.js';
 
 /** What happens to one scanned file. */
@@ -153,11 +159,60 @@ export function releaseOf(group: FileGroup): FileRef | null {
 	return release;
 }
 
+/** A release to delete from R2 because its dataset has `RELEASES_KEPT` newer ones. */
+export interface Deletion {
+	/** The url of the data file (`/osm-vector/osm-vector.20240101.versatiles`). */
+	url: string;
+	/** Its size on R2 in bytes. */
+	size: number;
+}
+
+/**
+ * The only kind of key the updater ever deletes: a dated release in its
+ * dataset's folder, `/<slug>/<slug>.<YYYYMMDD>.versatiles`. Stable keys, site
+ * files and anything else never match.
+ */
+const DATED_RELEASE = /^\/([^/]+)\/\1\.\d{8}\.versatiles$/;
+
+/**
+ * Plans which dated releases to delete from R2. `published` is the plan's list
+ * of files as they will be on R2; `remote` is the listing the mirror was
+ * planned against.
+ *
+ * Per dataset, the newest `RELEASES_KEPT` releases are kept, counted over what
+ * R2 holds **and** what will be published. Counting R2 means an incomplete scan
+ * of the Storage Box can never make a run delete one of the newest releases. On
+ * top of that, nothing the site will list is deleted, and nothing of a dataset
+ * that is not in `datasets.ts`.
+ */
+export function planDeletions(published: FileRef[], remote: Map<string, RemoteObject>): Deletion[] {
+	const listed = new Set(published.map((file) => file.url));
+	const bySlug = new Map<string, string[]>();
+	for (const url of new Set([...remote.keys(), ...listed])) {
+		const slug = DATED_RELEASE.exec(url)?.[1];
+		if (slug === undefined || !datasetOf(slug)) continue;
+		bySlug.set(slug, [...(bySlug.get(slug) ?? []), url]);
+	}
+
+	return [...bySlug.values()]
+		.flatMap((urls) => urls.sort().reverse().slice(RELEASES_KEPT))
+		.filter((url) => !listed.has(url))
+		.flatMap((url) => {
+			const object = remote.get(url);
+			return object ? [{ url, size: object.size }] : [];
+		});
+}
+
 /**
  * A short, human-readable account of what a plan will do. `indices` are the
  * files whose size index will be built, if the caller has worked that out.
  */
-export function describePlan(plan: MirrorPlan, copies: StableCopy[] = [], indices: FileRef[] = []): string {
+export function describePlan(
+	plan: MirrorPlan,
+	copies: StableCopy[] = [],
+	indices: FileRef[] = [],
+	deletions: Deletion[] = [],
+): string {
 	const lines: string[] = [];
 	let unchanged = 0;
 
@@ -173,6 +228,11 @@ export function describePlan(plan: MirrorPlan, copies: StableCopy[] = [], indice
 	}
 	for (const { from, to } of copies) {
 		lines.push(` - copy   ${from.filename} -> ${to.filename} within R2`);
+	}
+	for (const { url, size } of deletions) {
+		lines.push(
+			` - delete ${url.replace(/^.*\//, '')} (${formatSize(size)}) from R2 with its checksums and size index — older than the newest ${RELEASES_KEPT} releases`,
+		);
 	}
 	lines.push(` - ${unchanged} data file${unchanged === 1 ? '' : 's'} unchanged`);
 

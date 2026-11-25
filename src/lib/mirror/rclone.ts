@@ -268,6 +268,31 @@ export function copyDataFile(from: FileRef, to: FileRef): void {
 }
 
 /**
+ * Deletes a dated release from R2: the data file under `url`
+ * (`/osm-vector/osm-vector.20240101.versatiles`) and, if they exist, its
+ * `.md5`, `.sha256` and `.index.json`. Each name is matched exactly, anchored in
+ * the release's folder, so nothing else can be caught. Which releases may go is
+ * decided by `planDeletions()` in `./plan.ts`. Nothing on the Storage Box is
+ * touched.
+ *
+ * Throws if the deletion fails.
+ */
+export function deleteRelease(url: string): void {
+	const cfg = config();
+	const key = url.replace(/^\//, '');
+	const folder = key.replace(/\/[^/]*$/, '');
+	const name = key.slice(folder.length + 1);
+	if (!folder || !name) throw new Error(`not a release in a dataset folder: ${url}`);
+
+	console.log(` - Deleting ${key} with its checksums and size index from R2`);
+	const includes = ['', '.md5', '.sha256', '.index.json'].flatMap((suffix) => ['--include', `/${name}${suffix}`]);
+	const result = runRclone(['delete', ...includes, r2Dest(cfg, folder)]);
+	if (result.status !== 0) {
+		throw new Error(`rclone failed to delete ${key} (exit ${result.status})`);
+	}
+}
+
+/**
  * Checks that the object under a file's key has the file's size and md5.
  *
  * The md5 is metadata, so on its own it only shows that the transfer was

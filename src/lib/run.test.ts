@@ -10,7 +10,7 @@ vi.mock('./lock.js', () => ({ acquireLock: vi.fn() }));
 vi.mock('./size_index/sync.js', () => ({ isCurrent: vi.fn() }));
 vi.mock('./source/scan.js', () => ({ getRemoteFiles: vi.fn() }));
 vi.mock('./file/hashes.js', () => ({ generateHashes: vi.fn() }));
-vi.mock('./mirror/rclone.js', () => ({ listRemoteDataFiles: vi.fn() }));
+vi.mock('./mirror/rclone.js', () => ({ listRemoteDataFiles: vi.fn(), deleteRelease: vi.fn() }));
 vi.mock('./mirror/execute.js', () => ({ executeMirror: vi.fn() }));
 vi.mock('./site/site.js', () => ({ buildAndUploadSite: vi.fn() }));
 
@@ -21,7 +21,7 @@ const { acquireLock } = await import('./lock.js');
 const { isCurrent } = await import('./size_index/sync.js');
 const { getRemoteFiles } = await import('./source/scan.js');
 const { generateHashes } = await import('./file/hashes.js');
-const { listRemoteDataFiles } = await import('./mirror/rclone.js');
+const { deleteRelease, listRemoteDataFiles } = await import('./mirror/rclone.js');
 const { executeMirror } = await import('./mirror/execute.js');
 const { buildAndUploadSite } = await import('./site/site.js');
 
@@ -103,6 +103,50 @@ describe('run', () => {
 		await expect(run()).rejects.toThrow(/belongs to no known dataset:\n - test\.versatiles\n/);
 		expect(generateHashes).not.toHaveBeenCalled();
 		expect(buildAndUploadSite).not.toHaveBeenCalled();
+	});
+
+	it('neither hashes, uploads nor lists releases older than the newest four', async () => {
+		const dates = ['20240101', '20250106', '20260105', '20260413', '20260608', '20261027'];
+		const releases = dates.map((date) => file(`osm-vector.${date}.versatiles`, 60 * GB));
+		// The two oldest are gone from R2 (deleted by hand), the rest are there.
+		given(releases, {
+			...Object.fromEntries(releases.slice(2).map((f) => [f.url, uploaded(f)])),
+			'/osm-vector/osm-vector.versatiles': uploaded(releases[5]),
+		});
+
+		await run();
+
+		const hashed = vi.mocked(generateHashes).mock.calls[0][0].map(({ file }) => file.filename);
+		expect(hashed).toEqual(dates.slice(2).map((date) => `osm-vector.${date}.versatiles`));
+		expect(executed()).toEqual({ uploads: [], copies: [] });
+		const group = publishedGroups()[0];
+		expect([group.latestFile, ...group.olderFiles].map((f) => f?.url)).toEqual([
+			'/osm-vector/osm-vector.versatiles',
+			'/osm-vector/osm-vector.20261027.versatiles',
+			'/osm-vector/osm-vector.20260608.versatiles',
+			'/osm-vector/osm-vector.20260413.versatiles',
+			'/osm-vector/osm-vector.20260105.versatiles',
+		]);
+	});
+
+	it('deletes the releases beyond the newest four from R2, after the site is uploaded', async () => {
+		const dates = ['20240101', '20250106', '20260105', '20260413', '20260608', '20261027'];
+		const releases = dates.map((date) => file(`osm-vector.${date}.versatiles`, 60 * GB));
+		given(releases, {
+			...Object.fromEntries(releases.map((f) => [f.url, uploaded(f)])),
+			'/osm-vector/osm-vector.versatiles': uploaded(releases[5]),
+		});
+
+		await run();
+
+		expect(vi.mocked(deleteRelease).mock.calls).toEqual([
+			['/osm-vector/osm-vector.20250106.versatiles'],
+			['/osm-vector/osm-vector.20240101.versatiles'],
+		]);
+		const siteUploaded = vi.mocked(buildAndUploadSite).mock.invocationCallOrder[0];
+		for (const order of vi.mocked(deleteRelease).mock.invocationCallOrder) {
+			expect(order).toBeGreaterThan(siteUploaded);
+		}
 	});
 
 	it('mirrors a new release with a copy to its stable key, then publishes the site', async () => {
@@ -233,6 +277,22 @@ describe('run', () => {
 					' - build and upload the site',
 					'Nothing was changed.',
 				].join('\n'),
+			);
+		});
+
+		it('lists the deletions without deleting anything', async () => {
+			const dates = ['20240101', '20260105', '20260413', '20260608', '20261027'];
+			const releases = dates.map((date) => file(`osm-vector.${date}.versatiles`, 60 * GB));
+			given(releases, {
+				...Object.fromEntries(releases.map((f) => [f.url, uploaded(f)])),
+				'/osm-vector/osm-vector.versatiles': uploaded(releases[4]),
+			});
+
+			await run({ dryRun: true });
+
+			expect(deleteRelease).not.toHaveBeenCalled();
+			expect(output()).toContain(
+				' - delete osm-vector.20240101.versatiles (60.0 GB) from R2 with its checksums and size index — older than the newest 4 releases',
 			);
 		});
 

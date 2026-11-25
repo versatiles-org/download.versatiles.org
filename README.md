@@ -14,12 +14,18 @@ It is a **batch updater** (not a web server). On each run it:
   sidecars over SSH, in a single listing
 - reads the sidecars (or computes them on the Storage Box and stores them there if they
   are missing or older than their data file)
+- leaves out releases older than the newest four of each dataset
 - compares every file with what is on **Cloudflare R2** and plans what to upload
 - uploads the changed data files with `rclone`, each followed by its checksum files
 - builds a **size index** for the latest release of each dataset (used by the site to
   estimate the size of a partial download)
 - copies the latest release to its stable, undated key — inside R2, not from Hetzner
 - builds the website (`index.html`, per-dataset RSS feeds, url lists) and uploads it
+- deletes the releases older than the newest four, with their checksums and size
+  index, from R2
+
+On the Storage Box it only ever writes missing `.md5` and `.sha256` sidecars. No code may
+change or delete anything else there.
 
 The data and the website are then served **directly from R2** over our own domain — no
 reverse proxy in the request path, no per-GB egress fees, and no redirects. A small
@@ -40,11 +46,13 @@ Hetzner Storage Box  (source of truth — where .versatiles files are produced)
         │   1. check configuration and connections                       src/lib/config.ts, preflight.ts
         │   2. scan for *.versatiles and their sidecars, one listing     src/lib/source
         │   3. read or compute the hashes                                src/lib/file/hashes.ts
-        │   4. plan: compare with R2 → upload / unchanged / deferred     src/lib/mirror/plan.ts
+        │   4. plan: compare with R2 → upload / unchanged / deferred,    src/lib/mirror/plan.ts
+        │      and which old releases to delete
         │   5. per dataset: upload + checksums, size index,              src/lib/mirror/execute.ts
         │      then copy to the stable key within R2                     src/lib/size_index
         │   6. build the static site (SvelteKit prerender)               src/lib/site, src/routes
-        │   7. upload site → R2          (LAST = atomic publish)
+        │   7. upload site → R2          (atomic publish)
+        │   8. delete old releases from R2 (after the site stops listing them)
         ▼
 Cloudflare R2 bucket  ── custom domain + Worker, $0 egress ──▶  https://download.versatiles.org/…
         │                                                          (data + sidecars + website)
@@ -71,7 +79,9 @@ Each dataset has a folder named after its slug:
 
 - `https://download.versatiles.org/<slug>/<slug>.versatiles` — stable "latest" key
   (overwritten in place)
-- `…/<slug>/<slug>.<date>.versatiles` — dated archival copies; they are never deleted
+- `…/<slug>/<slug>.<date>.versatiles` — dated copies of the newest four releases
+  (`RELEASES_KEPT` in [`datasets.ts`](src/lib/file/datasets.ts)); older releases stay
+  on the Storage Box, but the updater deletes them from R2
 - `…/<slug>/<file>.md5` and `…/<slug>/<file>.sha256` — checksum sidecars of every data file
 - `…/<slug>/<file>.index.json` — size index of the latest release (under its dated and
   its stable key)

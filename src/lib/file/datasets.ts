@@ -95,6 +95,31 @@ export function datasetOf(slug: string): Dataset | undefined {
 	return Object.hasOwn(DATASETS, slug) ? DATASETS[slug] : undefined;
 }
 
+/**
+ * How many releases of a dataset are published: the latest and the ones before
+ * it. Older files on the Storage Box are left there untouched, but they are not
+ * hashed, uploaded or listed, and the updater deletes their copies from R2 (see
+ * `planDeletions()` in `../mirror/plan.ts`).
+ */
+export const RELEASES_KEPT = 4;
+
+/**
+ * The file names among `filenames` that are not published because their dataset
+ * has `RELEASES_KEPT` newer ones. Newer means later in reverse name order, as in
+ * `groupFiles()`, so `osm-vector.20261027.versatiles` comes before
+ * `osm-vector.20260608.versatiles`.
+ */
+export function releasesBeyondLimit(filenames: string[]): string[] {
+	const bySlug = new Map<string, string[]>();
+	for (const filename of filenames) {
+		const slug = slugOf(filename);
+		bySlug.set(slug, [...(bySlug.get(slug) ?? []), filename]);
+	}
+	return [...bySlug.values()].flatMap((names) =>
+		names.sort((a, b) => (basename(a) < basename(b) ? 1 : -1)).slice(RELEASES_KEPT),
+	);
+}
+
 /** The file names among `filenames` that belong to no published dataset. */
 export function unknownFiles(filenames: string[]): string[] {
 	return filenames.filter((filename) => !datasetOf(slugOf(filename)));

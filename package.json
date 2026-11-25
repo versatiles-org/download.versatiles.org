@@ -50,15 +50,15 @@
     "tsx": "^4.23.15",
     "typescript": "^6.0.3",
     "vite": "^8.3.8",
-    "vitest": "^5.1.1"
+    "vitest": "^5.1.2"
   },
   "devDependencies": {
     "@playwright/test": "1.65.1",
-    "@types/node": "^26.6.6",
+    "@types/node": "^26.6.10",
     "@typescript-eslint/eslint-plugin": "^8.74.0",
     "@typescript-eslint/parser": "^8.74.0",
     "@versatiles/release-tool": "^2.23.0",
-    "@vitest/coverage-v8": "^5.1.1",
+    "@vitest/coverage-v8": "^5.1.2",
     "eslint": "^10.15.0",
     "npm-check-updates": "^23.1.1",
     "prettier": "^3.10.1",
